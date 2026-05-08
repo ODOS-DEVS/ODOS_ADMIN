@@ -2,7 +2,13 @@ import { Edit3, Eye, PackagePlus, Star, Store as StoreIcon, Tag } from "lucide-r
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 import { getCategories } from "@/api/categoriesApi";
-import { createProduct, getProducts, updateProductStatus, type CreateProductInput } from "@/api/productsApi";
+import {
+  createProduct,
+  getProducts,
+  updateProduct,
+  updateProductStatus,
+  type CreateProductInput,
+} from "@/api/productsApi";
 import { getStores } from "@/api/storesApi";
 import { DataTable } from "@/components/tables/DataTable";
 import { Button } from "@/components/ui/Button";
@@ -117,7 +123,10 @@ function TaxonomyChip({
   );
 }
 
-function validateProductForm(form: ProductFormState): ProductFormErrors {
+function validateProductForm(
+  form: ProductFormState,
+  { requireImage = true }: { requireImage?: boolean } = {},
+): ProductFormErrors {
   const errors: ProductFormErrors = {};
 
   if (!form.name.trim()) {
@@ -129,7 +138,7 @@ function validateProductForm(form: ProductFormState): ProductFormErrors {
   if (form.selectedCategorySlugs.length === 0) {
     errors.selectedCategorySlugs = "Select at least one category.";
   }
-  if (form.imageFiles.length === 0) {
+  if (requireImage && form.imageFiles.length === 0) {
     errors.imageFiles = "Upload at least one product image.";
   }
 
@@ -161,6 +170,24 @@ function parseCommaSeparated(value: string) {
     .filter(Boolean);
 }
 
+function normalizeTaxonomyValue(value?: string | null) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildSubcategoryKey(categorySlug: string, subcategory: string) {
+  return `${categorySlug}::${subcategory}`;
+}
+
+function revokePreviewUrl(url: string | null) {
+  if (url?.startsWith("blob:")) {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export function ProductsPage() {
   const { token } = useAdminAuth();
   const { showToast } = useToast();
@@ -173,10 +200,11 @@ export function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [statusProduct, setStatusProduct] = useState<Product | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [pendingStatus, setPendingStatus] = useState<ProductStatus>("active");
   const [actionLoading, setActionLoading] = useState(false);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [form, setForm] = useState<ProductFormState>(DEFAULT_FORM_STATE);
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
@@ -211,9 +239,7 @@ export function ProductsPage() {
 
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      revokePreviewUrl(previewUrl);
     };
   }, [previewUrl]);
 
@@ -221,6 +247,15 @@ export function ProductsPage() {
     () => new Map(categories.map((category) => [category.slug, category])),
     [categories],
   );
+  const subcategoryLabelBySlug = useMemo(() => {
+    const lookup = new Map<string, string>();
+    for (const category of categories) {
+      for (const subcategory of category.subcategories ?? []) {
+        lookup.set(normalizeTaxonomyValue(subcategory), subcategory);
+      }
+    }
+    return lookup;
+  }, [categories]);
 
   const selectedCategories = useMemo(
     () =>
@@ -233,7 +268,7 @@ export function ProductsPage() {
   const availableSubcategories = useMemo(() => {
     const entries = selectedCategories.flatMap((category) =>
       (category.subcategories ?? []).map((subcategory) => ({
-        slug: `${category.slug}::${subcategory}`,
+        slug: buildSubcategoryKey(category.slug, subcategory),
         categorySlug: category.slug,
         label: subcategory,
       })),
@@ -284,18 +319,23 @@ export function ProductsPage() {
   function resetCreateState() {
     setForm(DEFAULT_FORM_STATE);
     setFormErrors({});
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    revokePreviewUrl(previewUrl);
     setPreviewUrl(null);
     setCropQueue([]);
     setActiveCropFile(null);
   }
 
-  function closeCreateModal() {
+  function closeProductModal() {
     if (createLoading) return;
-    setIsCreateOpen(false);
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
     resetCreateState();
+  }
+
+  function openCreateModal() {
+    setEditingProduct(null);
+    resetCreateState();
+    setIsProductModalOpen(true);
   }
 
   function updateForm<K extends keyof ProductFormState>(key: K, value: ProductFormState[K]) {
@@ -338,6 +378,79 @@ export function ProductsPage() {
     }));
   }
 
+  function buildFormStateFromProduct(product: Product): ProductFormState {
+    const normalizedCategorySlugs = (
+      product.categorySlugs?.filter((slug) => categoriesBySlug.has(slug)) ?? []
+    );
+
+    if (normalizedCategorySlugs.length === 0) {
+      const fallbackCategory = categories.find((category) => {
+        const normalizedName = normalizeTaxonomyValue(category.name);
+        return (
+          normalizedName === normalizeTaxonomyValue(product.category) ||
+          category.slug === normalizeTaxonomyValue(product.category)
+        );
+      });
+      if (fallbackCategory) {
+        normalizedCategorySlugs.push(fallbackCategory.slug);
+      }
+    }
+
+    const matchingSubcategories = normalizedCategorySlugs.flatMap((categorySlug) =>
+      (categoriesBySlug.get(categorySlug)?.subcategories ?? []).map((subcategory) => ({
+        key: buildSubcategoryKey(categorySlug, subcategory),
+        label: subcategory,
+      })),
+    );
+
+    const selectedSubcategoryKeys = new Set<string>();
+    const requestedSubcategories = [
+      ...(product.subcategorySlugs ?? []),
+      ...(product.subcategory ? [product.subcategory] : []),
+    ].map((value) => normalizeTaxonomyValue(value));
+
+    for (const value of requestedSubcategories) {
+      const match = matchingSubcategories.find(
+        (entry) => normalizeTaxonomyValue(entry.label) === value,
+      );
+      if (match) {
+        selectedSubcategoryKeys.add(match.key);
+      }
+    }
+
+    return {
+      name: product.name,
+      description: product.description,
+      storeId: product.storeId ?? "",
+      selectedCategorySlugs: normalizedCategorySlugs,
+      selectedSubcategorySlugs: Array.from(selectedSubcategoryKeys),
+      audienceSlug: product.audienceSlug ?? "",
+      section: product.section ?? "",
+      placementTags: product.placementTags?.join(", ") ?? "",
+      price: String(product.price),
+      oldPrice: product.oldPrice ? String(product.oldPrice) : "",
+      stock: String(product.stock),
+      rating: typeof product.rating === "number" ? String(product.rating) : "",
+      reviews: product.reviews ?? "",
+      colorOptions: product.colorOptions?.join(", ") ?? "",
+      sizeOptions: product.sizeOptions?.join(", ") ?? "",
+      specifications: product.specifications?.join("\n") ?? "",
+      status: product.status,
+      imageFiles: [],
+    };
+  }
+
+  function openEditModal(product: Product) {
+    revokePreviewUrl(previewUrl);
+    setEditingProduct(product);
+    setForm(buildFormStateFromProduct(product));
+    setFormErrors({});
+    setPreviewUrl(product.images[0] ?? null);
+    setCropQueue([]);
+    setActiveCropFile(null);
+    setIsProductModalOpen(true);
+  }
+
   function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (!files.length) {
@@ -359,9 +472,7 @@ export function ProductsPage() {
       imageFiles: [...current.imageFiles, file].slice(0, 6),
     }));
     setFormErrors((current) => ({ ...current, imageFiles: undefined }));
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    revokePreviewUrl(previewUrl);
     setPreviewUrl(URL.createObjectURL(file));
 
     if (cropQueue.length > 0) {
@@ -409,10 +520,12 @@ export function ProductsPage() {
     };
   }
 
-  async function handleCreateProduct() {
+  async function handleSubmitProduct() {
     if (!token) return;
 
-    const nextErrors = validateProductForm(form);
+    const nextErrors = validateProductForm(form, {
+      requireImage: !editingProduct || (!editingProduct.images.length && form.imageFiles.length === 0),
+    });
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       showToast({
@@ -425,17 +538,28 @@ export function ProductsPage() {
 
     setCreateLoading(true);
     try {
-      const createdProduct = await createProduct(token, normalizeCreatePayload());
-      setProducts((current) => [createdProduct, ...current]);
+      const payload = normalizeCreatePayload();
+      const savedProduct = editingProduct
+        ? await updateProduct(token, editingProduct.id, payload)
+        : await createProduct(token, payload);
+      setProducts((current) =>
+        editingProduct
+          ? current.map((product) => (product.id === savedProduct.id ? savedProduct : product))
+          : [savedProduct, ...current],
+      );
+      setSelectedProduct((current) => (current?.id === savedProduct.id ? savedProduct : current));
+      setStatusProduct((current) => (current?.id === savedProduct.id ? savedProduct : current));
       showToast({
-        title: "Product created",
-        description: `${createdProduct.name} is now available in the ODOS catalog.`,
+        title: editingProduct ? "Product updated" : "Product created",
+        description: editingProduct
+          ? `${savedProduct.name} now uses the latest category and subcategory mapping.`
+          : `${savedProduct.name} is now available in the ODOS catalog.`,
         tone: "success",
       });
-      closeCreateModal();
+      closeProductModal();
     } catch (createError) {
       showToast({
-        title: "Unable to create product",
+        title: editingProduct ? "Unable to update product" : "Unable to create product",
         description: createError instanceof Error ? createError.message : "Please try again.",
         tone: "error",
       });
@@ -445,20 +569,21 @@ export function ProductsPage() {
   }
 
   async function handleStatusUpdate() {
-    if (!token || !editingProduct) return;
+    if (!token || !statusProduct) return;
     setActionLoading(true);
     try {
-      const updated = await updateProductStatus(token, editingProduct.id, pendingStatus);
+      const updated = await updateProductStatus(token, statusProduct.id, pendingStatus);
       setProducts((current) =>
         current.map((product) => (product.id === updated.id ? updated : product)),
       );
       setSelectedProduct((current) => (current?.id === updated.id ? updated : current));
+      setEditingProduct((current) => (current?.id === updated.id ? updated : current));
       showToast({
         title: "Product updated",
-        description: `${editingProduct.name} is now ${pendingStatus}.`,
+        description: `${statusProduct.name} is now ${pendingStatus}.`,
         tone: "success",
       });
-      setEditingProduct(null);
+      setStatusProduct(null);
     } catch (updateError) {
       showToast({
         title: "Unable to update product",
@@ -485,7 +610,7 @@ export function ProductsPage() {
         title="Product management"
         description="Create polished ODOS catalog items, assign them to real stores, and link them to multiple categories and subcategories for the shopper app."
         actions={
-          <Button leftIcon={<PackagePlus className="size-4" />} onClick={() => setIsCreateOpen(true)}>
+          <Button leftIcon={<PackagePlus className="size-4" />} onClick={openCreateModal}>
             Create product
           </Button>
         }
@@ -618,9 +743,16 @@ export function ProductsPage() {
                       View
                     </Button>
                     <Button
+                      variant="secondary"
                       leftIcon={<Edit3 className="size-4" />}
+                      onClick={() => openEditModal(product)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      leftIcon={<Tag className="size-4" />}
                       onClick={() => {
-                        setEditingProduct(product);
+                        setStatusProduct(product);
                         setPendingStatus(product.status);
                       }}
                     >
@@ -637,17 +769,21 @@ export function ProductsPage() {
       </SectionCard>
 
       <Modal
-        open={isCreateOpen}
-        onClose={closeCreateModal}
-        title="Create product"
-        description="Build a polished ODOS product and map it to one or more categories, one or more subcategories, and the exact store it belongs to."
+        open={isProductModalOpen}
+        onClose={closeProductModal}
+        title={editingProduct ? `Edit ${editingProduct.name}` : "Create product"}
+        description={
+          editingProduct
+            ? "Correct taxonomy, store mapping, pricing, and merchandising details without recreating the product."
+            : "Build a polished ODOS product and map it to one or more categories, one or more subcategories, and the exact store it belongs to."
+        }
         footer={
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={closeCreateModal} disabled={createLoading}>
+            <Button variant="ghost" onClick={closeProductModal} disabled={createLoading}>
               Cancel
             </Button>
-            <Button onClick={() => void handleCreateProduct()} isLoading={createLoading}>
-              Create product
+            <Button onClick={() => void handleSubmitProduct()} isLoading={createLoading}>
+              {editingProduct ? "Save product" : "Create product"}
             </Button>
           </div>
         }
@@ -675,11 +811,17 @@ export function ProductsPage() {
                     className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-white/15"
                   />
                   <p className="mt-3 text-xs text-textMuted">
-                    Each image opens a crop step before it is added. Use bright product photos with minimal background clutter.
+                    {editingProduct
+                      ? "Upload new images only when you want to refresh the gallery. Existing product images stay in place if you leave this untouched."
+                      : "Each image opens a crop step before it is added. Use bright product photos with minimal background clutter."}
                   </p>
                   {formErrors.imageFiles ? <p className="mt-2 text-xs text-red-300">{formErrors.imageFiles}</p> : null}
                   {form.imageFiles.length > 0 ? (
                     <p className="mt-2 text-xs text-textMuted">{form.imageFiles.length} image(s) ready</p>
+                  ) : editingProduct?.images.length ? (
+                    <p className="mt-2 text-xs text-textMuted">
+                      {editingProduct.images.length} existing image(s) currently attached
+                    </p>
                   ) : null}
                 </div>
               </div>
@@ -968,7 +1110,13 @@ export function ProductsPage() {
             />
             <ProductDetailRow
               label="Subcategories"
-              value={selectedProduct.subcategorySlugs?.join(", ") ?? selectedProduct.subcategory ?? "Not set"}
+              value={
+                selectedProduct.subcategorySlugs?.length
+                  ? selectedProduct.subcategorySlugs
+                      .map((slug) => subcategoryLabelBySlug.get(normalizeTaxonomyValue(slug)) ?? slug)
+                      .join(", ")
+                  : selectedProduct.subcategory ?? "Not set"
+              }
             />
             <ProductDetailRow label="Status" value={selectedProduct.status} />
             <ProductDetailRow label="Store" value={selectedProduct.storeName ?? "ODOS Official"} />
@@ -1013,17 +1161,17 @@ export function ProductsPage() {
       </Modal>
 
       <Modal
-        open={Boolean(editingProduct)}
+        open={Boolean(statusProduct)}
         onClose={() => {
           if (!actionLoading) {
-            setEditingProduct(null);
+            setStatusProduct(null);
           }
         }}
-        title={editingProduct ? `Update ${editingProduct.name}` : "Update product"}
+        title={statusProduct ? `Update ${statusProduct.name}` : "Update product"}
         description="Choose the correct catalog status for this product."
         footer={
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setEditingProduct(null)} disabled={actionLoading}>
+            <Button variant="ghost" onClick={() => setStatusProduct(null)} disabled={actionLoading}>
               Cancel
             </Button>
             <Button onClick={() => void handleStatusUpdate()} isLoading={actionLoading}>

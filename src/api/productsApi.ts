@@ -62,7 +62,7 @@ export async function getProducts(token: string) {
   );
 }
 
-export async function createProduct(token: string, input: CreateProductInput) {
+function buildProductFormData(input: CreateProductInput) {
   const formData = new FormData();
   formData.append("name", input.name.trim());
   formData.append("description", input.description.trim());
@@ -113,8 +113,25 @@ export async function createProduct(token: string, input: CreateProductInput) {
     formData.append("images", imageFile);
   }
 
+  return formData;
+}
+
+export async function createProduct(token: string, input: CreateProductInput) {
+  const formData = buildProductFormData(input);
+
   const product = await requestJson<BackendProduct>("/admin/products", {
     method: "POST",
+    token,
+    body: formData,
+  });
+  return mapProduct(product);
+}
+
+export async function updateProduct(token: string, productId: string, input: CreateProductInput) {
+  const formData = buildProductFormData(input);
+
+  const product = await requestJson<BackendProduct>(`/admin/products/${productId}`, {
+    method: "PATCH",
     token,
     body: formData,
   });
