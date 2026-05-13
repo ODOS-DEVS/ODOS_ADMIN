@@ -38,6 +38,7 @@ Mobile repo:
 - Store creation added directly in admin
 - Category creation now supports uploaded artwork for shopper-facing cards
 - Product creation now supports one or more categories and one or more subcategories
+- Product review screens now expose full submission detail and pending approval flow
 
 ## Prerequisites
 
@@ -53,7 +54,7 @@ Create `.env` from the example:
 cp .env.example .env
 ```
 
-Default local value:
+Local value:
 
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
@@ -84,6 +85,32 @@ Preview built app:
 ```bash
 npm run preview
 ```
+
+## Vercel Deployment
+
+This repo now includes:
+
+- [vercel.json](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/vercel.json:1) for Vite build output and SPA route fallback
+- [.env.example](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/.env.example:1) for the deployed API URL
+
+Recommended deploy flow:
+
+1. Push this repo to the `odos-admin` repository in your GitHub organization.
+2. In Vercel, import the `odos-admin` repo.
+3. Keep the default framework detection or confirm it as `Vite`.
+4. Set the environment variable:
+
+```env
+VITE_API_BASE_URL=https://your-backend-service.onrender.com/api
+```
+
+5. Deploy.
+
+Why `vercel.json` matters here:
+
+- the admin uses React Router
+- direct refreshes on routes like `/products` or `/reviews` need to fall back to `index.html`
+- the rewrite handles that for deployed builds
 
 ## Typical Local Workflow
 
@@ -154,6 +181,6 @@ npm run build
 
 ## Notes
 
-- The admin app falls back to mock data for a few unsupported or unavailable API cases, but the current store/category/product management work is designed for the live backend.
 - Category and product taxonomy decisions here flow straight into the mobile shopper experience.
 - Apply backend migrations before testing new category/store/product admin flows.
+- Make sure the backend `CORS_ORIGINS` includes your Vercel admin URL.
