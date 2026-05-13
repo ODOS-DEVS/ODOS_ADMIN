@@ -12,8 +12,8 @@ export function LoginPage() {
   const location = useLocation();
   const { adminUser, login, isSigningIn } = useAdminAuth();
   const { showToast } = useToast();
-  const [email, setEmail] = useState("admin@odos.app");
-  const [password, setPassword] = useState("admin12345");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [bootstrapEnabled, setBootstrapEnabled] = useState(false);
 
@@ -136,12 +136,6 @@ export function LoginPage() {
               Sign in to admin
             </Button>
           </form>
-
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-textMuted">
-            Demo fallback credentials:
-            <span className="ml-2 font-medium text-textStrong">admin@odos.app / admin12345</span>
-          </div>
-
           {bootstrapEnabled ? (
             <div className="mt-4 rounded-2xl border border-accent/20 bg-accent/10 px-4 py-4 text-sm text-textMuted">
               No admin exists yet.

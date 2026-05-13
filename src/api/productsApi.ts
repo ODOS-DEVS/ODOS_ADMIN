@@ -1,13 +1,19 @@
-import { mockProducts } from "@/data/mockData";
 import type { Product, ProductStatus } from "@/types";
 import { mapProduct } from "@/api/mappers";
-import { requestJson, withFallback } from "@/api/client";
+import { requestJson } from "@/api/client";
 
 type BackendProduct = {
   id: string;
   store_id: string | null;
   store_name?: string | null;
+  store_slug?: string | null;
+  store_category?: string | null;
+  store_location?: string | null;
+  store_region?: string | null;
+  store_city?: string | null;
   vendor_id: string | null;
+  vendor_name?: string | null;
+  vendor_email?: string | null;
   name: string;
   description: string;
   images: string[];
@@ -24,6 +30,7 @@ type BackendProduct = {
   stock: number;
   status: ProductStatus;
   created_at: string;
+  updated_at: string;
   subcategory?: string | null;
   subcategory_slugs?: string[] | null;
   specifications?: string[] | null;
@@ -53,13 +60,13 @@ export type CreateProductInput = {
 };
 
 export async function getProducts(token: string) {
-  return withFallback<Product[]>(
-    async () => {
-      const products = await requestJson<BackendProduct[]>("/admin/products", { token });
-      return products.map(mapProduct);
-    },
-    () => mockProducts,
-  );
+  const products = await requestJson<BackendProduct[]>("/admin/products", { token });
+  return products.map(mapProduct);
+}
+
+export async function getProduct(token: string, productId: string) {
+  const product = await requestJson<BackendProduct>(`/admin/products/${productId}`, { token });
+  return mapProduct(product);
 }
 
 function buildProductFormData(input: CreateProductInput) {
@@ -139,22 +146,10 @@ export async function updateProduct(token: string, productId: string, input: Cre
 }
 
 export async function updateProductStatus(token: string, productId: string, status: ProductStatus) {
-  return withFallback<Product>(
-    async () => {
-      const product = await requestJson<BackendProduct>(`/admin/products/${productId}/status`, {
-        method: "PATCH",
-        token,
-        body: JSON.stringify({ status }),
-      });
-      return mapProduct(product);
-    },
-    () => {
-      const product = mockProducts.find((item) => item.id === productId);
-      if (!product) {
-        throw new Error("Product not found");
-      }
-      product.status = status;
-      return product;
-    },
-  );
+  const product = await requestJson<BackendProduct>(`/admin/products/${productId}/status`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ status }),
+  });
+  return mapProduct(product);
 }

@@ -51,22 +51,4 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
   return (await response.json()) as T;
 }
 
-export async function withFallback<T>(request: () => Promise<T>, fallback: () => T | Promise<T>) {
-  try {
-    return await request();
-  } catch (error) {
-    if (
-      error instanceof ApiError &&
-      (error.message === "Missing VITE_API_BASE_URL" ||
-        error.status === 404 ||
-        error.status === 405 ||
-        error.status === 501)
-    ) {
-      return await fallback();
-    }
-
-    throw error;
-  }
-}
-
 export { API_BASE_URL };

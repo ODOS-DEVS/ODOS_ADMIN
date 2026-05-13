@@ -8,7 +8,16 @@ export type VendorStatus =
   | "suspended";
 export type AccountStatus = "active" | "blocked" | "inactive";
 export type StoreStatus = "active" | "suspended" | "draft";
-export type ProductStatus = "active" | "hidden" | "suspended";
+export type ProductStatus = "pending" | "active" | "hidden" | "suspended";
+export type VoucherDiscountType = "percent" | "fixed" | "free_shipping";
+export type VoucherScope = "odos" | "store";
+export type VoucherAvailability = "auto" | "claim" | "assigned";
+export type VoucherCampaignStatus =
+  | "active"
+  | "scheduled"
+  | "expired"
+  | "disabled"
+  | "limit_reached";
 export type OrderStatus =
   | "pending"
   | "confirmed"
@@ -115,7 +124,14 @@ export type Product = {
   id: string;
   storeId: string | null;
   storeName: string | null;
+  storeSlug?: string | null;
+  storeCategory?: string | null;
+  storeLocation?: string | null;
+  storeRegion?: string | null;
+  storeCity?: string | null;
   vendorId: string | null;
+  vendorName?: string | null;
+  vendorEmail?: string | null;
   name: string;
   description: string;
   price: number;
@@ -138,6 +154,53 @@ export type Product = {
   stock: number;
   status: ProductStatus;
   createdAt: string;
+  updatedAt: string;
+};
+
+export type VoucherCampaign = {
+  id: string;
+  code: string;
+  title: string;
+  description?: string | null;
+  issuerName?: string | null;
+  scope: VoucherScope;
+  availability: VoucherAvailability;
+  storeId?: string | null;
+  storeName?: string | null;
+  rewardText: string;
+  discountType: VoucherDiscountType;
+  discountValue: number;
+  minSubtotal: number;
+  maxDiscount?: number | null;
+  usageLimit?: number | null;
+  perUserLimit?: number | null;
+  isActive: boolean;
+  status: VoucherCampaignStatus;
+  redemptionCount: number;
+  uniqueUserCount: number;
+  totalDiscountAmount: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  createdAt: string;
+};
+
+export type AdminReview = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  productId: string;
+  productName: string;
+  storeName?: string | null;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  rating: number;
+  comment: string;
+  isHidden: boolean;
+  moderationReason?: string | null;
+  moderatedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Order = {

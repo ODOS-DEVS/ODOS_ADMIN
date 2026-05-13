@@ -1,7 +1,6 @@
-import { mockAdminSession } from "@/data/mockData";
 import type { AdminSession, AdminUser } from "@/types";
 import { mapAdminUser } from "@/api/mappers";
-import { API_BASE_URL, requestJson, withFallback } from "@/api/client";
+import { requestJson } from "@/api/client";
 
 type LoginPayload = {
   email: string;
@@ -49,102 +48,53 @@ function mapAdminMePayload(user: BackendAdminAuthUser): AdminUser {
 }
 
 export async function loginAdmin(payload: LoginPayload): Promise<AdminSession> {
-  return withFallback(
-    async () => {
-      const response = await requestJson<{
-        access_token: string;
-        user: BackendAdminAuthUser;
-      }>(
-        "/admin/auth/login",
-        {
-          method: "POST",
-          body: JSON.stringify(payload),
-        },
-      );
-
-      return {
-        token: response.access_token,
-        user: mapAdminMePayload(response.user),
-      };
-    },
-    () => {
-      if (
-        payload.email.trim().toLowerCase() !== "admin@odos.app" ||
-        payload.password !== "admin12345"
-      ) {
-        throw new Error(
-          API_BASE_URL
-            ? "Admin login failed. Check credentials or backend readiness."
-            : "Use admin@odos.app / admin12345 in mock mode.",
-        );
-      }
-
-      return mockAdminSession;
+  const response = await requestJson<{
+    access_token: string;
+    user: BackendAdminAuthUser;
+  }>(
+    "/admin/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
     },
   );
+
+  return {
+    token: response.access_token,
+    user: mapAdminMePayload(response.user),
+  };
 }
 
 export async function getAdminBootstrapStatus(): Promise<BootstrapStatus> {
-  if (!API_BASE_URL) {
-    return { bootstrapEnabled: true };
-  }
-
-  try {
-    const response = await requestJson<{ bootstrap_enabled: boolean }>(
-      "/admin/auth/bootstrap-status",
-    );
-    return { bootstrapEnabled: response.bootstrap_enabled };
-  } catch {
-    return { bootstrapEnabled: false };
-  }
+  const response = await requestJson<{ bootstrap_enabled: boolean }>(
+    "/admin/auth/bootstrap-status",
+  );
+  return { bootstrapEnabled: response.bootstrap_enabled };
 }
 
 export async function signupFirstAdmin(payload: SignupPayload): Promise<AdminSession> {
-  return withFallback(
-    async () => {
-      const response = await requestJson<{
-        access_token: string;
-        user: BackendAdminAuthUser;
-      }>("/admin/auth/bootstrap-signup", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: payload.fullName,
-          email: payload.email,
-          password: payload.password,
-          phone_number: payload.phoneNumber?.trim() || null,
-        }),
-      });
+  const response = await requestJson<{
+    access_token: string;
+    user: BackendAdminAuthUser;
+  }>("/admin/auth/bootstrap-signup", {
+    method: "POST",
+    body: JSON.stringify({
+      full_name: payload.fullName,
+      email: payload.email,
+      password: payload.password,
+      phone_number: payload.phoneNumber?.trim() || null,
+    }),
+  });
 
-      return {
-        token: response.access_token,
-        user: mapAdminMePayload(response.user),
-      };
-    },
-    () => {
-      if (
-        payload.email.trim().toLowerCase() !== "admin@odos.app" ||
-        payload.password !== "admin12345"
-      ) {
-        throw new Error(
-          API_BASE_URL
-            ? "Admin bootstrap signup failed."
-            : "Use admin@odos.app / admin12345 in mock mode.",
-        );
-      }
-
-      return mockAdminSession;
-    },
-  );
+  return {
+    token: response.access_token,
+    user: mapAdminMePayload(response.user),
+  };
 }
 
 export async function getAdminMe(token: string): Promise<AdminUser> {
-  return withFallback(
-    async () => {
-      const user = await requestJson<BackendAdminAuthUser>("/admin/auth/me", { token });
-      return mapAdminMePayload(user);
-    },
-    () => mockAdminSession.user,
-  );
+  const user = await requestJson<BackendAdminAuthUser>("/admin/auth/me", { token });
+  return mapAdminMePayload(user);
 }
 
 type UpdateAdminMePayload = {

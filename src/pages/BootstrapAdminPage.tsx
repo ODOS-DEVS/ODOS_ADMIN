@@ -30,9 +30,19 @@ export function BootstrapAdminPage() {
   useEffect(() => {
     const loadStatus = async () => {
       setIsChecking(true);
-      const status = await getAdminBootstrapStatus();
-      setBootstrapEnabled(status.bootstrapEnabled);
-      setIsChecking(false);
+      setError(null);
+      try {
+        const status = await getAdminBootstrapStatus();
+        setBootstrapEnabled(status.bootstrapEnabled);
+      } catch (statusError) {
+        setError(
+          statusError instanceof Error
+            ? statusError.message
+            : "Unable to confirm admin bootstrap availability.",
+        );
+      } finally {
+        setIsChecking(false);
+      }
     };
 
     void loadStatus();
@@ -88,8 +98,9 @@ export function BootstrapAdminPage() {
               An admin already exists for ODOS
             </h1>
             <p className="mt-3 text-sm text-textMuted">
-              The first-admin bootstrap flow is only available once. Sign in with an existing admin
-              account instead.
+              {error
+                ? `The admin setup flow could not contact the backend: ${error}`
+                : "The first-admin bootstrap flow is only available once. Sign in with an existing admin account instead."}
             </p>
             <div className="mt-6">
               <Link to="/login" className="text-sm font-medium text-accentSoft hover:text-textStrong">

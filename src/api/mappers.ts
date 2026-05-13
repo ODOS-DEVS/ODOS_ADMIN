@@ -1,5 +1,6 @@
 import type {
   AdminSession,
+  AdminReview,
   AdminUser,
   Category,
   DashboardPayload,
@@ -10,6 +11,7 @@ import type {
   Store,
   Vendor,
   VendorApplication,
+  VoucherCampaign,
 } from "@/types";
 
 type BackendAdminUser = {
@@ -103,7 +105,14 @@ type BackendProduct = {
   id: string;
   store_id: string | null;
   store_name?: string | null;
+  store_slug?: string | null;
+  store_category?: string | null;
+  store_location?: string | null;
+  store_region?: string | null;
+  store_city?: string | null;
   vendor_id: string | null;
+  vendor_name?: string | null;
+  vendor_email?: string | null;
   name: string;
   description: string;
   images: string[];
@@ -126,6 +135,7 @@ type BackendProduct = {
   stock: number;
   status: Product["status"];
   created_at: string;
+  updated_at: string;
 };
 
 type BackendOrder = {
@@ -137,6 +147,52 @@ type BackendOrder = {
   status: Order["status"];
   payment_status: Order["paymentStatus"];
   created_at: string;
+};
+
+type BackendVoucherCampaign = {
+  id: string;
+  code: string;
+  title: string;
+  description?: string | null;
+  issuer_name?: string | null;
+  scope: VoucherCampaign["scope"];
+  availability: VoucherCampaign["availability"];
+  store_id?: string | null;
+  store_name?: string | null;
+  reward_text: string;
+  discount_type: VoucherCampaign["discountType"];
+  discount_value: number;
+  min_subtotal: number;
+  max_discount?: number | null;
+  usage_limit?: number | null;
+  per_user_limit?: number | null;
+  is_active: boolean;
+  status: VoucherCampaign["status"];
+  redemption_count: number;
+  unique_user_count: number;
+  total_discount_amount: number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  created_at: string;
+};
+
+type BackendAdminReview = {
+  id: string;
+  order_id: string;
+  order_number: string;
+  product_id: string;
+  product_name: string;
+  store_name?: string | null;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  rating: number;
+  comment: string;
+  is_hidden: boolean;
+  moderation_reason?: string | null;
+  moderated_at?: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type BackendNotification = {
@@ -274,7 +330,14 @@ export function mapProduct(product: BackendProduct): Product {
     id: product.id,
     storeId: product.store_id ?? null,
     storeName: product.store_name ?? null,
+    storeSlug: product.store_slug ?? null,
+    storeCategory: product.store_category ?? null,
+    storeLocation: product.store_location ?? null,
+    storeRegion: product.store_region ?? null,
+    storeCity: product.store_city ?? null,
     vendorId: product.vendor_id ?? null,
+    vendorName: product.vendor_name ?? null,
+    vendorEmail: product.vendor_email ?? null,
     name: product.name,
     description: product.description,
     images: product.images,
@@ -297,6 +360,7 @@ export function mapProduct(product: BackendProduct): Product {
     stock: product.stock,
     status: product.status,
     createdAt: product.created_at,
+    updatedAt: product.updated_at,
   };
 }
 
@@ -310,6 +374,56 @@ export function mapOrder(order: BackendOrder): Order {
     status: order.status,
     paymentStatus: order.payment_status,
     createdAt: order.created_at,
+  };
+}
+
+export function mapVoucherCampaign(voucher: BackendVoucherCampaign): VoucherCampaign {
+  return {
+    id: voucher.id,
+    code: voucher.code,
+    title: voucher.title,
+    description: voucher.description ?? null,
+    issuerName: voucher.issuer_name ?? null,
+    scope: voucher.scope,
+    availability: voucher.availability,
+    storeId: voucher.store_id ?? null,
+    storeName: voucher.store_name ?? null,
+    rewardText: voucher.reward_text,
+    discountType: voucher.discount_type,
+    discountValue: voucher.discount_value,
+    minSubtotal: voucher.min_subtotal,
+    maxDiscount: voucher.max_discount ?? null,
+    usageLimit: voucher.usage_limit ?? null,
+    perUserLimit: voucher.per_user_limit ?? null,
+    isActive: voucher.is_active,
+    status: voucher.status,
+    redemptionCount: voucher.redemption_count,
+    uniqueUserCount: voucher.unique_user_count,
+    totalDiscountAmount: voucher.total_discount_amount,
+    startsAt: voucher.starts_at ?? null,
+    endsAt: voucher.ends_at ?? null,
+    createdAt: voucher.created_at,
+  };
+}
+
+export function mapAdminReview(review: BackendAdminReview): AdminReview {
+  return {
+    id: review.id,
+    orderId: review.order_id,
+    orderNumber: review.order_number,
+    productId: review.product_id,
+    productName: review.product_name,
+    storeName: review.store_name ?? null,
+    userId: review.user_id,
+    userName: review.user_name,
+    userEmail: review.user_email,
+    rating: review.rating,
+    comment: review.comment,
+    isHidden: review.is_hidden,
+    moderationReason: review.moderation_reason ?? null,
+    moderatedAt: review.moderated_at ?? null,
+    createdAt: review.created_at,
+    updatedAt: review.updated_at,
   };
 }
 
