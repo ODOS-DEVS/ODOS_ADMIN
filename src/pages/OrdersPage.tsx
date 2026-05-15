@@ -1,7 +1,7 @@
-import { Edit3, Eye } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { CreditCard, Edit3, Eye, MapPin, Package2, UserRound } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { getOrders, updateOrderStatus } from "@/api/ordersApi";
+import { getOrder, getOrders, updateOrderStatus } from "@/api/ordersApi";
 import { DataTable } from "@/components/tables/DataTable";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -15,15 +15,36 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useToast } from "@/hooks/useToast";
-import type { Order, OrderStatus } from "@/types";
+import type { AdminOrderDetail, Order, OrderStatus } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
+import { resolveAdminMediaUrl } from "@/utils/media";
 
-function OrderDetailRow({ label, value }: { label: string; value: string }) {
+function OrderDetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
       <p className="mt-2 text-sm text-textStrong">{value}</p>
     </div>
+  );
+}
+
+function DetailSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-textStrong">{title}</h3>
+        {description ? <p className="mt-1 text-xs text-textMuted">{description}</p> : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -46,7 +67,10 @@ export function OrdersPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrderSummary, setSelectedOrderSummary] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrderDetail | null>(null);
+  const [orderDetailError, setOrderDetailError] = useState<string | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [pendingStatus, setPendingStatus] = useState<OrderStatus>("pending");
   const [actionLoading, setActionLoading] = useState(false);
@@ -80,6 +104,32 @@ export function OrdersPage() {
       return matchesQuery && matchesStatus && matchesPayment;
     });
   }, [orders, paymentFilter, query, statusFilter]);
+
+  const handleViewOrder = useCallback(
+    async (order: Order) => {
+      if (!token) return;
+      setSelectedOrderSummary(order);
+      setSelectedOrder(null);
+      setOrderDetailError(null);
+      setIsDetailLoading(true);
+      try {
+        const detail = await getOrder(token, order.id);
+        setSelectedOrder(detail);
+      } catch (loadError) {
+        const message =
+          loadError instanceof Error ? loadError.message : "Unable to load order details.";
+        setOrderDetailError(message);
+        showToast({
+          title: "Unable to load order",
+          description: message,
+          tone: "error",
+        });
+      } finally {
+        setIsDetailLoading(false);
+      }
+    },
+    [showToast, token],
+  );
 
   async function handleStatusUpdate() {
     if (!token || !editingOrder) return;
@@ -203,7 +253,7 @@ export function OrdersPage() {
                     <Button
                       variant="secondary"
                       leftIcon={<Eye className="size-4" />}
-                      onClick={() => setSelectedOrder(order)}
+                      onClick={() => void handleViewOrder(order)}
                     >
                       View
                     </Button>
@@ -227,19 +277,294 @@ export function OrdersPage() {
       </SectionCard>
 
       <Modal
-        open={Boolean(selectedOrder)}
-        onClose={() => setSelectedOrder(null)}
-        title={selectedOrder?.orderNumber ?? "Order details"}
-        description="Customer, store, payment, and fulfillment details for this order."
+        open={Boolean(selectedOrderSummary)}
+        onClose={() => {
+          setSelectedOrderSummary(null);
+          setSelectedOrder(null);
+          setOrderDetailError(null);
+          setIsDetailLoading(false);
+        }}
+        title={selectedOrder?.orderNumber ?? selectedOrderSummary?.orderNumber ?? "Order details"}
+        description="Customer, items, delivery, payment, and voucher details for this order."
+        size="xl"
       >
-        {selectedOrder ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <OrderDetailRow label="Customer" value={selectedOrder.customerName} />
-            <OrderDetailRow label="Store" value={selectedOrder.storeName} />
-            <OrderDetailRow label="Amount" value={formatCurrency(selectedOrder.totalAmount)} />
-            <OrderDetailRow label="Status" value={selectedOrder.status} />
-            <OrderDetailRow label="Payment status" value={selectedOrder.paymentStatus} />
-            <OrderDetailRow label="Created" value={formatDateTime(selectedOrder.createdAt)} />
+        {isDetailLoading ? (
+          <LoadingState label="Loading order details..." />
+        ) : orderDetailError ? (
+          <ErrorState
+            description={orderDetailError}
+            onRetry={() => selectedOrderSummary && void handleViewOrder(selectedOrderSummary)}
+          />
+        ) : selectedOrder ? (
+          <div className="space-y-6">
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/30 p-6">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-2xl font-semibold text-textStrong">
+                      {selectedOrder.orderNumber}
+                    </h3>
+                    <StatusBadge status={selectedOrder.status} />
+                    <StatusBadge status={selectedOrder.paymentStatus} />
+                  </div>
+                  <p className="mt-3 text-sm text-textMuted">
+                    {selectedOrder.storeName} · placed {formatDateTime(selectedOrder.placedAt)}
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <OrderDetailRow
+                    label="Total"
+                    value={formatCurrency(selectedOrder.totalAmount)}
+                  />
+                  <OrderDetailRow
+                    label="Shipping"
+                    value={formatCurrency(selectedOrder.shippingAmount)}
+                  />
+                  <OrderDetailRow
+                    label="Discount"
+                    value={formatCurrency(selectedOrder.discountAmount)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <DetailSection title="Customer" description="The account and delivery contact tied to this order.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <OrderDetailRow label="Customer name" value={selectedOrder.customerName} />
+                  <OrderDetailRow label="Email" value={selectedOrder.customerEmail} />
+                  <OrderDetailRow
+                    label="Account phone"
+                    value={selectedOrder.customerPhoneNumber ?? "Not provided"}
+                  />
+                  <OrderDetailRow label="Delivery phone" value={selectedOrder.addressPhone} />
+                </div>
+              </DetailSection>
+
+              <DetailSection title="Order state" description="Operational status and lifecycle timestamps.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <OrderDetailRow label="Store-facing status" value={selectedOrder.status} />
+                  <OrderDetailRow label="Internal status" value={selectedOrder.internalStatus} />
+                  <OrderDetailRow label="Vendor status" value={selectedOrder.vendorStatus} />
+                  <OrderDetailRow label="Source" value={selectedOrder.source} />
+                  <OrderDetailRow label="Created" value={formatDateTime(selectedOrder.createdAt)} />
+                  <OrderDetailRow label="Updated" value={formatDateTime(selectedOrder.updatedAt)} />
+                  <OrderDetailRow
+                    label="Delivered"
+                    value={
+                      selectedOrder.deliveredAt
+                        ? formatDateTime(selectedOrder.deliveredAt)
+                        : "Not delivered"
+                    }
+                  />
+                  <OrderDetailRow
+                    label="Cancelled"
+                    value={
+                      selectedOrder.cancelledAt
+                        ? formatDateTime(selectedOrder.cancelledAt)
+                        : "Not cancelled"
+                    }
+                  />
+                </div>
+              </DetailSection>
+            </div>
+
+            <DetailSection title="Delivery address" description="The exact address snapshot saved on the order at checkout.">
+              <div className="grid gap-4 md:grid-cols-2">
+                <OrderDetailRow label="Recipient" value={selectedOrder.addressFullName} />
+                <OrderDetailRow label="Phone" value={selectedOrder.addressPhone} />
+                <div className="md:col-span-2">
+                  <OrderDetailRow
+                    label="Address"
+                    value={`${selectedOrder.addressStreet}, ${selectedOrder.addressCity}, ${selectedOrder.addressRegion}`}
+                  />
+                </div>
+                <OrderDetailRow
+                  label="ETA"
+                  value={selectedOrder.trackingEta ?? "No ETA set"}
+                />
+                <OrderDetailRow
+                  label="Progress"
+                  value={
+                    selectedOrder.progress !== null && selectedOrder.progress !== undefined
+                      ? `${Math.round(selectedOrder.progress)}%`
+                      : "Not tracked"
+                  }
+                />
+              </div>
+            </DetailSection>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <DetailSection title="Payment" description="The payment method snapshot used for this order.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <OrderDetailRow label="Payment status" value={selectedOrder.paymentStatus} />
+                  <OrderDetailRow label="Payment type" value={selectedOrder.paymentType} />
+                  <OrderDetailRow label="Payment label" value={selectedOrder.paymentLabel} />
+                  <OrderDetailRow
+                    label="Network / phone"
+                    value={
+                      [selectedOrder.paymentNetwork, selectedOrder.paymentPhone]
+                        .filter(Boolean)
+                        .join(" · ") || "Not provided"
+                    }
+                  />
+                  <OrderDetailRow
+                    label="Card last 4"
+                    value={selectedOrder.paymentLast4 ? `•••• ${selectedOrder.paymentLast4}` : "Not provided"}
+                  />
+                </div>
+              </DetailSection>
+
+              <DetailSection title="Voucher" description="Any applied promotion or discount on this order.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <OrderDetailRow label="Voucher code" value={selectedOrder.voucherCode ?? "No voucher"} />
+                  <OrderDetailRow
+                    label="Voucher title"
+                    value={selectedOrder.voucherTitle ?? "No voucher"}
+                  />
+                  <OrderDetailRow
+                    label="Subtotal"
+                    value={formatCurrency(selectedOrder.subtotalAmount)}
+                  />
+                  <OrderDetailRow
+                    label="Discount"
+                    value={formatCurrency(selectedOrder.discountAmount)}
+                  />
+                </div>
+              </DetailSection>
+            </div>
+
+            {selectedOrder.cancellationReason ? (
+              <DetailSection title="Cancellation note">
+                <OrderDetailRow
+                  label="Reason"
+                  value={selectedOrder.cancellationReason}
+                />
+              </DetailSection>
+            ) : null}
+
+            {selectedOrder.returnRequests.length > 0 ? (
+              <DetailSection
+                title="Return requests"
+                description="Every return, refund, or exchange case that has been opened against this order."
+              >
+                <div className="space-y-4">
+                  {selectedOrder.returnRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="rounded-3xl border border-white/10 bg-white/[0.02] p-4"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-base font-semibold text-textStrong">
+                              {request.productTitle}
+                            </p>
+                            <StatusBadge status={request.status} />
+                          </div>
+                          <p className="mt-2 text-sm text-textMuted">
+                            {request.requestType} · Qty {request.quantity} · {request.reason}
+                          </p>
+                        </div>
+                        <div className="text-sm text-textMuted">
+                          {formatDateTime(request.createdAt)}
+                        </div>
+                      </div>
+
+                      {request.details ? (
+                        <p className="mt-3 text-sm leading-6 text-textMuted">{request.details}</p>
+                      ) : null}
+
+                      {request.evidenceImageUrls?.length ? (
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          {request.evidenceImageUrls.map((imageUrl, index) => (
+                            <a
+                              key={`${request.id}-${index}`}
+                              href={resolveAdminMediaUrl(imageUrl) ?? "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]"
+                            >
+                              <img
+                                src={resolveAdminMediaUrl(imageUrl) ?? undefined}
+                                alt={`Return evidence ${index + 1}`}
+                                className="h-36 w-full object-cover"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        <OrderDetailRow
+                          label="Refund amount"
+                          value={
+                            request.refundAmount !== null && request.refundAmount !== undefined
+                              ? formatCurrency(request.refundAmount)
+                              : "Not set"
+                          }
+                        />
+                        <OrderDetailRow
+                          label="Admin note"
+                          value={request.adminNote || "No admin note yet"}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </DetailSection>
+            ) : null}
+
+            <DetailSection title="Ordered items" description="Every line item captured when the order was placed.">
+              <div className="space-y-4">
+                {selectedOrder.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-3xl border border-white/10 bg-white/[0.02] p-4"
+                  >
+                    <div className="flex flex-col gap-4 md:flex-row">
+                      <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-textMuted">
+                            <Package2 className="size-5" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <p className="text-base font-semibold text-textStrong">{item.title}</p>
+                            <p className="mt-1 text-sm text-textMuted">
+                              {item.category ?? "Uncategorised"} · Qty {item.quantity}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-base font-semibold text-textStrong">
+                              {formatCurrency(item.lineTotal)}
+                            </p>
+                            <p className="mt-1 text-xs text-textMuted">
+                              {formatCurrency(item.unitPrice)} each
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                          <OrderDetailRow
+                            label="Colour / size"
+                            value={
+                              [item.selectedColor, item.selectedSize].filter(Boolean).join(" · ") ||
+                              "No variant selected"
+                            }
+                          />
+                          <OrderDetailRow label="Product ID" value={item.productId} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </DetailSection>
           </div>
         ) : null}
       </Modal>

@@ -1,9 +1,24 @@
-import { Eye, PauseCircle, PlayCircle, Plus, Store as StoreIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Eye,
+  MapPin,
+  Mail,
+  PauseCircle,
+  Phone,
+  PlayCircle,
+  Plus,
+  Store as StoreIcon,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { getCategories } from "@/api/categoriesApi";
 import { getMarkets } from "@/api/marketsApi";
-import { createStore, getStores, updateStoreStatus, type CreateStoreInput } from "@/api/storesApi";
+import {
+  createStore,
+  getStore,
+  getStores,
+  updateStoreStatus,
+  type CreateStoreInput,
+} from "@/api/storesApi";
 import { DataTable } from "@/components/tables/DataTable";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -18,8 +33,8 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useToast } from "@/hooks/useToast";
-import type { Category, Market, Store, StoreStatus } from "@/types";
-import { formatDate } from "@/utils/format";
+import type { AdminStoreDetail, Category, Market, Store, StoreStatus } from "@/types";
+import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
 
 type StoreFormState = {
   name: string;
@@ -53,12 +68,32 @@ const DEFAULT_FORM_STATE: StoreFormState = {
   bannerImageFile: null,
 };
 
-function StoreDetailRow({ label, value }: { label: string; value: string }) {
+function StoreDetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
       <p className="mt-2 text-sm text-textStrong">{value}</p>
     </div>
+  );
+}
+
+function DetailSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-textStrong">{title}</h3>
+        {description ? <p className="mt-1 text-xs text-textMuted">{description}</p> : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -104,7 +139,10 @@ export function StoresPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [selectedStoreSummary, setSelectedStoreSummary] = useState<Store | null>(null);
+  const [selectedStore, setSelectedStore] = useState<AdminStoreDetail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [statusTarget, setStatusTarget] = useState<Store | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -158,6 +196,32 @@ export function StoresPage() {
       return matchesQuery && matchesStatus;
     });
   }, [query, statusFilter, stores]);
+
+  const handleViewStore = useCallback(
+    async (store: Store) => {
+      if (!token) return;
+      setSelectedStoreSummary(store);
+      setSelectedStore(null);
+      setDetailError(null);
+      setIsDetailLoading(true);
+      try {
+        const detail = await getStore(token, store.id);
+        setSelectedStore(detail);
+      } catch (loadError) {
+        const message =
+          loadError instanceof Error ? loadError.message : "Unable to load store details.";
+        setDetailError(message);
+        showToast({
+          title: "Unable to load store",
+          description: message,
+          tone: "error",
+        });
+      } finally {
+        setIsDetailLoading(false);
+      }
+    },
+    [showToast, token],
+  );
 
   function resetCreateState() {
     setForm(DEFAULT_FORM_STATE);
@@ -363,7 +427,7 @@ export function StoresPage() {
                     <Button
                       variant="secondary"
                       leftIcon={<Eye className="size-4" />}
-                      onClick={() => setSelectedStore(store)}
+                      onClick={() => void handleViewStore(store)}
                     >
                       View
                     </Button>
@@ -628,38 +692,177 @@ export function StoresPage() {
       </Modal>
 
       <Modal
-        open={Boolean(selectedStore)}
-        onClose={() => setSelectedStore(null)}
-        title={selectedStore?.name ?? "Store details"}
-        description="Store profile, location, and operating status."
+        open={Boolean(selectedStoreSummary)}
+        onClose={() => {
+          setSelectedStoreSummary(null);
+          setSelectedStore(null);
+          setDetailError(null);
+          setIsDetailLoading(false);
+        }}
+        title={selectedStore?.name ?? selectedStoreSummary?.name ?? "Store details"}
+        description="Store profile, vendor context, merchandising assets, and linked products."
+        size="xl"
       >
-        {selectedStore ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="md:col-span-2 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
-              {selectedStore.bannerImage ? (
-                <img src={selectedStore.bannerImage} alt={selectedStore.name} className="h-56 w-full object-cover" />
+        {isDetailLoading ? (
+          <LoadingState label="Loading store details..." />
+        ) : detailError ? (
+          <ErrorState
+            description={detailError}
+            onRetry={() => selectedStoreSummary && void handleViewStore(selectedStoreSummary)}
+          />
+        ) : selectedStore ? (
+          <div className="space-y-6">
+            <div className="overflow-hidden rounded-[30px] border border-white/10 bg-slate-950/30">
+              <div className="h-64 w-full bg-white/[0.03]">
+                {selectedStore.bannerImage ? (
+                  <img src={selectedStore.bannerImage} alt={selectedStore.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-textMuted">
+                    No banner uploaded
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-5 p-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="-mt-16 size-24 overflow-hidden rounded-[28px] border-4 border-slate-950 bg-white/[0.08] shadow-glow">
+                    {selectedStore.logoImage ? (
+                      <img src={selectedStore.logoImage} alt={selectedStore.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-textMuted">
+                        Logo
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-2xl font-semibold text-textStrong">{selectedStore.name}</h3>
+                      <StatusBadge status={selectedStore.status} />
+                    </div>
+                    <p className="mt-2 text-sm text-textMuted">
+                      {selectedStore.category} · @{selectedStore.slug}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-textMuted">
+                        {selectedStore.marketName ?? "No market"}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-textMuted">
+                        {selectedStore.audienceSlugs?.join(", ") ?? "All shoppers"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <StoreDetailRow label="Products" value={String(selectedStore.stats.totalProducts)} />
+                  <StoreDetailRow label="Orders" value={String(selectedStore.stats.totalOrders)} />
+                  <StoreDetailRow label="Sales" value={formatCurrency(selectedStore.stats.totalSales)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <DetailSection title="Store profile" description="Core storefront information visible to admin.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <StoreDetailRow label="Status" value={selectedStore.status} />
+                  <StoreDetailRow label="Category" value={selectedStore.category} />
+                  <StoreDetailRow label="Market" value={selectedStore.marketName ?? "Not assigned"} />
+                  <StoreDetailRow label="Slug" value={selectedStore.slug} />
+                  <StoreDetailRow label="Location" value={selectedStore.location ?? "Not set"} />
+                  <StoreDetailRow label="City" value={selectedStore.city} />
+                  <StoreDetailRow label="Region" value={selectedStore.region} />
+                  <StoreDetailRow
+                    label="Audience"
+                    value={selectedStore.audienceSlugs?.join(", ") ?? "All shoppers"}
+                  />
+                  <StoreDetailRow label="Created" value={formatDateTime(selectedStore.createdAt)} />
+                  <StoreDetailRow label="Updated" value={formatDateTime(selectedStore.updatedAt)} />
+                  <div className="md:col-span-2">
+                    <StoreDetailRow label="Description" value={selectedStore.description} />
+                  </div>
+                </div>
+              </DetailSection>
+
+              <DetailSection title="Vendor context" description="Who owns or operates this store on ODOS.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <StoreDetailRow label="Vendor name" value={selectedStore.vendorName ?? "Admin managed"} />
+                  <StoreDetailRow label="Vendor email" value={selectedStore.vendorEmail ?? "Not linked"} />
+                  <StoreDetailRow
+                    label="Vendor phone"
+                    value={selectedStore.vendorPhoneNumber ?? "Not linked"}
+                  />
+                  <StoreDetailRow
+                    label="Linked vendor id"
+                    value={selectedStore.vendorId ?? "Not linked"}
+                  />
+                </div>
+              </DetailSection>
+            </div>
+
+            <DetailSection title="Merchandising stats" description="A quick look at how stocked and active the store currently is.">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <StoreDetailRow label="Total products" value={String(selectedStore.stats.totalProducts)} />
+                <StoreDetailRow label="Active products" value={String(selectedStore.stats.activeProducts)} />
+                <StoreDetailRow label="Pending products" value={String(selectedStore.stats.pendingProducts)} />
+                <StoreDetailRow label="Hidden products" value={String(selectedStore.stats.hiddenProducts)} />
+              </div>
+            </DetailSection>
+
+            <DetailSection title="Products in this store" description="Every product currently linked to this store.">
+              {selectedStore.products.length === 0 ? (
+                <EmptyState
+                  title="No products yet"
+                  description="This store has not received any products yet."
+                />
               ) : (
-                <div className="flex h-56 items-center justify-center text-sm text-textMuted">No banner uploaded</div>
+                <div className="space-y-4">
+                  {selectedStore.products.map((product) => (
+                    <div
+                      key={product.id}
+                      className="rounded-3xl border border-white/10 bg-white/[0.02] p-4"
+                    >
+                      <div className="flex flex-col gap-4 md:flex-row">
+                        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+                          {product.images[0] ? (
+                            <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-sm text-textMuted">
+                              No image
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <p className="text-base font-semibold text-textStrong">{product.name}</p>
+                              <p className="mt-1 text-sm text-textMuted">
+                                {product.category}
+                                {product.subcategory ? ` · ${product.subcategory}` : ""}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <StatusBadge status={product.status} />
+                              <span className="text-sm font-semibold text-textStrong">
+                                {formatCurrency(product.price)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 grid gap-3 md:grid-cols-3">
+                            <StoreDetailRow label="Stock" value={String(product.stock)} />
+                            <StoreDetailRow
+                              label="Discount"
+                              value={product.discount ?? "No discount"}
+                            />
+                            <StoreDetailRow
+                              label="Updated"
+                              value={formatDate(product.updatedAt)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            </div>
-            <StoreDetailRow label="Status" value={selectedStore.status} />
-            <StoreDetailRow label="Category" value={selectedStore.category} />
-            <StoreDetailRow
-              label="Market"
-              value={markets.find((market) => market.id === selectedStore.marketId)?.name ?? "Not assigned"}
-            />
-            <StoreDetailRow label="Slug" value={selectedStore.slug} />
-            <StoreDetailRow label="Location" value={selectedStore.location ?? "Not set"} />
-            <StoreDetailRow label="City" value={selectedStore.city} />
-            <StoreDetailRow label="Region" value={selectedStore.region} />
-            <StoreDetailRow
-              label="Audience"
-              value={selectedStore.audienceSlugs?.join(", ") ?? "All shoppers"}
-            />
-            <StoreDetailRow label="Created" value={formatDate(selectedStore.createdAt)} />
-            <div className="md:col-span-2">
-              <StoreDetailRow label="Description" value={selectedStore.description} />
-            </div>
+            </DetailSection>
           </div>
         ) : null}
       </Modal>

@@ -33,6 +33,11 @@ export type NotificationType =
   | "user"
   | "system"
   | "store";
+export type SupportChatRole = "customer" | "vendor" | "admin";
+export type SupportChatStatus =
+  | "waiting_on_admin"
+  | "waiting_on_customer"
+  | "resolved";
 
 export type AdminUser = {
   id: string;
@@ -44,6 +49,110 @@ export type AdminUser = {
   vendorStatus: VendorStatus;
   accountStatus: AccountStatus;
   joinedAt: string;
+};
+
+export type AdminUserAddress = {
+  id: string;
+  label: string | null;
+  fullName: string;
+  phone: string;
+  street: string;
+  city: string;
+  region: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminUserPaymentMethod = {
+  id: string;
+  type: string;
+  label: string;
+  isDefault: boolean;
+  cardName?: string | null;
+  cardLast4?: string | null;
+  expiry?: string | null;
+  network?: string | null;
+  phone?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminUserStoreSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  logoImage?: string | null;
+  bannerImage?: string | null;
+  marketId?: string | null;
+  location?: string | null;
+  region: string;
+  city: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminUserVendorApplication = {
+  id: string;
+  status: VendorStatus;
+  businessName: string;
+  businessCategory: string;
+  businessDescription: string;
+  phoneNumber: string;
+  whatsappNumber?: string | null;
+  region: string;
+  city: string;
+  marketId?: string | null;
+  storeLocation?: string | null;
+  storeName: string;
+  storeDescription?: string | null;
+  ghanaCardNumber?: string | null;
+  businessRegistrationNumber?: string | null;
+  logoImageUrl?: string | null;
+  bannerImageUrl?: string | null;
+  shopImageUrl?: string | null;
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  submittedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminUserStats = {
+  totalOrders: number;
+  totalReviews: number;
+  totalSavedAddresses: number;
+  totalSavedPaymentMethods: number;
+  totalCartItems: number;
+  totalWishlistItems: number;
+  totalNotifications: number;
+  totalSpent: number;
+  lastOrderAt?: string | null;
+  lastReviewAt?: string | null;
+};
+
+export type AdminUserDetail = AdminUser & {
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  region?: string | null;
+  allowNotifications: boolean;
+  discountNotifications: boolean;
+  storeNotifications: boolean;
+  systemNotifications: boolean;
+  locationNotifications: boolean;
+  locationUpdates: boolean;
+  vendorRejectionReason?: string | null;
+  isVerified: boolean;
+  lastLoginAt?: string | null;
+  updatedAt: string;
+  authProviders: string[];
+  addresses: AdminUserAddress[];
+  paymentMethods: AdminUserPaymentMethod[];
+  vendorApplication?: AdminUserVendorApplication | null;
+  stores: AdminUserStoreSummary[];
+  stats: AdminUserStats;
 };
 
 export type VendorApplication = {
@@ -96,6 +205,40 @@ export type Store = {
   logoImage?: string | null;
   status: StoreStatus;
   createdAt: string;
+};
+
+export type AdminStoreProduct = {
+  id: string;
+  name: string;
+  status: ProductStatus;
+  price: number;
+  oldPrice?: number | null;
+  discount?: string | null;
+  stock: number;
+  category: string;
+  subcategory?: string | null;
+  images: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminStoreStats = {
+  totalProducts: number;
+  activeProducts: number;
+  pendingProducts: number;
+  hiddenProducts: number;
+  totalOrders: number;
+  totalSales: number;
+};
+
+export type AdminStoreDetail = Store & {
+  vendorName?: string | null;
+  vendorEmail?: string | null;
+  vendorPhoneNumber?: string | null;
+  marketName?: string | null;
+  updatedAt: string;
+  products: AdminStoreProduct[];
+  stats: AdminStoreStats;
 };
 
 export type Market = {
@@ -214,6 +357,91 @@ export type Order = {
   createdAt: string;
 };
 
+export type AdminOrderItem = {
+  id: string;
+  productId: string;
+  title: string;
+  category?: string | null;
+  imageUrl?: string | null;
+  imageKey?: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  selectedColor?: string | null;
+  selectedSize?: string | null;
+};
+
+export type AdminReturnRequest = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  orderItemId: string;
+  productId: string;
+  productTitle: string;
+  productImageUrl?: string | null;
+  productImageKey?: string | null;
+  storeName: string;
+  userId: string;
+  customerName: string;
+  customerEmail: string;
+  requestType: "refund" | "exchange" | "return" | string;
+  status:
+    | "requested"
+    | "under_review"
+    | "approved"
+    | "rejected"
+    | "refunded"
+    | "exchanged"
+    | string;
+  quantity: number;
+  reason: string;
+  details?: string | null;
+  evidenceImageUrls?: string[] | null;
+  adminNote?: string | null;
+  refundAmount?: number | null;
+  reviewedByUserId?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminOrderDetail = Order & {
+  customerId: string;
+  customerEmail: string;
+  customerPhoneNumber?: string | null;
+  customerAvatarUrl?: string | null;
+  source: string;
+  internalStatus: OrderStatus;
+  vendorStatus: OrderStatus | string;
+  subtotalAmount: number;
+  shippingAmount: number;
+  discountAmount: number;
+  progress?: number | null;
+  trackingEta?: string | null;
+  cancellationReason?: string | null;
+  addressFullName: string;
+  addressPhone: string;
+  addressStreet: string;
+  addressCity: string;
+  addressRegion: string;
+  paymentType: string;
+  paymentLabel: string;
+  paymentNetwork?: string | null;
+  paymentPhone?: string | null;
+  paymentLast4?: string | null;
+  voucherId?: string | null;
+  voucherCode?: string | null;
+  voucherTitle?: string | null;
+  placedAt: string;
+  deliveredAt?: string | null;
+  cancelledAt?: string | null;
+  updatedAt: string;
+  items: AdminOrderItem[];
+  returnRequests: AdminReturnRequest[];
+};
+
 export type NotificationItem = {
   id: string;
   type: NotificationType;
@@ -221,6 +449,52 @@ export type NotificationItem = {
   message: string;
   read: boolean;
   createdAt: string;
+};
+
+export type SupportChatStoreSummary = {
+  id: string;
+  title: string;
+  imageKey?: string | null;
+  imageUrl?: string | null;
+};
+
+export type SupportChatCounterpart = {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+  role: SupportChatRole;
+};
+
+export type SupportChatThread = {
+  id: string;
+  requesterUserId: string;
+  adminUserId: string;
+  threadType: "support";
+  subject?: string | null;
+  store: SupportChatStoreSummary;
+  counterpart: SupportChatCounterpart;
+  supportStatus?: SupportChatStatus | null;
+  assignedAdminUserId?: string | null;
+  assignedAdminName?: string | null;
+  assignedAdminAt?: string | null;
+  resolvedAt?: string | null;
+  lastMessageText?: string | null;
+  lastMessageAt?: string | null;
+  unreadCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SupportChatMessage = {
+  id: string;
+  threadId: string;
+  senderUserId: string;
+  recipientUserId: string;
+  senderRole: SupportChatRole;
+  text: string;
+  isRead: boolean;
+  readAt?: string | null;
+  time: string;
 };
 
 export type DashboardStats = {

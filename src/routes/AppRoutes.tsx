@@ -10,9 +10,11 @@ import { MarketsPage } from "@/pages/MarketsPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { ProductsPage } from "@/pages/ProductsPage";
+import { ReturnsPage } from "@/pages/ReturnsPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StoresPage } from "@/pages/StoresPage";
+import { SupportChatsPage } from "@/pages/SupportChatsPage";
 import { UsersPage } from "@/pages/UsersPage";
 import { VendorApplicationsPage } from "@/pages/VendorApplicationsPage";
 import { VendorsPage } from "@/pages/VendorsPage";
@@ -44,9 +46,11 @@ export function AppRoutes() {
         <Route path="/markets" element={<MarketsPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/products" element={<ProductsPage />} />
+        <Route path="/returns" element={<ReturnsPage />} />
         <Route path="/reviews" element={<ReviewsPage />} />
         <Route path="/vouchers" element={<VouchersPage />} />
         <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/support-chats" element={<SupportChatsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

@@ -62,6 +62,12 @@ VITE_API_BASE_URL=http://127.0.0.1:8000/api
 
 If your backend runs elsewhere, update it to the correct API origin.
 
+Current deployed backend value:
+
+```env
+VITE_API_BASE_URL=https://odos-backend.onrender.com/api
+```
+
 ## Install
 
 ```bash
@@ -101,7 +107,7 @@ Recommended deploy flow:
 4. Set the environment variable:
 
 ```env
-VITE_API_BASE_URL=https://your-backend-service.onrender.com/api
+VITE_API_BASE_URL=https://odos-backend.onrender.com/api
 ```
 
 5. Deploy.

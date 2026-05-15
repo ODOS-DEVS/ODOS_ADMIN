@@ -1,7 +1,18 @@
-import { Ban, Eye, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  BadgeCheck,
+  Ban,
+  Bell,
+  CreditCard,
+  Eye,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Store,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { getUsers, updateUserStatus } from "@/api/usersApi";
+import { getUser, getUsers, updateUserStatus } from "@/api/usersApi";
 import { DataTable } from "@/components/tables/DataTable";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -16,16 +27,54 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useToast } from "@/hooks/useToast";
-import type { AccountStatus, AdminUser } from "@/types";
-import { formatDate } from "@/utils/format";
+import type { AccountStatus, AdminUser, AdminUserDetail } from "@/types";
+import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
 
-function UserDetailRow({ label, value }: { label: string; value: string }) {
+function UserDetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
       <p className="mt-2 text-sm text-textStrong">{value}</p>
     </div>
   );
+}
+
+function DetailSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-textStrong">{title}</h3>
+        {description ? <p className="mt-1 text-xs text-textMuted">{description}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-textStrong">{value}</p>
+    </div>
+  );
+}
+
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
 export function UsersPage() {
@@ -37,7 +86,10 @@ export function UsersPage() {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [selectedUserSummary, setSelectedUserSummary] = useState<AdminUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUserDetail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [statusTarget, setStatusTarget] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -69,6 +121,40 @@ export function UsersPage() {
     });
   }, [query, roleFilter, statusFilter, users]);
 
+  const handleViewUser = useCallback(
+    async (user: AdminUser) => {
+      if (!token) return;
+      setSelectedUserSummary(user);
+      setSelectedUser(null);
+      setDetailError(null);
+      setIsDetailLoading(true);
+
+      try {
+        const detail = await getUser(token, user.id);
+        setSelectedUser(detail);
+      } catch (loadError) {
+        const message =
+          loadError instanceof Error ? loadError.message : "Unable to load user details.";
+        setDetailError(message);
+        showToast({
+          title: "Unable to load user details",
+          description: message,
+          tone: "error",
+        });
+      } finally {
+        setIsDetailLoading(false);
+      }
+    },
+    [showToast, token],
+  );
+
+  const closeDetailModal = useCallback(() => {
+    setSelectedUserSummary(null);
+    setSelectedUser(null);
+    setDetailError(null);
+    setIsDetailLoading(false);
+  }, []);
+
   async function handleStatusUpdate(nextStatus: AccountStatus) {
     if (!token || !statusTarget) return;
     setActionLoading(true);
@@ -76,6 +162,10 @@ export function UsersPage() {
     try {
       const updated = await updateUserStatus(token, statusTarget.id, nextStatus);
       setUsers((current) => current.map((user) => (user.id === updated.id ? updated : user)));
+      setSelectedUserSummary((current) => (current?.id === updated.id ? updated : current));
+      setSelectedUser((current) =>
+        current?.id === updated.id ? { ...current, accountStatus: updated.accountStatus } : current,
+      );
       showToast({
         title: nextStatus === "blocked" ? "User blocked" : "User reactivated",
         description: `${statusTarget.fullName} has been updated successfully.`,
@@ -200,7 +290,7 @@ export function UsersPage() {
                     <Button
                       variant="secondary"
                       leftIcon={<Eye className="size-4" />}
-                      onClick={() => setSelectedUser(user)}
+                      onClick={() => void handleViewUser(user)}
                     >
                       View
                     </Button>
@@ -232,19 +322,435 @@ export function UsersPage() {
       </SectionCard>
 
       <Modal
-        open={Boolean(selectedUser)}
-        onClose={() => setSelectedUser(null)}
-        title={selectedUser?.fullName ?? "User details"}
-        description="Profile, role, and vendor access details for this account."
+        open={Boolean(selectedUserSummary)}
+        onClose={closeDetailModal}
+        title={selectedUser?.fullName ?? selectedUserSummary?.fullName ?? "User details"}
+        description="Full account profile, saved details, activity, and vendor-related data."
+        size="xl"
       >
-        {selectedUser ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <UserDetailRow label="Email" value={selectedUser.email} />
-            <UserDetailRow label="Phone" value={selectedUser.phone ?? "Not provided"} />
-            <UserDetailRow label="Roles" value={selectedUser.roles.join(", ")} />
-            <UserDetailRow label="Vendor status" value={selectedUser.vendorStatus} />
-            <UserDetailRow label="Account status" value={selectedUser.accountStatus} />
-            <UserDetailRow label="Joined date" value={formatDate(selectedUser.joinedAt)} />
+        {isDetailLoading ? (
+          <LoadingState label="Loading user details..." />
+        ) : detailError ? (
+          <ErrorState description={detailError} onRetry={() => selectedUserSummary && void handleViewUser(selectedUserSummary)} />
+        ) : selectedUser ? (
+          <div className="space-y-6">
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/30 p-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex items-start gap-4">
+                  {selectedUser.avatarUrl ? (
+                    <img
+                      src={selectedUser.avatarUrl}
+                      alt={selectedUser.fullName}
+                      className="size-24 rounded-[28px] object-cover shadow-glow"
+                    />
+                  ) : (
+                    <div className="flex size-24 items-center justify-center rounded-[28px] bg-white/10 text-2xl font-semibold text-textStrong">
+                      {getInitials(selectedUser.fullName) || "U"}
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-2xl font-semibold text-textStrong">
+                        {selectedUser.fullName}
+                      </h3>
+                      {selectedUser.isVerified ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                          <BadgeCheck className="size-3.5" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+                          Pending verification
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedUser.roles.map((role) => (
+                        <StatusBadge key={role} status={role === "admin" ? "confirmed" : role} />
+                      ))}
+                      <StatusBadge status={selectedUser.accountStatus} />
+                      <StatusBadge status={selectedUser.vendorStatus} />
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2 text-sm text-textMuted sm:flex-row sm:flex-wrap">
+                      <span className="inline-flex items-center gap-2">
+                        <Mail className="size-4" />
+                        {selectedUser.email}
+                      </span>
+                      <span className="inline-flex items-center gap-2">
+                        <Phone className="size-4" />
+                        {selectedUser.phone ?? "No phone number"}
+                      </span>
+                      <span className="inline-flex items-center gap-2">
+                        <MapPin className="size-4" />
+                        {[selectedUser.city, selectedUser.region].filter(Boolean).join(", ") || "No location yet"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid min-w-full gap-3 sm:grid-cols-2 xl:min-w-[360px]">
+                  <StatCard label="Orders" value={String(selectedUser.stats.totalOrders)} />
+                  <StatCard
+                    label="Total spent"
+                    value={formatCurrency(selectedUser.stats.totalSpent)}
+                  />
+                  <StatCard label="Reviews" value={String(selectedUser.stats.totalReviews)} />
+                  <StatCard
+                    label="Wishlist items"
+                    value={String(selectedUser.stats.totalWishlistItems)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <DetailSection
+                title="Profile details"
+                description="These are the personal details and account preferences currently saved on the user profile."
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <UserDetailRow label="Full name" value={selectedUser.fullName} />
+                  <UserDetailRow label="Email" value={selectedUser.email} />
+                  <UserDetailRow label="Phone" value={selectedUser.phone ?? "Not provided"} />
+                  <UserDetailRow label="Gender" value={selectedUser.gender ?? "Not set"} />
+                  <UserDetailRow
+                    label="Date of birth"
+                    value={selectedUser.dateOfBirth ? formatDate(selectedUser.dateOfBirth) : "Not set"}
+                  />
+                  <UserDetailRow
+                    label="Location"
+                    value={[selectedUser.city, selectedUser.region].filter(Boolean).join(", ") || "Not set"}
+                  />
+                  <UserDetailRow label="Auth providers" value={selectedUser.authProviders.join(", ") || "Password"} />
+                  <UserDetailRow label="Joined" value={formatDateTime(selectedUser.joinedAt)} />
+                  <UserDetailRow
+                    label="Last login"
+                    value={selectedUser.lastLoginAt ? formatDateTime(selectedUser.lastLoginAt) : "No login recorded"}
+                  />
+                  <UserDetailRow label="Last updated" value={formatDateTime(selectedUser.updatedAt)} />
+                </div>
+              </DetailSection>
+
+              <DetailSection
+                title="Account activity"
+                description="Quick operational summary for this user account."
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <UserDetailRow label="Cart items" value={String(selectedUser.stats.totalCartItems)} />
+                  <UserDetailRow
+                    label="Saved addresses"
+                    value={String(selectedUser.stats.totalSavedAddresses)}
+                  />
+                  <UserDetailRow
+                    label="Saved payment methods"
+                    value={String(selectedUser.stats.totalSavedPaymentMethods)}
+                  />
+                  <UserDetailRow
+                    label="Notifications received"
+                    value={String(selectedUser.stats.totalNotifications)}
+                  />
+                  <UserDetailRow
+                    label="Last order"
+                    value={
+                      selectedUser.stats.lastOrderAt
+                        ? formatDateTime(selectedUser.stats.lastOrderAt)
+                        : "No orders yet"
+                    }
+                  />
+                  <UserDetailRow
+                    label="Last review"
+                    value={
+                      selectedUser.stats.lastReviewAt
+                        ? formatDateTime(selectedUser.stats.lastReviewAt)
+                        : "No reviews yet"
+                    }
+                  />
+                </div>
+              </DetailSection>
+            </div>
+
+            <DetailSection
+              title="Notification settings"
+              description="These toggles help you understand how the user has chosen to hear from ODOS."
+            >
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {[
+                  { label: "General notifications", enabled: selectedUser.allowNotifications },
+                  { label: "Discount alerts", enabled: selectedUser.discountNotifications },
+                  { label: "Store updates", enabled: selectedUser.storeNotifications },
+                  { label: "System updates", enabled: selectedUser.systemNotifications },
+                  { label: "Location notifications", enabled: selectedUser.locationNotifications },
+                  { label: "Location updates", enabled: selectedUser.locationUpdates },
+                ].map(({ label, enabled }) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3"
+                  >
+                    <span className="inline-flex items-center gap-2 text-sm text-textStrong">
+                      <Bell className="size-4 text-textMuted" />
+                      {label}
+                    </span>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        enabled
+                          ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                          : "border border-white/10 bg-white/5 text-textMuted"
+                      }`}
+                    >
+                      {enabled ? "On" : "Off"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </DetailSection>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <DetailSection
+                title="Saved addresses"
+                description="Delivery addresses saved by this user."
+              >
+                {selectedUser.addresses.length === 0 ? (
+                  <EmptyState
+                    title="No saved addresses"
+                    description="The user has not saved any delivery addresses yet."
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {selectedUser.addresses.map((address) => (
+                      <div
+                        key={address.id}
+                        className="rounded-2xl border border-white/10 bg-white/[0.02] p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-textStrong">
+                              {address.label || "Saved address"}
+                            </p>
+                            <p className="mt-1 text-sm text-textMuted">
+                              {address.fullName} · {address.phone}
+                            </p>
+                          </div>
+                          {address.isDefault ? (
+                            <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                              Default
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-3 text-sm text-textStrong">
+                          {address.street}, {address.city}, {address.region}
+                        </p>
+                        <p className="mt-2 text-xs text-textMuted">
+                          Added {formatDateTime(address.createdAt)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </DetailSection>
+
+              <DetailSection
+                title="Saved payment methods"
+                description="Masked payment methods kept on this user profile."
+              >
+                {selectedUser.paymentMethods.length === 0 ? (
+                  <EmptyState
+                    title="No saved payment methods"
+                    description="The user has not saved any payment details yet."
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {selectedUser.paymentMethods.map((method) => (
+                      <div
+                        key={method.id}
+                        className="rounded-2xl border border-white/10 bg-white/[0.02] p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="inline-flex items-center gap-2 text-sm font-semibold text-textStrong">
+                            <CreditCard className="size-4 text-textMuted" />
+                            {method.label}
+                          </div>
+                          {method.isDefault ? (
+                            <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                              Default
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          <UserDetailRow label="Type" value={method.type.toUpperCase()} />
+                          <UserDetailRow label="Network" value={method.network ?? "Not set"} />
+                          <UserDetailRow
+                            label="Card"
+                            value={method.cardLast4 ? `•••• ${method.cardLast4}` : "Not set"}
+                          />
+                          <UserDetailRow label="Phone" value={method.phone ?? "Not set"} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </DetailSection>
+            </div>
+
+            {selectedUser.vendorApplication ? (
+              <DetailSection
+                title="Vendor application"
+                description="If this user applied to become a vendor, admin can review the full submission details and uploaded assets here."
+              >
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <UserDetailRow
+                    label="Business name"
+                    value={selectedUser.vendorApplication.businessName}
+                  />
+                  <UserDetailRow
+                    label="Business category"
+                    value={selectedUser.vendorApplication.businessCategory}
+                  />
+                  <UserDetailRow
+                    label="Application status"
+                    value={selectedUser.vendorApplication.status}
+                  />
+                  <UserDetailRow
+                    label="Contact phone"
+                    value={selectedUser.vendorApplication.phoneNumber}
+                  />
+                  <UserDetailRow
+                    label="WhatsApp"
+                    value={selectedUser.vendorApplication.whatsappNumber ?? "Not provided"}
+                  />
+                  <UserDetailRow
+                    label="Market / location"
+                    value={
+                      [
+                        selectedUser.vendorApplication.storeLocation,
+                        selectedUser.vendorApplication.city,
+                        selectedUser.vendorApplication.region,
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || "Not set"
+                    }
+                  />
+                  <UserDetailRow
+                    label="Store name"
+                    value={selectedUser.vendorApplication.storeName}
+                  />
+                  <UserDetailRow
+                    label="Store description"
+                    value={selectedUser.vendorApplication.storeDescription ?? "Not provided"}
+                  />
+                  <UserDetailRow
+                    label="Registration number"
+                    value={
+                      selectedUser.vendorApplication.businessRegistrationNumber ?? "Not provided"
+                    }
+                  />
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-textMuted">
+                    Business description
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-textStrong">
+                    {selectedUser.vendorApplication.businessDescription}
+                  </p>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  {[
+                    {
+                      label: "Logo image",
+                      value: selectedUser.vendorApplication.logoImageUrl,
+                    },
+                    {
+                      label: "Banner image",
+                      value: selectedUser.vendorApplication.bannerImageUrl,
+                    },
+                    {
+                      label: "Shop image",
+                      value: selectedUser.vendorApplication.shopImageUrl,
+                    },
+                  ].map((asset) => (
+                    <div
+                      key={asset.label}
+                      className="rounded-2xl border border-white/10 bg-white/[0.02] p-3"
+                    >
+                      <p className="mb-3 text-xs uppercase tracking-[0.2em] text-textMuted">
+                        {asset.label}
+                      </p>
+                      {asset.value ? (
+                        <img
+                          src={asset.value}
+                          alt={asset.label}
+                          className="h-40 w-full rounded-2xl object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-40 items-center justify-center rounded-2xl border border-dashed border-white/10 bg-slate-950/20 text-sm text-textMuted">
+                          No image uploaded
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </DetailSection>
+            ) : null}
+
+            {selectedUser.stores.length > 0 ? (
+              <DetailSection
+                title="Linked stores"
+                description="Stores currently tied to this user account as an approved vendor."
+              >
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {selectedUser.stores.map((store) => (
+                    <div
+                      key={store.id}
+                      className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]"
+                    >
+                      {store.bannerImage ? (
+                        <img
+                          src={store.bannerImage}
+                          alt={store.name}
+                          className="h-28 w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-28 items-center justify-center bg-slate-950/30 text-textMuted">
+                          <Store className="size-6" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex items-start gap-3">
+                          {store.logoImage ? (
+                            <img
+                              src={store.logoImage}
+                              alt={store.name}
+                              className="size-12 rounded-2xl object-cover"
+                            />
+                          ) : (
+                            <div className="flex size-12 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-textStrong">
+                              {getInitials(store.name)}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-textStrong">
+                              {store.name}
+                            </p>
+                            <p className="mt-1 text-xs text-textMuted">@{store.slug}</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 grid gap-3">
+                          <UserDetailRow label="Status" value={store.status} />
+                          <UserDetailRow
+                            label="Location"
+                            value={[store.location, store.city, store.region].filter(Boolean).join(", ")}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </DetailSection>
+            ) : null}
           </div>
         ) : null}
       </Modal>
