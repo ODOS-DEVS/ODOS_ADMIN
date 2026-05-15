@@ -92,18 +92,24 @@ Preview built app:
 npm run preview
 ```
 
-## Vercel Deployment
+## Render Deployment
 
 This repo now includes:
 
-- [vercel.json](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/vercel.json:1) for Vite build output and SPA route fallback
+- [render.yaml](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/render.yaml:1) for a Render static-site Blueprint with SPA route fallback
 - [.env.example](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/.env.example:1) for the deployed API URL
 
 Recommended deploy flow:
 
 1. Push this repo to the `odos-admin` repository in your GitHub organization.
-2. In Vercel, import the `odos-admin` repo.
-3. Keep the default framework detection or confirm it as `Vite`.
+2. In Render, create a `Static Site` or a `Blueprint` from the `odos-admin` repo.
+3. If you create the site manually, use:
+
+```text
+Build Command: npm install && npm run build
+Publish Directory: dist
+```
+
 4. Set the environment variable:
 
 ```env
@@ -111,12 +117,13 @@ VITE_API_BASE_URL=https://odos-backend.onrender.com/api
 ```
 
 5. Deploy.
+6. After Render gives you the admin site URL, add that URL to the backend `CORS_ORIGINS` value on Render and redeploy the backend.
 
-Why `vercel.json` matters here:
+Why the rewrite matters here:
 
 - the admin uses React Router
 - direct refreshes on routes like `/products` or `/reviews` need to fall back to `index.html`
-- the rewrite handles that for deployed builds
+- the rewrite in `render.yaml` handles that for deployed builds
 
 ## Typical Local Workflow
 
@@ -189,4 +196,4 @@ npm run build
 
 - Category and product taxonomy decisions here flow straight into the mobile shopper experience.
 - Apply backend migrations before testing new category/store/product admin flows.
-- Make sure the backend `CORS_ORIGINS` includes your Vercel admin URL.
+- Make sure the backend `CORS_ORIGINS` includes your deployed admin URL.
