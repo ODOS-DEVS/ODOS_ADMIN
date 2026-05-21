@@ -193,9 +193,10 @@ export function OrdersPage() {
               onChange={(event) => setPaymentFilter(event.target.value)}
               options={[
                 { label: "All payments", value: "all" },
+                { label: "Pending", value: "pending" },
                 { label: "Paid", value: "paid" },
-                { label: "Unpaid", value: "unpaid" },
                 { label: "Failed", value: "failed" },
+                { label: "Partially refunded", value: "partially_refunded" },
                 { label: "Refunded", value: "refunded" },
               ]}
             />
@@ -399,7 +400,12 @@ export function OrdersPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <OrderDetailRow label="Payment status" value={selectedOrder.paymentStatus} />
                   <OrderDetailRow label="Payment type" value={selectedOrder.paymentType} />
+                  <OrderDetailRow label="Provider" value={selectedOrder.paymentProvider} />
                   <OrderDetailRow label="Payment label" value={selectedOrder.paymentLabel} />
+                  <OrderDetailRow
+                    label="Reference"
+                    value={selectedOrder.paymentReference ?? "Not provided"}
+                  />
                   <OrderDetailRow
                     label="Network / phone"
                     value={

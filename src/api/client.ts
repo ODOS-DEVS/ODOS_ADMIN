@@ -1,4 +1,19 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "";
+const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
+
+function normalizeApiBaseUrl(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  const normalized = value.replace(/\/$/, "");
+  try {
+    return new URL(normalized).toString().replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(RAW_API_BASE_URL);
 
 type RequestOptions = RequestInit & {
   token?: string | null;
@@ -15,8 +30,14 @@ export class ApiError extends Error {
 }
 
 export async function requestJson<T>(path: string, options: RequestOptions = {}) {
-  if (!API_BASE_URL) {
+  if (!RAW_API_BASE_URL) {
     throw new ApiError("Missing VITE_API_BASE_URL");
+  }
+
+  if (!API_BASE_URL) {
+    throw new ApiError(
+      "Invalid VITE_API_BASE_URL. Use a full URL like https://odos-backend.onrender.com/api",
+    );
   }
 
   const headers = new Headers(options.headers);
@@ -30,10 +51,20 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    if (error instanceof Error && /expected pattern|invalid url/i.test(error.message)) {
+      throw new ApiError(
+        "The admin API URL is invalid. Set VITE_API_BASE_URL to a full URL like https://odos-backend.onrender.com/api",
+      );
+    }
+    throw error;
+  }
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;

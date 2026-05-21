@@ -48,6 +48,8 @@ export async function getOrder(token: string, orderId: string): Promise<AdminOrd
     address_region: string;
     payment_type: string;
     payment_label: string;
+    payment_provider: string;
+    payment_reference?: string | null;
     payment_network?: string | null;
     payment_phone?: string | null;
     payment_last4?: string | null;
@@ -55,8 +57,10 @@ export async function getOrder(token: string, orderId: string): Promise<AdminOrd
     voucher_code?: string | null;
     voucher_title?: string | null;
     placed_at: string;
+    paid_at?: string | null;
     delivered_at?: string | null;
     cancelled_at?: string | null;
+    refunded_at?: string | null;
     updated_at: string;
     items: Array<{
       id: string;

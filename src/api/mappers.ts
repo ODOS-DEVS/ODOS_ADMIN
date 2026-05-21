@@ -2,6 +2,7 @@ import type {
   AdminSession,
   AdminOrderDetail,
   AdminReturnRequest,
+  AdminVendorWithdrawalRequest,
   AdminStoreDetail,
   AdminReview,
   AdminUser,
@@ -308,6 +309,8 @@ type BackendOrderDetail = BackendOrder & {
   address_region: string;
   payment_type: string;
   payment_label: string;
+  payment_provider: string;
+  payment_reference?: string | null;
   payment_network?: string | null;
   payment_phone?: string | null;
   payment_last4?: string | null;
@@ -315,8 +318,10 @@ type BackendOrderDetail = BackendOrder & {
   voucher_code?: string | null;
   voucher_title?: string | null;
   placed_at: string;
+  paid_at?: string | null;
   delivered_at?: string | null;
   cancelled_at?: string | null;
+  refunded_at?: string | null;
   updated_at: string;
   items: Array<{
     id: string;
@@ -366,6 +371,36 @@ type BackendAdminReturnRequest = {
   reviewed_by_name?: string | null;
   reviewed_at?: string | null;
   resolved_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type BackendAdminVendorWithdrawalRequest = {
+  id: string;
+  wallet_id: string;
+  vendor_user_id: string;
+  vendor_name: string;
+  vendor_email: string;
+  store_name?: string | null;
+  currency: string;
+  status: AdminVendorWithdrawalRequest["status"];
+  amount: number;
+  note?: string | null;
+  admin_note?: string | null;
+  payout_method_type: string;
+  payout_account_name: string;
+  payout_account_number_masked: string;
+  payout_provider?: string | null;
+  paystack_transfer_reference?: string | null;
+  paystack_transfer_code?: string | null;
+  transfer_failure_reason?: string | null;
+  transfer_initiated_at?: string | null;
+  wallet_available_balance: number;
+  wallet_pending_withdrawal_balance: number;
+  reviewed_by_user_id?: string | null;
+  reviewed_by_name?: string | null;
+  reviewed_at?: string | null;
+  paid_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -804,6 +839,40 @@ export function mapAdminReturnRequest(request: BackendAdminReturnRequest): Admin
   };
 }
 
+export function mapAdminVendorWithdrawalRequest(
+  request: BackendAdminVendorWithdrawalRequest,
+): AdminVendorWithdrawalRequest {
+  return {
+    id: request.id,
+    walletId: request.wallet_id,
+    vendorUserId: request.vendor_user_id,
+    vendorName: request.vendor_name,
+    vendorEmail: request.vendor_email,
+    storeName: request.store_name ?? null,
+    currency: request.currency,
+    status: request.status,
+    amount: request.amount,
+    note: request.note ?? null,
+    adminNote: request.admin_note ?? null,
+    payoutMethodType: request.payout_method_type,
+    payoutAccountName: request.payout_account_name,
+    payoutAccountNumberMasked: request.payout_account_number_masked,
+    payoutProvider: request.payout_provider ?? null,
+    paystackTransferReference: request.paystack_transfer_reference ?? null,
+    paystackTransferCode: request.paystack_transfer_code ?? null,
+    transferFailureReason: request.transfer_failure_reason ?? null,
+    transferInitiatedAt: request.transfer_initiated_at ?? null,
+    walletAvailableBalance: request.wallet_available_balance,
+    walletPendingWithdrawalBalance: request.wallet_pending_withdrawal_balance,
+    reviewedByUserId: request.reviewed_by_user_id ?? null,
+    reviewedByName: request.reviewed_by_name ?? null,
+    reviewedAt: request.reviewed_at ?? null,
+    paidAt: request.paid_at ?? null,
+    createdAt: request.created_at,
+    updatedAt: request.updated_at,
+  };
+}
+
 export function mapOrderDetail(order: BackendOrderDetail): AdminOrderDetail {
   return {
     ...mapOrder(order),
@@ -827,6 +896,8 @@ export function mapOrderDetail(order: BackendOrderDetail): AdminOrderDetail {
     addressRegion: order.address_region,
     paymentType: order.payment_type,
     paymentLabel: order.payment_label,
+    paymentProvider: order.payment_provider,
+    paymentReference: order.payment_reference ?? null,
     paymentNetwork: order.payment_network ?? null,
     paymentPhone: order.payment_phone ?? null,
     paymentLast4: order.payment_last4 ?? null,
@@ -834,8 +905,10 @@ export function mapOrderDetail(order: BackendOrderDetail): AdminOrderDetail {
     voucherCode: order.voucher_code ?? null,
     voucherTitle: order.voucher_title ?? null,
     placedAt: order.placed_at,
+    paidAt: order.paid_at ?? null,
     deliveredAt: order.delivered_at ?? null,
     cancelledAt: order.cancelled_at ?? null,
+    refundedAt: order.refunded_at ?? null,
     updatedAt: order.updated_at,
     items: order.items.map((item) => ({
       id: item.id,

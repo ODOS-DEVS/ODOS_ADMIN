@@ -5,11 +5,13 @@ import { AnalyticsPage } from "@/pages/AnalyticsPage";
 import { CategoriesPage } from "@/pages/CategoriesPage";
 import { BootstrapAdminPage } from "@/pages/BootstrapAdminPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { FinancePage } from "@/pages/FinancePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MarketsPage } from "@/pages/MarketsPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { ProductsPage } from "@/pages/ProductsPage";
+import { PayoutsPage } from "@/pages/PayoutsPage";
 import { ReturnsPage } from "@/pages/ReturnsPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -46,6 +48,8 @@ export function AppRoutes() {
         <Route path="/markets" element={<MarketsPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/products" element={<ProductsPage />} />
+        <Route path="/finance" element={<FinancePage />} />
+        <Route path="/payouts" element={<PayoutsPage />} />
         <Route path="/returns" element={<ReturnsPage />} />
         <Route path="/reviews" element={<ReviewsPage />} />
         <Route path="/vouchers" element={<VouchersPage />} />

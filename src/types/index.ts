@@ -19,6 +19,7 @@ export type VoucherCampaignStatus =
   | "disabled"
   | "limit_reached";
 export type OrderStatus =
+  | "pending_payment"
   | "pending"
   | "confirmed"
   | "processing"
@@ -26,7 +27,20 @@ export type OrderStatus =
   | "out_for_delivery"
   | "delivered"
   | "cancelled";
-export type PaymentStatus = "unpaid" | "paid" | "failed" | "refunded";
+export type PaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "cancelled"
+  | "refunded"
+  | "partially_refunded";
+export type VendorWithdrawalStatus =
+  | "pending"
+  | "approved"
+  | "processing"
+  | "rejected"
+  | "failed"
+  | "paid";
 export type NotificationType =
   | "order"
   | "vendor"
@@ -407,6 +421,36 @@ export type AdminReturnRequest = {
   updatedAt: string;
 };
 
+export type AdminVendorWithdrawalRequest = {
+  id: string;
+  walletId: string;
+  vendorUserId: string;
+  vendorName: string;
+  vendorEmail: string;
+  storeName?: string | null;
+  currency: string;
+  status: VendorWithdrawalStatus;
+  amount: number;
+  note?: string | null;
+  adminNote?: string | null;
+  payoutMethodType: string;
+  payoutAccountName: string;
+  payoutAccountNumberMasked: string;
+  payoutProvider?: string | null;
+  paystackTransferReference?: string | null;
+  paystackTransferCode?: string | null;
+  transferFailureReason?: string | null;
+  transferInitiatedAt?: string | null;
+  walletAvailableBalance: number;
+  walletPendingWithdrawalBalance: number;
+  reviewedByUserId?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AdminOrderDetail = Order & {
   customerId: string;
   customerEmail: string;
@@ -428,6 +472,8 @@ export type AdminOrderDetail = Order & {
   addressRegion: string;
   paymentType: string;
   paymentLabel: string;
+  paymentProvider: string;
+  paymentReference?: string | null;
   paymentNetwork?: string | null;
   paymentPhone?: string | null;
   paymentLast4?: string | null;
@@ -435,11 +481,68 @@ export type AdminOrderDetail = Order & {
   voucherCode?: string | null;
   voucherTitle?: string | null;
   placedAt: string;
+  paidAt?: string | null;
   deliveredAt?: string | null;
   cancelledAt?: string | null;
+  refundedAt?: string | null;
   updatedAt: string;
   items: AdminOrderItem[];
   returnRequests: AdminReturnRequest[];
+};
+
+export type AdminFinanceOverview = {
+  currency: string;
+  currentBalance: number;
+  vendorLiabilityBalance: number;
+  commissionBalance: number;
+  grossCollectedTotal: number;
+  processorFeeTotal: number;
+  refundedTotal: number;
+  totalPayoutsSent: number;
+  pendingWithdrawalTotal: number;
+  approvedWithdrawalTotal: number;
+  paidOrderCount: number;
+  paidOrderVolume: number;
+};
+
+export type AdminPaymentTransaction = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  userId: string;
+  customerEmail: string;
+  provider: string;
+  reference: string;
+  amount: number;
+  currency: string;
+  status: string;
+  preferredChannel?: string | null;
+  processorFeeAmount: number;
+  gatewayResponse?: string | null;
+  providerTransactionId?: string | null;
+  paidAt?: string | null;
+  verifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminPlatformLedgerEntry = {
+  id: string;
+  kind: string;
+  direction: string;
+  title: string;
+  description?: string | null;
+  amount: number;
+  currentBalanceAfter: number;
+  vendorLiabilityBalanceAfter: number;
+  commissionBalanceAfter: number;
+  orderId?: string | null;
+  orderNumber?: string | null;
+  paymentTransactionId?: string | null;
+  paymentReference?: string | null;
+  returnRequestId?: string | null;
+  vendorWithdrawalRequestId?: string | null;
+  createdAt: string;
 };
 
 export type NotificationItem = {
