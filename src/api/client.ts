@@ -63,6 +63,11 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
         "The admin API URL is invalid. Set VITE_API_BASE_URL to a full URL like https://odos-backend.onrender.com/api",
       );
     }
+    if (error instanceof Error && /failed to fetch|networkerror|load failed/i.test(error.message)) {
+      throw new ApiError(
+        "We couldn't reach the ODOS backend. If you're using the deployed admin, redeploy the Render backend and confirm CORS_ORIGINS includes this admin URL.",
+      );
+    }
     throw error;
   }
 
