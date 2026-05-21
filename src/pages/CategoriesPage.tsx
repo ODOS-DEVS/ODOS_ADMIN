@@ -34,6 +34,11 @@ type CategoryFormValues = {
   status: Category["status"];
 };
 
+type CategoryDeleteIntent = {
+  category: Category;
+  mode: "disable" | "permanent";
+};
+
 const initialCategoryForm: CategoryFormValues = {
   name: "",
   slug: "",
@@ -70,7 +75,7 @@ export function CategoriesPage() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryForm, setCategoryForm] = useState<CategoryFormValues>(initialCategoryForm);
-  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const [deleteIntent, setDeleteIntent] = useState<CategoryDeleteIntent | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [statusTargetId, setStatusTargetId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -203,24 +208,41 @@ export function CategoriesPage() {
   }
 
   async function handleDelete() {
-    if (!token || !deleteTarget) return;
+    if (!token || !deleteIntent) return;
     setActionLoading(true);
     try {
-      await deleteCategory(token, deleteTarget.id);
-      setCategories((current) =>
-        current.map((category) =>
-          category.id === deleteTarget.id ? { ...category, status: "disabled" } : category,
-        ),
-      );
+      await deleteCategory(token, deleteIntent.category.id, {
+        permanent: deleteIntent.mode === "permanent",
+      });
+      if (deleteIntent.mode === "permanent") {
+        setCategories((current) =>
+          current.filter((category) => category.id !== deleteIntent.category.id),
+        );
+      } else {
+        setCategories((current) =>
+          current.map((category) =>
+            category.id === deleteIntent.category.id
+              ? { ...category, status: "disabled" }
+              : category,
+          ),
+        );
+      }
       showToast({
-        title: "Category disabled",
-        description: `${deleteTarget.name} has been disabled.`,
+        title:
+          deleteIntent.mode === "permanent" ? "Category deleted" : "Category disabled",
+        description:
+          deleteIntent.mode === "permanent"
+            ? `${deleteIntent.category.name} has been removed from admin categories.`
+            : `${deleteIntent.category.name} has been disabled.`,
         tone: "success",
       });
-      setDeleteTarget(null);
+      setDeleteIntent(null);
     } catch (deleteError) {
       showToast({
-        title: "Unable to disable category",
+        title:
+          deleteIntent.mode === "permanent"
+            ? "Unable to delete category"
+            : "Unable to disable category",
         description: deleteError instanceof Error ? deleteError.message : "Please try again.",
         tone: "error",
       });
@@ -284,7 +306,7 @@ export function CategoriesPage() {
 
       <SectionCard
         title="Categories"
-        description="Search existing categories, manage the shopper taxonomy, and disable the ones you no longer want to use."
+        description="Search existing categories, manage the shopper taxonomy, disable categories that should disappear from shoppers, or permanently remove archived ones."
         action={
           <div className="flex flex-col gap-3 sm:flex-row">
             <SearchInput
@@ -378,19 +400,31 @@ export function CategoriesPage() {
                         Edit
                       </Button>
                       {category.status === "disabled" ? (
-                        <Button
-                          variant="secondary"
-                          leftIcon={<RotateCcw className="size-4" />}
-                          onClick={() => void handleRestore(category)}
-                          isLoading={isStatusUpdating}
-                        >
-                          Enable
-                        </Button>
+                        <>
+                          <Button
+                            variant="secondary"
+                            leftIcon={<RotateCcw className="size-4" />}
+                            onClick={() => void handleRestore(category)}
+                            isLoading={isStatusUpdating}
+                          >
+                            Enable
+                          </Button>
+                          <Button
+                            variant="danger"
+                            leftIcon={<Trash2 className="size-4" />}
+                            onClick={() =>
+                              setDeleteIntent({ category, mode: "permanent" })
+                            }
+                            disabled={isStatusUpdating}
+                          >
+                            Delete permanently
+                          </Button>
+                        </>
                       ) : (
                         <Button
                           variant="danger"
                           leftIcon={<Trash2 className="size-4" />}
-                          onClick={() => setDeleteTarget(category)}
+                          onClick={() => setDeleteIntent({ category, mode: "disable" })}
                           disabled={isStatusUpdating}
                         >
                           Disable
@@ -580,16 +614,26 @@ export function CategoriesPage() {
       </Modal>
 
       <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}
+        open={Boolean(deleteIntent)}
+        onClose={() => setDeleteIntent(null)}
         onConfirm={() => void handleDelete()}
-        title="Disable category"
+        title={
+          deleteIntent?.mode === "permanent"
+            ? "Delete category permanently?"
+            : "Disable category"
+        }
         description={
-          deleteTarget
-            ? `Disable ${deleteTarget.name}. Existing products can be reassigned later if needed.`
+          deleteIntent
+            ? deleteIntent.mode === "permanent"
+              ? `Delete ${deleteIntent.category.name} from admin categories entirely. Existing products stay untouched, but you would need to recreate this category later if you want it back.`
+              : `Disable ${deleteIntent.category.name}. Existing products can be reassigned later if needed.`
             : ""
         }
-        confirmLabel="Disable category"
+        confirmLabel={
+          deleteIntent?.mode === "permanent"
+            ? "Delete permanently"
+            : "Disable category"
+        }
         confirmVariant="danger"
         isLoading={actionLoading}
       />

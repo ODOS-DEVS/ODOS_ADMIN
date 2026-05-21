@@ -94,8 +94,13 @@ export async function updateCategory(token: string, categoryId: string, payload:
   return mapCategory(category);
 }
 
-export async function deleteCategory(token: string, categoryId: string) {
-  return requestJson<{ success: true }>(`/admin/categories/${categoryId}`, {
+export async function deleteCategory(
+  token: string,
+  categoryId: string,
+  options?: { permanent?: boolean },
+) {
+  const suffix = options?.permanent ? "?permanent=true" : "";
+  return requestJson<{ success: true }>(`/admin/categories/${categoryId}${suffix}`, {
     method: "DELETE",
     token,
   });
