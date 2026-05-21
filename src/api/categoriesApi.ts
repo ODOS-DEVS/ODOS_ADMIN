@@ -19,19 +19,20 @@ export async function getCategories(token: string) {
   return categories.map(mapCategory);
 }
 
-type CategoryDraft = Pick<
-  Category,
-  "name" | "slug" | "description" | "image" | "status" | "subcategories"
-> & {
+type CategoryDraft = Pick<Category, "name" | "description" | "status" | "subcategories"> & {
+  slug?: string;
+  image?: string | null;
   imageFile?: File | null;
 };
 
 export async function createCategory(token: string, payload: CategoryDraft) {
   const formData = new FormData();
   formData.append("name", payload.name.trim());
-  formData.append("slug", payload.slug.trim());
   formData.append("description", payload.description.trim());
   formData.append("status", payload.status);
+  if (payload.slug?.trim()) {
+    formData.append("slug", payload.slug.trim());
+  }
   if (payload.image?.trim()) {
     formData.append("image", payload.image.trim());
   }
@@ -63,9 +64,11 @@ export async function createCategory(token: string, payload: CategoryDraft) {
 export async function updateCategory(token: string, categoryId: string, payload: CategoryDraft) {
   const formData = new FormData();
   formData.append("name", payload.name.trim());
-  formData.append("slug", payload.slug.trim());
   formData.append("description", payload.description.trim());
   formData.append("status", payload.status);
+  if (payload.slug?.trim()) {
+    formData.append("slug", payload.slug.trim());
+  }
   if (payload.image?.trim()) {
     formData.append("image", payload.image.trim());
   }

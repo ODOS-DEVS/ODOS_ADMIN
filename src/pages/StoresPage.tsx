@@ -38,7 +38,6 @@ import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
 
 type StoreFormState = {
   name: string;
-  slug: string;
   description: string;
   category: string;
   marketId: string;
@@ -55,7 +54,6 @@ const AUDIENCES = ["ladies", "gents", "kids"];
 
 const DEFAULT_FORM_STATE: StoreFormState = {
   name: "",
-  slug: "",
   description: "",
   category: "",
   marketId: "",
@@ -95,14 +93,6 @@ function DetailSection({
       {children}
     </section>
   );
-}
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 function AudienceChip({
@@ -263,7 +253,6 @@ export function StoresPage() {
     try {
       const payload: CreateStoreInput = {
         name: form.name.trim(),
-        slug: form.slug.trim() || undefined,
         description: form.description.trim(),
         category: form.category,
         marketId: form.marketId || null,
@@ -488,24 +477,8 @@ export function StoresPage() {
             <input
               className="app-input"
               value={form.name}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  name: event.target.value,
-                  slug: current.slug || slugify(event.target.value),
-                }))
-              }
+              onChange={(event) => updateForm("name", event.target.value)}
               placeholder="ODOS Fashion Hub"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-textStrong">Slug</label>
-            <input
-              className="app-input"
-              value={form.slug}
-              onChange={(event) => updateForm("slug", slugify(event.target.value))}
-              placeholder="odos-fashion-hub"
             />
           </div>
 
@@ -739,7 +712,7 @@ export function StoresPage() {
                       <StatusBadge status={selectedStore.status} />
                     </div>
                     <p className="mt-2 text-sm text-textMuted">
-                      {selectedStore.category} · @{selectedStore.slug}
+                      {selectedStore.category}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-textMuted">
@@ -765,7 +738,6 @@ export function StoresPage() {
                   <StoreDetailRow label="Status" value={selectedStore.status} />
                   <StoreDetailRow label="Category" value={selectedStore.category} />
                   <StoreDetailRow label="Market" value={selectedStore.marketName ?? "Not assigned"} />
-                  <StoreDetailRow label="Slug" value={selectedStore.slug} />
                   <StoreDetailRow label="Location" value={selectedStore.location ?? "Not set"} />
                   <StoreDetailRow label="City" value={selectedStore.city} />
                   <StoreDetailRow label="Region" value={selectedStore.region} />

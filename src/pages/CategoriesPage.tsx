@@ -26,9 +26,7 @@ import { formatDate } from "@/utils/format";
 
 type CategoryFormValues = {
   name: string;
-  slug: string;
   description: string;
-  image: string;
   imageFile: File | null;
   subcategories: string;
   status: Category["status"];
@@ -41,21 +39,11 @@ type CategoryDeleteIntent = {
 
 const initialCategoryForm: CategoryFormValues = {
   name: "",
-  slug: "",
   description: "",
-  image: "",
   imageFile: null,
   subcategories: "",
   status: "active",
 };
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function parseSubcategories(value: string) {
   return value
@@ -110,7 +98,6 @@ export function CategoriesPage() {
     return categories.filter((category) => {
       const haystack = [
         category.name,
-        category.slug,
         category.description,
         ...(category.subcategories ?? []),
       ]
@@ -140,9 +127,7 @@ export function CategoriesPage() {
     setEditingCategory(category);
     setCategoryForm({
       name: category.name,
-      slug: category.slug,
       description: category.description,
-      image: category.image ?? "",
       imageFile: null,
       subcategories: (category.subcategories ?? []).join("\n"),
       status: category.status,
@@ -170,7 +155,6 @@ export function CategoriesPage() {
     try {
       const payload = {
         ...categoryForm,
-        image: categoryForm.image || null,
         subcategories: parseSubcategories(categoryForm.subcategories),
       };
 
@@ -257,9 +241,7 @@ export function CategoriesPage() {
     try {
       const updated = await updateCategory(token, category.id, {
         name: category.name,
-        slug: category.slug,
         description: category.description,
-        image: category.image ?? null,
         imageFile: null,
         subcategories: category.subcategories ?? [],
         status: "active",
@@ -312,7 +294,7 @@ export function CategoriesPage() {
             <SearchInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search category, slug, or subcategory"
+              placeholder="Search category or subcategory"
               className="sm:w-80"
             />
             <FilterSelect
@@ -358,11 +340,6 @@ export function CategoriesPage() {
                     </div>
                   </div>
                 ),
-              },
-              {
-                key: "slug",
-                header: "Slug",
-                render: (category) => category.slug,
               },
               {
                 key: "subcategories",
@@ -465,7 +442,7 @@ export function CategoriesPage() {
             <Button
               onClick={() => void handleSave()}
               isLoading={actionLoading}
-              disabled={!categoryForm.name.trim() || !categoryForm.slug.trim()}
+              disabled={!categoryForm.name.trim()}
             >
               {editingCategory ? "Save changes" : "Create category"}
             </Button>
@@ -482,19 +459,7 @@ export function CategoriesPage() {
                 setCategoryForm((current) => ({
                   ...current,
                   name: event.target.value,
-                  slug: editingCategory ? current.slug : slugify(event.target.value),
                 }))
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="mb-2 block text-sm font-medium text-textStrong">Slug</label>
-            <input
-              className="app-input"
-              value={categoryForm.slug}
-              onChange={(event) =>
-                setCategoryForm((current) => ({ ...current, slug: slugify(event.target.value) }))
               }
             />
           </div>
@@ -514,18 +479,6 @@ export function CategoriesPage() {
               <option value="active" className="bg-panel">Active</option>
               <option value="disabled" className="bg-panel">Disabled</option>
             </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="mb-2 block text-sm font-medium text-textStrong">Fallback image key</label>
-            <input
-              className="app-input"
-              value={categoryForm.image}
-              onChange={(event) =>
-                setCategoryForm((current) => ({ ...current, image: event.target.value }))
-              }
-              placeholder="dress, shoe5, headset"
-            />
           </div>
 
           <div className="space-y-2 md:col-span-2">

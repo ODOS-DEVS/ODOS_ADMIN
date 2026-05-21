@@ -17,15 +17,19 @@ export async function getMarkets(token: string) {
   return markets.map(mapMarket);
 }
 
-type MarketDraft = Pick<Market, "name" | "slug" | "image" | "status"> & {
+type MarketDraft = Pick<Market, "name" | "status"> & {
+  slug?: string;
+  image?: string | null;
   imageFile?: File | null;
 };
 
 export async function createMarket(token: string, payload: MarketDraft) {
   const formData = new FormData();
   formData.append("name", payload.name.trim());
-  formData.append("slug", payload.slug.trim());
   formData.append("status", payload.status);
+  if (payload.slug?.trim()) {
+    formData.append("slug", payload.slug.trim());
+  }
   if (payload.image?.trim()) {
     formData.append("image", payload.image.trim());
   }
@@ -52,8 +56,10 @@ export async function createMarket(token: string, payload: MarketDraft) {
 export async function updateMarket(token: string, marketId: string, payload: MarketDraft) {
   const formData = new FormData();
   formData.append("name", payload.name.trim());
-  formData.append("slug", payload.slug.trim());
   formData.append("status", payload.status);
+  if (payload.slug?.trim()) {
+    formData.append("slug", payload.slug.trim());
+  }
   if (payload.image?.trim()) {
     formData.append("image", payload.image.trim());
   }

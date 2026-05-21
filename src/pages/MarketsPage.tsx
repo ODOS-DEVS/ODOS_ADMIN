@@ -21,27 +21,15 @@ import { formatDate } from "@/utils/format";
 
 type MarketFormValues = {
   name: string;
-  slug: string;
-  image: string;
   imageFile: File | null;
   status: Market["status"];
 };
 
 const initialMarketForm: MarketFormValues = {
   name: "",
-  slug: "",
-  image: "",
   imageFile: null,
   status: "active",
 };
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 export function MarketsPage() {
   const { token } = useAdminAuth();
@@ -86,7 +74,7 @@ export function MarketsPage() {
 
   const filteredMarkets = useMemo(() => {
     return markets.filter((market) => {
-      const haystack = [market.name, market.slug].join(" ").toLowerCase();
+      const haystack = [market.name].join(" ").toLowerCase();
       const matchesQuery = haystack.includes(query.trim().toLowerCase());
       const matchesStatus = statusFilter === "all" ? true : market.status === statusFilter;
       return matchesQuery && matchesStatus;
@@ -111,8 +99,6 @@ export function MarketsPage() {
     setEditingMarket(market);
     setMarketForm({
       name: market.name,
-      slug: market.slug,
-      image: market.image ?? "",
       imageFile: null,
       status: market.status,
     });
@@ -134,13 +120,8 @@ export function MarketsPage() {
     if (!token) return;
     setActionLoading(true);
     try {
-      const payload = {
-        ...marketForm,
-        image: marketForm.image || null,
-      };
-
       if (editingMarket) {
-        const updated = await updateMarket(token, editingMarket.id, payload);
+        const updated = await updateMarket(token, editingMarket.id, marketForm);
         setMarkets((current) => current.map((market) => (market.id === updated.id ? updated : market)));
         showToast({
           title: "Market updated",
@@ -148,7 +129,7 @@ export function MarketsPage() {
           tone: "success",
         });
       } else {
-        const created = await createMarket(token, payload);
+        const created = await createMarket(token, marketForm);
         setMarkets((current) => [created, ...current]);
         showToast({
           title: "Market created",
@@ -219,7 +200,7 @@ export function MarketsPage() {
 
       <SectionCard
         title="Markets"
-        description="Search by name or slug and manage active versus disabled markets."
+        description="Search by name and manage the markets shoppers can browse across ODOS."
         action={
           <div className="flex flex-col gap-3 sm:flex-row">
             <SearchInput
@@ -264,15 +245,12 @@ export function MarketsPage() {
                     </div>
                     <div>
                       <p className="font-medium">{market.name}</p>
-                      <p className="mt-1 text-xs text-textMuted">{market.slug}</p>
+                      <p className="mt-1 text-xs text-textMuted">
+                        Added {formatDate(market.createdAt)}
+                      </p>
                     </div>
                   </div>
                 ),
-              },
-              {
-                key: "image",
-                header: "Image Key",
-                render: (market) => market.image ?? "Not set",
               },
               {
                 key: "status",
@@ -322,7 +300,7 @@ export function MarketsPage() {
           }
         }}
         title={editingMarket ? `Edit ${editingMarket.name}` : "Create market"}
-        description="Create a market with either a fallback image key, uploaded artwork, or both."
+        description="Create a live market with its shopper-facing name, status, and optional uploaded artwork."
         footer={
           <div className="flex justify-end gap-3">
             <Button
@@ -338,7 +316,7 @@ export function MarketsPage() {
             <Button
               onClick={() => void handleSave()}
               isLoading={actionLoading}
-              disabled={!marketForm.name.trim() || !marketForm.slug.trim()}
+              disabled={!marketForm.name.trim()}
             >
               {editingMarket ? "Save changes" : "Create market"}
             </Button>
@@ -355,19 +333,7 @@ export function MarketsPage() {
                 setMarketForm((current) => ({
                   ...current,
                   name: event.target.value,
-                  slug: editingMarket ? current.slug : slugify(event.target.value),
                 }))
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="mb-2 block text-sm font-medium text-textStrong">Slug</label>
-            <input
-              className="app-input"
-              value={marketForm.slug}
-              onChange={(event) =>
-                setMarketForm((current) => ({ ...current, slug: slugify(event.target.value) }))
               }
             />
           </div>
@@ -387,18 +353,6 @@ export function MarketsPage() {
               <option value="active" className="bg-panel">Active</option>
               <option value="disabled" className="bg-panel">Disabled</option>
             </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="mb-2 block text-sm font-medium text-textStrong">Fallback image key</label>
-            <input
-              className="app-input"
-              value={marketForm.image}
-              onChange={(event) =>
-                setMarketForm((current) => ({ ...current, image: event.target.value }))
-              }
-              placeholder="shoe5, handbag, headset"
-            />
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -422,7 +376,7 @@ export function MarketsPage() {
                     className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-white/15"
                   />
                   <p className="mt-3 text-xs text-textMuted">
-                    Upload a market image if you want a custom visual. The image key still works as a fallback.
+                    Upload the image you want shoppers to see for this market.
                   </p>
                 </div>
               </div>
@@ -449,10 +403,10 @@ export function MarketsPage() {
                   {marketForm.name.trim() || "Market name"}
                 </p>
                 <p className="mt-2 text-sm text-textMuted">
-                  {marketForm.slug.trim() || "market-slug"}
+                  This preview reflects the live artwork shoppers will see.
                 </p>
                 <p className="mt-3 text-xs uppercase tracking-[0.18em] text-accentSoft">
-                  Fallback key: {marketForm.image.trim() || "not set"}
+                  Status: {marketForm.status}
                 </p>
               </div>
             </div>
