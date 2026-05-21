@@ -15,8 +15,8 @@ function normalizeApiBaseUrl(value: string) {
 
 const API_BASE_URL = normalizeApiBaseUrl(RAW_API_BASE_URL);
 const BACKEND_WARMUP_WINDOW_MS = 60_000;
-const BACKEND_WARMUP_TIMEOUT_MS = 12_000;
-const BACKEND_WARMUP_RETRY_DELAYS_MS = [1_000, 2_500];
+const BACKEND_WARMUP_TIMEOUT_MS = 30_000;
+const BACKEND_WARMUP_RETRY_DELAYS_MS = [2_000, 5_000, 8_000];
 
 let backendWarmupPromise: Promise<void> | null = null;
 let lastBackendReadyAt = 0;
