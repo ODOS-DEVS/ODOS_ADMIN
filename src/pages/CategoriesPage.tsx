@@ -1,4 +1,4 @@
-import { Edit3, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { Edit3, ImagePlus, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 import {
@@ -72,6 +72,7 @@ export function CategoriesPage() {
   const [categoryForm, setCategoryForm] = useState<CategoryFormValues>(initialCategoryForm);
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [statusTargetId, setStatusTargetId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const loadCategories = useCallback(async () => {
@@ -228,6 +229,38 @@ export function CategoriesPage() {
     }
   }
 
+  async function handleRestore(category: Category) {
+    if (!token) return;
+    setStatusTargetId(category.id);
+    try {
+      const updated = await updateCategory(token, category.id, {
+        name: category.name,
+        slug: category.slug,
+        description: category.description,
+        image: category.image ?? null,
+        imageFile: null,
+        subcategories: category.subcategories ?? [],
+        status: "active",
+      });
+      setCategories((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      showToast({
+        title: "Category enabled",
+        description: `${updated.name} is live again.`,
+        tone: "success",
+      });
+    } catch (restoreError) {
+      showToast({
+        title: "Unable to enable category",
+        description: restoreError instanceof Error ? restoreError.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setStatusTargetId(null);
+    }
+  }
+
   if (isLoading) {
     return <LoadingState label="Loading categories..." />;
   }
@@ -332,24 +365,40 @@ export function CategoriesPage() {
               {
                 key: "actions",
                 header: "Actions",
-                render: (category) => (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="secondary"
-                      leftIcon={<Edit3 className="size-4" />}
-                      onClick={() => openEditModal(category)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      leftIcon={<Trash2 className="size-4" />}
-                      onClick={() => setDeleteTarget(category)}
-                    >
-                      Disable
-                    </Button>
-                  </div>
-                ),
+                render: (category) => {
+                  const isStatusUpdating = statusTargetId === category.id;
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        leftIcon={<Edit3 className="size-4" />}
+                        onClick={() => openEditModal(category)}
+                        disabled={isStatusUpdating}
+                      >
+                        Edit
+                      </Button>
+                      {category.status === "disabled" ? (
+                        <Button
+                          variant="secondary"
+                          leftIcon={<RotateCcw className="size-4" />}
+                          onClick={() => void handleRestore(category)}
+                          isLoading={isStatusUpdating}
+                        >
+                          Enable
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="danger"
+                          leftIcon={<Trash2 className="size-4" />}
+                          onClick={() => setDeleteTarget(category)}
+                          disabled={isStatusUpdating}
+                        >
+                          Disable
+                        </Button>
+                      )}
+                    </div>
+                  );
+                },
               },
             ]}
             data={filteredCategories}
