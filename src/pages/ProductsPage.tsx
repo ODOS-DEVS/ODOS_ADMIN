@@ -3,12 +3,14 @@ import {
   Clock3,
   Edit3,
   Eye,
+  ImagePlus,
   Mail,
   MapPin,
   PackagePlus,
   Star,
   Store as StoreIcon,
   Tag,
+  Trash2,
   UserRound,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
@@ -195,9 +197,11 @@ function buildSubcategoryKey(categorySlug: string, subcategory: string) {
   return `${categorySlug}::${subcategory}`;
 }
 
-function revokePreviewUrl(url: string | null) {
-  if (url?.startsWith("blob:")) {
-    URL.revokeObjectURL(url);
+function revokePreviewUrls(urls: string[]) {
+  for (const url of urls) {
+    if (url.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
+    }
   }
 }
 
@@ -224,9 +228,9 @@ export function ProductsPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [form, setForm] = useState<ProductFormState>(DEFAULT_FORM_STATE);
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropQueue, setCropQueue] = useState<File[]>([]);
   const [activeCropFile, setActiveCropFile] = useState<File | null>(null);
+  const [queuedImagePreviewUrls, setQueuedImagePreviewUrls] = useState<string[]>([]);
 
   const loadData = useCallback(async () => {
     if (!token) return;
@@ -254,10 +258,13 @@ export function ProductsPage() {
   }, [loadData]);
 
   useEffect(() => {
+    const nextUrls = form.imageFiles.map((file) => URL.createObjectURL(file));
+    setQueuedImagePreviewUrls(nextUrls);
+
     return () => {
-      revokePreviewUrl(previewUrl);
+      revokePreviewUrls(nextUrls);
     };
-  }, [previewUrl]);
+  }, [form.imageFiles]);
 
   const categoriesBySlug = useMemo(
     () => new Map(categories.map((category) => [category.slug, category])),
@@ -280,6 +287,9 @@ export function ProductsPage() {
         .filter((value): value is Category => Boolean(value)),
     [categoriesBySlug, form.selectedCategorySlugs],
   );
+
+  const existingProductImages = editingProduct?.images ?? [];
+  const heroPreviewUrl = queuedImagePreviewUrls[0] ?? existingProductImages[0] ?? null;
 
   const availableSubcategories = useMemo(() => {
     const entries = selectedCategories.flatMap((category) =>
@@ -335,8 +345,6 @@ export function ProductsPage() {
   function resetCreateState() {
     setForm(DEFAULT_FORM_STATE);
     setFormErrors({});
-    revokePreviewUrl(previewUrl);
-    setPreviewUrl(null);
     setCropQueue([]);
     setActiveCropFile(null);
   }
@@ -464,11 +472,9 @@ export function ProductsPage() {
   }
 
   function openEditModal(product: Product) {
-    revokePreviewUrl(previewUrl);
     setEditingProduct(product);
     setForm(buildFormStateFromProduct(product));
     setFormErrors({});
-    setPreviewUrl(product.images[0] ?? null);
     setCropQueue([]);
     setActiveCropFile(null);
     setIsProductModalOpen(true);
@@ -502,8 +508,29 @@ export function ProductsPage() {
     if (!files.length) {
       return;
     }
-    setCropQueue(files.slice(1));
-    setActiveCropFile(files[0]);
+
+    const remainingSlots = Math.max(6 - form.imageFiles.length, 0);
+    if (remainingSlots === 0) {
+      showToast({
+        title: "Image limit reached",
+        description: "You can attach up to 6 images per product.",
+        tone: "error",
+      });
+      event.target.value = "";
+      return;
+    }
+
+    const acceptedFiles = files.slice(0, remainingSlots);
+    if (acceptedFiles.length < files.length) {
+      showToast({
+        title: "Some images were skipped",
+        description: `Only ${remainingSlots} more image(s) can be added to this product.`,
+        tone: "error",
+      });
+    }
+
+    setCropQueue(acceptedFiles.slice(1));
+    setActiveCropFile(acceptedFiles[0]);
     event.target.value = "";
   }
 
@@ -518,8 +545,6 @@ export function ProductsPage() {
       imageFiles: [...current.imageFiles, file].slice(0, 6),
     }));
     setFormErrors((current) => ({ ...current, imageFiles: undefined }));
-    revokePreviewUrl(previewUrl);
-    setPreviewUrl(URL.createObjectURL(file));
 
     if (cropQueue.length > 0) {
       const [nextFile, ...rest] = cropQueue;
@@ -529,6 +554,13 @@ export function ProductsPage() {
     }
 
     setActiveCropFile(null);
+  }
+
+  function removeQueuedImage(index: number) {
+    setForm((current) => ({
+      ...current,
+      imageFiles: current.imageFiles.filter((_, imageIndex) => imageIndex !== index),
+    }));
   }
 
   function normalizeCreatePayload(): CreateProductInput {
@@ -867,19 +899,20 @@ export function ProductsPage() {
       >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-medium text-textStrong">Product image</label>
+            <label className="block text-sm font-medium text-textStrong">Product images</label>
             <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                <div className="flex size-32 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-panel">
-                  {previewUrl ? (
-                    <img src={previewUrl} alt="Preview" className="size-full object-cover" />
+              <div className="grid gap-4 xl:grid-cols-[180px_minmax(0,1fr)]">
+                <div className="flex h-44 items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-panel">
+                  {heroPreviewUrl ? (
+                    <img src={heroPreviewUrl} alt="Preview" className="size-full object-cover" />
                   ) : (
-                    <span className="px-4 text-center text-xs text-textMuted">
-                      Upload a clean ecommerce product image
-                    </span>
+                    <div className="flex flex-col items-center gap-3 px-6 text-center text-textMuted">
+                      <ImagePlus className="size-6 text-accentSoft" />
+                      <span className="text-xs">Upload clean ecommerce product photos</span>
+                    </div>
                   )}
                 </div>
-                <div className="flex-1">
+                <div className="space-y-4">
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
@@ -889,16 +922,75 @@ export function ProductsPage() {
                   />
                   <p className="mt-3 text-xs text-textMuted">
                     {editingProduct
-                      ? "Upload new images only when you want to refresh the gallery. Existing product images stay in place if you leave this untouched."
-                      : "Each image opens a crop step before it is added. Use bright product photos with minimal background clutter."}
+                      ? "Add up to 6 total images. New uploads are cropped one by one and then added to the current product gallery."
+                      : "Add up to 6 images. Each image opens a crop step before it is queued into the product gallery."}
                   </p>
                   {formErrors.imageFiles ? <p className="mt-2 text-xs text-red-300">{formErrors.imageFiles}</p> : null}
-                  {form.imageFiles.length > 0 ? (
-                    <p className="mt-2 text-xs text-textMuted">{form.imageFiles.length} image(s) ready</p>
-                  ) : editingProduct?.images.length ? (
-                    <p className="mt-2 text-xs text-textMuted">
-                      {editingProduct.images.length} existing image(s) currently attached
-                    </p>
+                  <div className="flex flex-wrap gap-2 text-xs text-textMuted">
+                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+                      {queuedImagePreviewUrls.length} new image(s) ready
+                    </span>
+                    {editingProduct ? (
+                      <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+                        {existingProductImages.length} existing image(s)
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {queuedImagePreviewUrls.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-textMuted">
+                        New uploads
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                        {queuedImagePreviewUrls.map((url, index) => (
+                          <div
+                            key={`${url}-${index}`}
+                            className="overflow-hidden rounded-2xl border border-white/10 bg-panel"
+                          >
+                            <div className="relative aspect-square">
+                              <img
+                                src={url}
+                                alt={`Queued upload ${index + 1}`}
+                                className="size-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeQueuedImage(index)}
+                                className="absolute right-2 top-2 rounded-full border border-red-400/30 bg-slate-950/80 p-1.5 text-red-100 transition hover:bg-red-500/20"
+                                aria-label={`Remove queued image ${index + 1}`}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {editingProduct && existingProductImages.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-textMuted">
+                        Current gallery
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                        {existingProductImages.map((url, index) => (
+                          <div
+                            key={`${url}-${index}`}
+                            className="overflow-hidden rounded-2xl border border-white/10 bg-panel"
+                          >
+                            <div className="aspect-square">
+                              <img
+                                src={url}
+                                alt={`Current product image ${index + 1}`}
+                                className="size-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ) : null}
                 </div>
               </div>
