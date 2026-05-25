@@ -149,6 +149,34 @@ function upsertMessage(messages: SupportChatMessage[], nextMessage: SupportChatM
   );
 }
 
+function isSameChatDay(left: string, right: string) {
+  const a = new Date(left);
+  const b = new Date(right);
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function formatMessageDayLabel(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  if (isSameChatDay(value, now.toISOString())) {
+    return "Today";
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameChatDay(value, yesterday.toISOString())) {
+    return "Yesterday";
+  }
+  return date.toLocaleDateString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function formatThreadTime(value?: string | null) {
   if (!value) {
     return "Just now";
@@ -455,6 +483,11 @@ export function SupportChatsPage() {
     } satisfies Record<SupportChatStatus | "all", number>;
   }, [threads]);
 
+  const unreadTotal = useMemo(
+    () => threads.reduce((sum, thread) => sum + thread.unreadCount, 0),
+    [threads],
+  );
+
   useEffect(() => {
     if (!filteredThreads.length) {
       setSelectedThreadId(null);
@@ -585,7 +618,26 @@ export function SupportChatsPage() {
         }
       />
 
-      <div className="grid gap-5 xl:grid-cols-[296px,minmax(0,1fr)] xl:items-stretch">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3.5">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-accentSoft">Open threads</p>
+          <p className="mt-2 text-2xl font-semibold text-textStrong">{threadCounts.all}</p>
+        </div>
+        <div className="rounded-[22px] border border-amber-400/20 bg-amber-500/10 px-4 py-3.5">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-amber-100/80">Waiting on admin</p>
+          <p className="mt-2 text-2xl font-semibold text-textStrong">{threadCounts.waiting_on_admin}</p>
+        </div>
+        <div className="rounded-[22px] border border-sky-400/20 bg-sky-500/10 px-4 py-3.5">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-sky-100/80">Waiting on user</p>
+          <p className="mt-2 text-2xl font-semibold text-textStrong">{threadCounts.waiting_on_customer}</p>
+        </div>
+        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3.5">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-accentSoft">Unread messages</p>
+          <p className="mt-2 text-2xl font-semibold text-textStrong">{unreadTotal}</p>
+        </div>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[320px,minmax(0,1fr)] xl:items-stretch">
         <section className="flex min-h-[640px] flex-col overflow-hidden rounded-[24px] border border-white/10 bg-panel/90 shadow-glow">
           <div className="border-b border-white/10 px-4 py-3.5">
             <div className="flex items-center justify-between gap-3">
@@ -666,28 +718,28 @@ export function SupportChatsPage() {
                           {isVendor ? <Store className="size-[15px]" /> : <UserRound className="size-[15px]" />}
                         </div>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="truncate text-[13px] font-semibold text-textStrong">
-                                    {thread.counterpart.name}
-                                  </p>
-                                  <span
-                                    className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-semibold ${statusMeta.tone}`}
-                                  >
-                                    {statusMeta.label}
-                                  </span>
-                                </div>
-                                <p className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-accentSoft">
-                                  {roleCopy[thread.counterpart.role]} · {thread.store.title}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-[13px] font-semibold text-textStrong">
+                                  {thread.counterpart.name}
                                 </p>
-                                {thread.assignedAdminName ? (
-                                  <p className="mt-1 truncate text-[10px] text-textMuted">
-                                    Owned by {thread.assignedAdminName}
-                                  </p>
-                                ) : null}
+                                <span
+                                  className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-semibold ${statusMeta.tone}`}
+                                >
+                                  {statusMeta.label}
+                                </span>
                               </div>
+                              <p className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-accentSoft">
+                                {roleCopy[thread.counterpart.role]} · {thread.store.title}
+                              </p>
+                              {thread.assignedAdminName ? (
+                                <p className="mt-1 truncate text-[10px] text-textMuted">
+                                  Owned by {thread.assignedAdminName}
+                                </p>
+                              ) : null}
+                            </div>
 
                             <div className="shrink-0 text-right">
                               <p className="text-[10px] text-textMuted">
@@ -834,29 +886,39 @@ export function SupportChatsPage() {
                     description="This support thread is open and ready for the first reply."
                   />
                 ) : (
-                  selectedMessages.map((message) => {
+                  selectedMessages.map((message, index) => {
                     const isAdmin = message.senderUserId === adminUser?.id;
+                    const previous = selectedMessages[index - 1];
+                    const showDay =
+                      !previous || !isSameChatDay(previous.time, message.time);
+
                     return (
-                      <div
-                        key={message.id}
-                        className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-[68%] rounded-[20px] px-3.5 py-2.5 shadow-sm ${
-                            isAdmin
-                              ? "bg-accent text-slate-950"
-                              : "border border-white/10 bg-white/[0.06] text-textStrong"
-                          }`}
-                        >
-                          <p className="text-[13px] leading-5">{message.text}</p>
-                          <p
-                            className={`mt-1.5 text-[10px] ${
-                              isAdmin ? "text-slate-950/70" : "text-textMuted"
+                      <div key={message.id}>
+                        {showDay ? (
+                          <div className="flex justify-center py-2">
+                            <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-medium text-textMuted">
+                              {formatMessageDayLabel(message.time)}
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
+                          <div
+                            className={`max-w-[72%] rounded-[20px] px-3.5 py-2.5 shadow-sm ${
+                              isAdmin
+                                ? "bg-accent text-slate-950"
+                                : "border border-white/10 bg-white/[0.06] text-textStrong"
                             }`}
                           >
-                            {roleCopy[message.senderRole]} · {formatDateTime(message.time)}
-                            {isAdmin && message.isRead ? " · Seen" : ""}
-                          </p>
+                            <p className="text-[13px] leading-5">{message.text}</p>
+                            <p
+                              className={`mt-1.5 text-[10px] ${
+                                isAdmin ? "text-slate-950/70" : "text-textMuted"
+                              }`}
+                            >
+                              {roleCopy[message.senderRole]} · {formatDateTime(message.time)}
+                              {isAdmin && message.isRead ? " · Seen" : ""}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );

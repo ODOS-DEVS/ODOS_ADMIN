@@ -172,6 +172,8 @@ export type AdminUserDetail = AdminUser & {
 export type VendorApplication = {
   id: string;
   userId: string;
+  fullName: string;
+  email: string;
   businessName: string;
   businessCategory: string;
   businessDescription: string;
@@ -180,10 +182,26 @@ export type VendorApplication = {
   region: string;
   city: string;
   marketId?: string | null;
+  storeLocation?: string | null;
+  storeLatitude?: number | null;
+  storeLongitude?: number | null;
+  storeInstagramUrl?: string | null;
+  storeFacebookUrl?: string | null;
+  storeTiktokUrl?: string | null;
+  storeTwitterUrl?: string | null;
+  storeWhatsappUrl?: string | null;
+  storeWebsiteUrl?: string | null;
   storeName: string;
   storeDescription?: string | null;
+  ghanaCardNumber?: string | null;
+  businessRegistrationNumber?: string | null;
+  logoImageUrl?: string | null;
+  bannerImageUrl?: string | null;
+  shopImageUrl?: string | null;
   status: VendorStatus;
   rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  submittedAt: string;
   createdAt: string;
   updatedAt: string;
 };

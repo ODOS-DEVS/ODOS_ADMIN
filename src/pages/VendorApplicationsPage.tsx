@@ -6,6 +6,7 @@ import {
   getVendorApplications,
   rejectVendorApplication,
 } from "@/api/vendorApplicationsApi";
+import { VendorApplicationDetails } from "@/components/vendor/VendorApplicationDetails";
 import { DataTable } from "@/components/tables/DataTable";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -30,15 +31,6 @@ const statusOptions = [
   { label: "Approved", value: "approved" },
   { label: "Rejected", value: "rejected" },
 ];
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
-      <p className="mt-2 text-sm text-textStrong">{value}</p>
-    </div>
-  );
-}
 
 export function VendorApplicationsPage() {
   const { token } = useAdminAuth();
@@ -93,11 +85,14 @@ export function VendorApplicationsPage() {
     return applications.filter((application) => {
       const matchesStatus = statusFilter === "all" ? true : application.status === statusFilter;
       const haystack = [
+        application.fullName,
+        application.email,
         application.businessName,
         application.storeName,
         application.phoneNumber,
         application.city,
         application.region,
+        application.businessCategory,
       ]
         .join(" ")
         .toLowerCase();
@@ -113,6 +108,9 @@ export function VendorApplicationsPage() {
       const updated = await approveVendorApplication(token, approveTarget.id);
       setApplications((current) =>
         current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
+      setSelectedApplication((current) =>
+        current?.id === updated.id ? { ...current, ...updated } : current,
       );
       showToast({
         title: "Application approved",
@@ -140,10 +138,13 @@ export function VendorApplicationsPage() {
       setApplications((current) =>
         current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
       );
+      setSelectedApplication((current) =>
+        current?.id === updated.id ? { ...current, ...updated } : current,
+      );
       showToast({
         title: "Application rejected",
         description: "The rejection reason has been saved for the applicant.",
-        tone: "success",
+        tone: "info",
       });
       setRejectTarget(null);
       setRejectionReason("");
@@ -191,13 +192,13 @@ export function VendorApplicationsPage() {
 
       <SectionCard
         title="Review queue"
-        description="Filter by status, inspect store details, then approve or reject with confidence."
+        description="Filter by status, inspect the full submission, then approve or reject with confidence."
         action={
           <div className="flex flex-col gap-3 sm:flex-row">
             <SearchInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search business or store"
+              placeholder="Search applicant, business, or store"
               className="sm:w-72"
             />
             <FilterSelect
@@ -229,6 +230,16 @@ export function VendorApplicationsPage() {
                 ),
               },
               {
+                key: "applicant",
+                header: "Applicant",
+                render: (application) => (
+                  <div>
+                    <p>{application.fullName}</p>
+                    <p className="mt-1 text-xs text-textMuted">{application.email}</p>
+                  </div>
+                ),
+              },
+              {
                 key: "contact",
                 header: "Contact",
                 render: (application) => (
@@ -250,7 +261,7 @@ export function VendorApplicationsPage() {
                 header: "Submitted",
                 render: (application) => (
                   <div>
-                    <p>{formatDateTime(application.createdAt)}</p>
+                    <p>{formatDateTime(application.submittedAt)}</p>
                     <p className="mt-1 text-xs text-textMuted">
                       Updated {formatDateTime(application.updatedAt)}
                     </p>
@@ -300,42 +311,11 @@ export function VendorApplicationsPage() {
         open={Boolean(selectedApplication)}
         onClose={() => setSelectedApplication(null)}
         title={selectedApplication?.businessName ?? "Application details"}
-        description="Full business and store submission details."
+        description="Everything the vendor submitted in their ODOS application."
+        size="xl"
       >
         {selectedApplication ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <DetailRow label="Business category" value={selectedApplication.businessCategory} />
-            <DetailRow label="Application status" value={selectedApplication.status} />
-            <DetailRow label="Phone number" value={selectedApplication.phoneNumber} />
-            <DetailRow
-              label="WhatsApp number"
-              value={selectedApplication.whatsappNumber ?? "Not provided"}
-            />
-            <DetailRow label="Region" value={selectedApplication.region} />
-            <DetailRow label="City" value={selectedApplication.city} />
-            <DetailRow label="Store name" value={selectedApplication.storeName} />
-            <DetailRow
-              label="Market ID"
-              value={selectedApplication.marketId ?? "No market selected"}
-            />
-            <div className="md:col-span-2">
-              <DetailRow
-                label="Business description"
-                value={selectedApplication.businessDescription}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <DetailRow
-                label="Store description"
-                value={selectedApplication.storeDescription ?? "No store description added"}
-              />
-            </div>
-            {selectedApplication.rejectionReason ? (
-              <div className="md:col-span-2">
-                <DetailRow label="Rejection reason" value={selectedApplication.rejectionReason} />
-              </div>
-            ) : null}
-          </div>
+          <VendorApplicationDetails application={selectedApplication} />
         ) : null}
       </Modal>
 
