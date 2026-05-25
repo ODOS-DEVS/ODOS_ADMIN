@@ -135,9 +135,12 @@ type BackendAdminUserDetail = BackendAdminUser & {
   };
 };
 
-type BackendVendorApplication = {
+export type BackendVendorApplication = {
   id: string;
   user_id: string;
+  full_name?: string;
+  email?: string;
+  status: VendorApplication["status"];
   business_name: string;
   business_category: string;
   business_description: string;
@@ -146,10 +149,24 @@ type BackendVendorApplication = {
   region: string;
   city: string;
   market_id?: string | null;
+  store_location?: string | null;
+  store_latitude?: number | null;
+  store_longitude?: number | null;
+  store_instagram_url?: string | null;
+  store_facebook_url?: string | null;
+  store_tiktok_url?: string | null;
+  store_twitter_url?: string | null;
+  store_whatsapp_url?: string | null;
+  store_website_url?: string | null;
   store_name: string;
   store_description?: string | null;
-  status: VendorApplication["status"];
+  ghana_card_number?: string | null;
+  business_registration_number?: string | null;
+  logo_image_url?: string | null;
+  banner_image_url?: string | null;
+  shop_image_url?: string | null;
   rejection_reason?: string | null;
+  reviewed_at?: string | null;
   submitted_at?: string;
   created_at: string;
   updated_at: string;
@@ -643,6 +660,8 @@ export function mapVendorApplication(application: BackendVendorApplication): Ven
   return {
     id: application.id,
     userId: application.user_id,
+    fullName: application.full_name ?? "Unknown applicant",
+    email: application.email ?? "No email on file",
     businessName: application.business_name,
     businessCategory: application.business_category,
     businessDescription: application.business_description,
@@ -651,11 +670,27 @@ export function mapVendorApplication(application: BackendVendorApplication): Ven
     region: application.region,
     city: application.city,
     marketId: application.market_id ?? null,
+    storeLocation: application.store_location ?? null,
+    storeLatitude: application.store_latitude ?? null,
+    storeLongitude: application.store_longitude ?? null,
+    storeInstagramUrl: application.store_instagram_url ?? null,
+    storeFacebookUrl: application.store_facebook_url ?? null,
+    storeTiktokUrl: application.store_tiktok_url ?? null,
+    storeTwitterUrl: application.store_twitter_url ?? null,
+    storeWhatsappUrl: application.store_whatsapp_url ?? null,
+    storeWebsiteUrl: application.store_website_url ?? null,
     storeName: application.store_name,
     storeDescription: application.store_description ?? null,
+    ghanaCardNumber: application.ghana_card_number ?? null,
+    businessRegistrationNumber: application.business_registration_number ?? null,
+    logoImageUrl: application.logo_image_url ?? null,
+    bannerImageUrl: application.banner_image_url ?? null,
+    shopImageUrl: application.shop_image_url ?? null,
     status: application.status,
     rejectionReason: application.rejection_reason ?? null,
-    createdAt: application.submitted_at ?? application.created_at,
+    reviewedAt: application.reviewed_at ?? null,
+    submittedAt: application.submitted_at ?? application.created_at,
+    createdAt: application.created_at,
     updatedAt: application.updated_at,
   };
 }
