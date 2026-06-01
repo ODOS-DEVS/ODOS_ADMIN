@@ -2,13 +2,9 @@
 
 ODOS Admin Dashboard is the React + Vite control panel for the ODOS ecosystem. It connects to the FastAPI backend and gives admins one place to manage users, vendors, stores, markets, categories, products, orders, and notifications.
 
-Backend repo:
+Backend repo: `../ODOS_MOBILE_BACKEND`
 
-`/Users/paul/Desktop/DeV/odos-workspace/ODOS_MOBILE_BACKEND`
-
-Mobile repo:
-
-`/Users/paul/Desktop/DeV/odos-workspace/odos-mobile-expo`
+Mobile repo: `../odos-mobile-expo`
 
 ## Stack
 
@@ -194,6 +190,16 @@ npm run build
 
 ## Notes
 
-- Category and product taxonomy decisions here flow straight into the mobile shopper experience.
-- Apply backend migrations before testing new category/store/product admin flows.
-- Make sure the backend `CORS_ORIGINS` includes your deployed admin URL.
+- Category and product taxonomy in admin flows directly into the mobile shopper experience.
+- Run `alembic upgrade head` on the backend before testing new admin or mobile features.
+- Add your deployed admin URL to backend `CORS_ORIGINS` on Render (and redeploy backend if needed).
+- Mobile and admin READMEs live in sibling repos under the same workspace folder.
+
+## Repository status
+
+This admin app is the Vite SPA in `ODOS_ADMIN`. Pair it with:
+
+- **Backend** — `../ODOS_MOBILE_BACKEND` (FastAPI + Postgres)
+- **Mobile** — `../odos-mobile-expo` (Expo shopper app)
+
+When preparing a release, verify `npm run build` passes and `VITE_API_BASE_URL` points at the intended API (local or `https://odos-backend.onrender.com/api`).
