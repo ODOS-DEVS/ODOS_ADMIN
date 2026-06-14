@@ -12,6 +12,8 @@ import { NotificationsPage } from "@/pages/NotificationsPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { ProductsPage } from "@/pages/ProductsPage";
 import { PayoutsPage } from "@/pages/PayoutsPage";
+import { PromoBannersPage } from "@/pages/PromoBannersPage";
+import { FlashSaleEventsPage } from "@/pages/FlashSaleEventsPage";
 import { ReturnsPage } from "@/pages/ReturnsPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -53,6 +55,8 @@ export function AppRoutes() {
         <Route path="/returns" element={<ReturnsPage />} />
         <Route path="/reviews" element={<ReviewsPage />} />
         <Route path="/vouchers" element={<VouchersPage />} />
+        <Route path="/promo-banners" element={<PromoBannersPage />} />
+        <Route path="/flash-sale-events" element={<FlashSaleEventsPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/support-chats" element={<SupportChatsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />

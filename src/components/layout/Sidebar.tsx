@@ -6,6 +6,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   MessageSquareMore,
   Package,
   RefreshCcw,
@@ -18,6 +19,7 @@ import {
   UserCog,
   Users,
   Warehouse,
+  Zap,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
@@ -43,6 +45,8 @@ const navItems = [
   { to: "/returns", label: "Returns", icon: RefreshCcw },
   { to: "/reviews", label: "Reviews", icon: Star },
   { to: "/vouchers", label: "Vouchers", icon: TicketPercent },
+  { to: "/promo-banners", label: "Promo Banners", icon: Megaphone },
+  { to: "/flash-sale-events", label: "Flash Sale Events", icon: Zap },
   { to: "/orders", label: "Orders", icon: ShoppingBag },
   { to: "/support-chats", label: "Support Chats", icon: MessageSquareMore },
   { to: "/notifications", label: "Notifications", icon: Bell },

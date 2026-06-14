@@ -283,6 +283,39 @@ export type Market = {
   createdAt: string;
 };
 
+export type PromoBannerAccent = "gold" | "default" | "teal";
+
+export type PromoBanner = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  ctaLabel: string;
+  ctaLink?: string | null;
+  imageUrl?: string | null;
+  accent?: PromoBannerAccent | null;
+  sortOrder: number;
+  status: "active" | "disabled";
+  startsAt?: string | null;
+  endsAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FlashSaleEvent = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  imageUrl?: string | null;
+  startsAt?: string | null;
+  endsAt: string;
+  sortOrder: number;
+  status: "active" | "disabled";
+  productIds: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Category = {
   id: string;
   name: string;
