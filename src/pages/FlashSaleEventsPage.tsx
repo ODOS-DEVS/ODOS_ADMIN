@@ -70,7 +70,7 @@ function slugify(value: string) {
 }
 
 function eventWindowLabel(event: FlashSaleEvent) {
-  const start = event.startsAt ? formatDate(event.startsAt) : "Now";
+  const start = event.startsAt ? formatDate(event.startsAt) : "Live now";
   return `${start} → ${formatDate(event.endsAt)}`;
 }
 
@@ -136,14 +136,18 @@ export function FlashSaleEventsPage() {
       .slice(0, 40);
   }, [productQuery, products]);
 
-  const openCreateModal = () => {
-    setEditingEvent(null);
+  function resetEditorState() {
     setEventForm(initialForm);
+    setEditingEvent(null);
     setProductQuery("");
-    setIsEditorOpen(true);
-  };
+  }
 
-  const openEditModal = (event: FlashSaleEvent) => {
+  function openCreateModal() {
+    resetEditorState();
+    setIsEditorOpen(true);
+  }
+
+  function openEditModal(event: FlashSaleEvent) {
     setEditingEvent(event);
     setEventForm({
       slug: event.slug,
@@ -157,27 +161,35 @@ export function FlashSaleEventsPage() {
     });
     setProductQuery("");
     setIsEditorOpen(true);
-  };
+  }
 
-  const toggleProductSelection = (productId: string) => {
+  function toggleProductSelection(productId: string) {
     setEventForm((current) => ({
       ...current,
       productIds: current.productIds.includes(productId)
         ? current.productIds.filter((id) => id !== productId)
         : [...current.productIds, productId],
     }));
-  };
+  }
 
-  const handleSave = async () => {
+  async function handleSave() {
     if (!token) return;
     if (!eventForm.title.trim() || !eventForm.endsAt.trim()) {
-      showToast("Title and end time are required.", "error");
+      showToast({
+        title: "Missing details",
+        description: "Add a title and end time before saving.",
+        tone: "error",
+      });
       return;
     }
 
     const slug = slugify(eventForm.slug || eventForm.title);
     if (!slug) {
-      showToast("Event slug is required.", "error");
+      showToast({
+        title: "Slug required",
+        description: "Add a valid event slug before saving.",
+        tone: "error",
+      });
       return;
     }
 
@@ -195,146 +207,216 @@ export function FlashSaleEventsPage() {
       };
 
       if (editingEvent) {
-        await updateFlashSaleEvent(token, editingEvent.id, payload);
-        showToast("Flash sale event updated.", "success");
+        const updated = await updateFlashSaleEvent(token, editingEvent.id, payload);
+        setEvents((current) =>
+          current.map((event) => (event.id === updated.id ? updated : event)),
+        );
+        showToast({
+          title: "Flash sale event updated",
+          description: `${updated.title} is live in the mobile app.`,
+          tone: "success",
+        });
       } else {
-        await createFlashSaleEvent(token, payload);
-        showToast("Flash sale event created.", "success");
+        const created = await createFlashSaleEvent(token, payload);
+        setEvents((current) => [created, ...current]);
+        showToast({
+          title: "Flash sale event created",
+          description: `${created.title} is ready for the mobile app.`,
+          tone: "success",
+        });
       }
 
       setIsEditorOpen(false);
-      await loadEvents();
+      resetEditorState();
     } catch (saveError) {
-      showToast(
-        saveError instanceof Error ? saveError.message : "Unable to save flash sale event.",
-        "error",
-      );
+      showToast({
+        title: "Unable to save event",
+        description: saveError instanceof Error ? saveError.message : "Please try again.",
+        tone: "error",
+      });
     } finally {
       setActionLoading(false);
     }
-  };
+  }
 
-  const handleDelete = async () => {
+  async function handleArchive() {
     if (!token || !deleteTarget) return;
     setActionLoading(true);
     try {
       await deleteFlashSaleEvent(token, deleteTarget.id);
-      showToast("Flash sale event archived.", "success");
-      setDeleteTarget(null);
-      await loadEvents();
-    } catch (deleteError) {
-      showToast(
-        deleteError instanceof Error ? deleteError.message : "Unable to archive flash sale event.",
-        "error",
+      setEvents((current) =>
+        current.map((event) =>
+          event.id === deleteTarget.id ? { ...event, status: "disabled" } : event,
+        ),
       );
+      showToast({
+        title: "Flash sale event archived",
+        description: `${deleteTarget.title} has been hidden from the app.`,
+        tone: "success",
+      });
+      setDeleteTarget(null);
+    } catch (archiveError) {
+      showToast({
+        title: "Unable to archive event",
+        description: archiveError instanceof Error ? archiveError.message : "Please try again.",
+        tone: "error",
+      });
     } finally {
       setActionLoading(false);
     }
-  };
+  }
 
   if (isLoading) {
     return <LoadingState label="Loading flash sale events..." />;
   }
 
   if (error) {
-    return <ErrorState title="Flash sale events unavailable" message={error} onRetry={() => void loadEvents()} />;
+    return <ErrorState description={error} onRetry={() => void loadEvents()} />;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Flash Sale Events"
+        eyebrow="Merchandising"
+        title="Flash sale events"
         description="Schedule timed flash sales with real countdowns on the ODOS home feed and product pages."
         actions={
-          <Button onClick={openCreateModal}>
-            <Plus className="h-4 w-4" />
-            New event
+          <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
+            Create event
           </Button>
         }
       />
 
-      <SectionCard>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <SearchInput value={query} onChange={setQuery} placeholder="Search events..." />
-          <FilterSelect
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[
-              { label: "All statuses", value: "all" },
-              { label: "Active", value: "active" },
-              { label: "Disabled", value: "disabled" },
-            ]}
-          />
-        </div>
-
+      <SectionCard
+        title="Event library"
+        description="Lower sort order values appear first. Products only surface while the event window is live."
+        action={
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <SearchInput
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search events"
+              className="sm:w-80"
+            />
+            <FilterSelect
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              options={[
+                { label: "All statuses", value: "all" },
+                { label: "Active", value: "active" },
+                { label: "Disabled", value: "disabled" },
+              ]}
+            />
+          </div>
+        }
+      >
         {filteredEvents.length === 0 ? (
           <EmptyState
-            title="No flash sale events yet"
-            description="Create a timed event, attach products, and shoppers will see a live countdown in the app."
+            title="No flash sale events found"
+            description="Create an event or broaden the current search."
             action={
-              <Button onClick={openCreateModal}>
-                <Plus className="h-4 w-4" />
+              <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
                 Create event
               </Button>
             }
           />
         ) : (
-          <DataTable
+          <DataTable<FlashSaleEvent>
             columns={[
-              { key: "title", header: "Event" },
-              { key: "window", header: "Window" },
-              { key: "products", header: "Products" },
-              { key: "status", header: "Status" },
-              { key: "actions", header: "Actions", className: "text-right" },
+              {
+                key: "event",
+                header: "Event",
+                render: (event) => (
+                  <div>
+                    <p className="font-medium">{event.title}</p>
+                    <p className="mt-1 text-xs text-textMuted">{event.slug}</p>
+                    {event.subtitle ? (
+                      <p className="mt-1 text-xs text-textMuted">{event.subtitle}</p>
+                    ) : null}
+                  </div>
+                ),
+              },
+              {
+                key: "window",
+                header: "Window",
+                render: (event) => eventWindowLabel(event),
+              },
+              {
+                key: "products",
+                header: "Products",
+                render: (event) =>
+                  `${event.productIds.length} item${event.productIds.length === 1 ? "" : "s"}`,
+              },
+              {
+                key: "order",
+                header: "Order",
+                render: (event) => event.sortOrder,
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (event) => <StatusBadge status={event.status} />,
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (event) => (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      leftIcon={<Edit3 className="size-4" />}
+                      onClick={() => openEditModal(event)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="danger"
+                      leftIcon={<Trash2 className="size-4" />}
+                      onClick={() => setDeleteTarget(event)}
+                    >
+                      Archive
+                    </Button>
+                  </div>
+                ),
+              },
             ]}
-            rows={filteredEvents.map((event) => ({
-              id: event.id,
-              title: (
-                <div>
-                  <p className="font-medium text-slate-900">{event.title}</p>
-                  <p className="text-sm text-slate-500">{event.slug}</p>
-                </div>
-              ),
-              window: eventWindowLabel(event),
-              products: `${event.productIds.length} item${event.productIds.length === 1 ? "" : "s"}`,
-              status: <StatusBadge status={event.status} />,
-              actions: (
-                <div className="flex justify-end gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => openEditModal(event)}>
-                    <Edit3 className="h-4 w-4" />
-                    Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(event)}>
-                    <Trash2 className="h-4 w-4" />
-                    Archive
-                  </Button>
-                </div>
-              ),
-            }))}
+            data={filteredEvents}
+            keyExtractor={(event) => event.id}
           />
         )}
       </SectionCard>
 
       <Modal
-        isOpen={isEditorOpen}
-        onClose={() => setIsEditorOpen(false)}
+        open={isEditorOpen}
         title={editingEvent ? "Edit flash sale event" : "Create flash sale event"}
+        description="Event timing and products are served to the mobile app through the catalog API."
+        onClose={() => {
+          setIsEditorOpen(false);
+          resetEditorState();
+        }}
+        size="lg"
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setIsEditorOpen(false)}>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsEditorOpen(false);
+                resetEditorState();
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={() => void handleSave()} disabled={actionLoading}>
-              {actionLoading ? "Saving..." : editingEvent ? "Save changes" : "Create event"}
+            <Button isLoading={actionLoading} onClick={() => void handleSave()}>
+              {editingEvent ? "Save changes" : "Create event"}
             </Button>
-          </>
+          </div>
         }
       >
         <div className="space-y-4">
-          <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-700">Title</span>
+          <label className="block space-y-2">
+            <span className="text-sm text-textMuted">Title</span>
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2"
+              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
               value={eventForm.title}
               onChange={(event) =>
                 setEventForm((current) => ({
@@ -346,10 +428,10 @@ export function FlashSaleEventsPage() {
             />
           </label>
 
-          <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-700">Slug</span>
+          <label className="block space-y-2">
+            <span className="text-sm text-textMuted">Slug</span>
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2"
+              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
               value={eventForm.slug}
               onChange={(event) =>
                 setEventForm((current) => ({ ...current, slug: slugify(event.target.value) }))
@@ -357,10 +439,10 @@ export function FlashSaleEventsPage() {
             />
           </label>
 
-          <label className="block space-y-1">
-            <span className="text-sm font-medium text-slate-700">Subtitle</span>
+          <label className="block space-y-2">
+            <span className="text-sm text-textMuted">Subtitle</span>
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2"
+              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
               value={eventForm.subtitle}
               onChange={(event) =>
                 setEventForm((current) => ({ ...current, subtitle: event.target.value }))
@@ -369,22 +451,22 @@ export function FlashSaleEventsPage() {
           </label>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-700">Starts at</span>
+            <label className="block space-y-2">
+              <span className="text-sm text-textMuted">Starts at</span>
               <input
                 type="datetime-local"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
                 value={eventForm.startsAt}
                 onChange={(event) =>
                   setEventForm((current) => ({ ...current, startsAt: event.target.value }))
                 }
               />
             </label>
-            <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-700">Ends at</span>
+            <label className="block space-y-2">
+              <span className="text-sm text-textMuted">Ends at</span>
               <input
                 type="datetime-local"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
                 value={eventForm.endsAt}
                 onChange={(event) =>
                   setEventForm((current) => ({ ...current, endsAt: event.target.value }))
@@ -394,12 +476,12 @@ export function FlashSaleEventsPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-700">Sort order</span>
+            <label className="block space-y-2">
+              <span className="text-sm text-textMuted">Sort order</span>
               <input
                 type="number"
                 min={0}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
                 value={eventForm.sortOrder}
                 onChange={(event) =>
                   setEventForm((current) => ({
@@ -409,10 +491,10 @@ export function FlashSaleEventsPage() {
                 }
               />
             </label>
-            <label className="block space-y-1">
-              <span className="text-sm font-medium text-slate-700">Status</span>
+            <label className="block space-y-2">
+              <span className="text-sm text-textMuted">Status</span>
               <select
-                className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
                 value={eventForm.status}
                 onChange={(event) =>
                   setEventForm((current) => ({
@@ -428,27 +510,28 @@ export function FlashSaleEventsPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-700">Products</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-textMuted">Products</p>
+                <p className="text-xs text-textMuted">
                   {eventForm.productIds.length} selected for this event
                 </p>
               </div>
               <SearchInput
                 value={productQuery}
-                onChange={setProductQuery}
-                placeholder="Search products..."
+                onChange={(event) => setProductQuery(event.target.value)}
+                placeholder="Search products"
+                className="sm:w-72"
               />
             </div>
-            <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-slate-200 p-3">
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-white/10 p-3">
               {filteredProducts.length === 0 ? (
-                <p className="text-sm text-slate-500">No active products match this search.</p>
+                <p className="text-sm text-textMuted">No active products match this search.</p>
               ) : (
                 filteredProducts.map((product) => (
                   <label
                     key={product.id}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-2 hover:bg-slate-50"
+                    className="flex cursor-pointer items-start gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.04]"
                   >
                     <input
                       type="checkbox"
@@ -456,8 +539,8 @@ export function FlashSaleEventsPage() {
                       onChange={() => toggleProductSelection(product.id)}
                     />
                     <span>
-                      <span className="block font-medium text-slate-900">{product.name}</span>
-                      <span className="block text-sm text-slate-500">
+                      <span className="block font-medium text-textStrong">{product.name}</span>
+                      <span className="block text-xs text-textMuted">
                         {product.id} · {product.category}
                       </span>
                     </span>
@@ -470,13 +553,14 @@ export function FlashSaleEventsPage() {
       </Modal>
 
       <ConfirmDialog
-        isOpen={Boolean(deleteTarget)}
+        open={Boolean(deleteTarget)}
         title="Archive flash sale event?"
-        description="The event will stop appearing in the app. You can recreate it later if needed."
-        confirmLabel="Archive event"
-        onConfirm={() => void handleDelete()}
-        onCancel={() => setDeleteTarget(null)}
+        description="This event will stop appearing in the mobile app."
+        confirmLabel="Archive"
+        confirmVariant="danger"
         isLoading={actionLoading}
+        onConfirm={() => void handleArchive()}
+        onClose={() => setDeleteTarget(null)}
       />
     </div>
   );
