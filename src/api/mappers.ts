@@ -13,6 +13,8 @@ import type {
   NotificationItem,
   Order,
   Product,
+  PromoBanner,
+  FlashSaleEvent,
   Store,
   SupportChatMessage,
   SupportChatThread,
@@ -774,6 +776,72 @@ export function mapMarket(market: BackendMarket): Market {
     imageUrl: market.image_url ?? null,
     status: market.status,
     createdAt: market.created_at,
+  };
+}
+
+type BackendPromoBanner = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  cta_label: string;
+  cta_link?: string | null;
+  image_url?: string | null;
+  accent?: string | null;
+  sort_order: number;
+  status: "active" | "disabled";
+  starts_at?: string | null;
+  ends_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapPromoBanner(banner: BackendPromoBanner): PromoBanner {
+  return {
+    id: banner.id,
+    title: banner.title,
+    subtitle: banner.subtitle ?? null,
+    ctaLabel: banner.cta_label,
+    ctaLink: banner.cta_link ?? null,
+    imageUrl: banner.image_url ?? null,
+    accent: (banner.accent as PromoBanner["accent"]) ?? null,
+    sortOrder: banner.sort_order,
+    status: banner.status,
+    startsAt: banner.starts_at ?? null,
+    endsAt: banner.ends_at ?? null,
+    createdAt: banner.created_at,
+    updatedAt: banner.updated_at,
+  };
+}
+
+type BackendFlashSaleEvent = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  image_url?: string | null;
+  starts_at?: string | null;
+  ends_at: string;
+  sort_order: number;
+  status: FlashSaleEvent["status"];
+  product_ids: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapFlashSaleEvent(event: BackendFlashSaleEvent): FlashSaleEvent {
+  return {
+    id: event.id,
+    slug: event.slug,
+    title: event.title,
+    subtitle: event.subtitle ?? null,
+    imageUrl: event.image_url ?? null,
+    startsAt: event.starts_at ?? null,
+    endsAt: event.ends_at,
+    sortOrder: event.sort_order,
+    status: event.status,
+    productIds: event.product_ids,
+    createdAt: event.created_at,
+    updatedAt: event.updated_at,
   };
 }
 
