@@ -1,158 +1,93 @@
-# ODOS Admin Dashboard
+# ODOS Admin
 
-ODOS Admin Dashboard is the React + Vite control panel for the ODOS ecosystem. It connects to the FastAPI backend and gives admins one place to manage users, vendors, stores, markets, categories, products, orders, and notifications.
+React admin dashboard for the ODOS marketplace. Manages catalog, users, vendors, orders, finance, and merchandising.
 
-Backend repo: `../ODOS_MOBILE_BACKEND`
-
-Mobile repo: `../odos-mobile-expo`
+| Repository | GitHub |
+|------------|--------|
+| Backend API | [ODOS_MOBILE_BACKEND](https://github.com/ODOS-DEVS/ODOS_MOBILE_BACKEND) |
+| Mobile app | [ODOS_MOBILE_CLIENT](https://github.com/ODOS-DEVS/ODOS_MOBILE_CLIENT) |
 
 ## Stack
 
-- React 19
-- TypeScript
-- Vite
-- Tailwind CSS
-- React Router
-- Lucide React
+- React 19 · TypeScript · Vite · Tailwind CSS · React Router
 
-## Current Dashboard Coverage
+## Features
 
-- Admin bootstrap signup and admin login
-- Dashboard metrics and recent activity
-- User management
-- Vendor management and vendor application review
-- Market management
-- Store management, including admin-created stores
-- Category management with image upload and subcategory editing
-- Product management with real image upload, store assignment, and multi-category/subcategory linking
-- Order and notification views
+- Admin auth and bootstrap
+- Users, vendors, vendor applications, stores, markets, categories, products
+- Orders, returns, reviews, finance, payouts, support chat, notifications
+- Promo banners and flash sale event scheduling for the mobile home feed
 
-## Recent UX Changes
-
-- Admin identity, email, and logout moved from top bar to sidebar footer
-- Create product button aligned with page-header action placement
-- Store creation added directly in admin
-- Category creation now supports uploaded artwork for shopper-facing cards
-- Product creation now supports one or more categories and one or more subcategories
-- Product review screens now expose full submission detail and pending approval flow
-
-## Prerequisites
+## Requirements
 
 - Node.js 18+
-- npm
-- ODOS backend running locally
+- Running ODOS backend (local or Render)
 
-## Environment
-
-Create `.env` from the example:
-
-```bash
-cp .env.example .env
-```
-
-Local value:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
-```
-
-If your backend runs elsewhere, update it to the correct API origin.
-
-Current deployed backend value:
-
-```env
-VITE_API_BASE_URL=https://odos-backend.onrender.com/api
-```
-
-## Install
+## Local setup
 
 ```bash
 npm install
 ```
 
-## Run
+Create `.env` in the project root:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000/api
+```
+
+Start the dev server:
 
 ```bash
 npm run dev
 ```
 
-Build:
-
-```bash
-npm run build
-```
-
-Preview built app:
-
-```bash
-npm run preview
-```
-
-## Render Deployment
-
-This repo now includes:
-
-- [render.yaml](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/render.yaml:1) for a Render static-site Blueprint with SPA route fallback
-- [.env.example](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/.env.example:1) for the deployed API URL
-
-Recommended deploy flow:
-
-1. Push this repo to the `odos-admin` repository in your GitHub organization.
-2. In Render, create a `Static Site` or a `Blueprint` from the `odos-admin` repo.
-3. If you create the site manually, use:
-
-```text
-Build Command: npm install && npm run build
-Publish Directory: dist
-```
-
-4. Set the environment variable:
+Production API example:
 
 ```env
 VITE_API_BASE_URL=https://odos-backend.onrender.com/api
 ```
 
-5. Deploy.
-6. After Render gives you the admin site URL, add that URL to the backend `CORS_ORIGINS` value on Render and redeploy the backend.
-
-Why the rewrite matters here:
-
-- the admin uses React Router
-- direct refreshes on routes like `/products` or `/reviews` need to fall back to `index.html`
-- the rewrite in `render.yaml` handles that for deployed builds
-
-## Typical Local Workflow
-
-Start backend first:
+## Scripts
 
 ```bash
-cd /Users/paul/Desktop/DeV/odos-workspace/ODOS_MOBILE_BACKEND
-source .venv/bin/activate
-alembic upgrade head
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+npm run dev        # local development
+npm run typecheck  # TypeScript
+npm run build      # production build
+npm run preview    # preview dist/
 ```
 
-Start admin app:
+## Deployment (Render)
 
-```bash
-cd /Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN
-npm run dev
+`render.yaml` configures a static site with SPA fallback for React Router.
+
+**Build command**
+
+```text
+npm install && npm run build
 ```
 
-## Main Areas
+**Publish directory**
 
-- `/dashboard`
-- `/users`
-- `/vendors`
-- `/vendor-applications`
-- `/stores`
-- `/markets`
-- `/categories`
-- `/products`
-- `/orders`
-- `/notifications`
+```text
+dist
+```
 
-## Project Structure
+**Environment**
+
+```env
+VITE_API_BASE_URL=https://odos-backend.onrender.com/api
+```
+
+After deploy, add the admin site URL to backend `CORS_ORIGINS` and redeploy the API if needed.
+
+## Main routes
+
+- `/dashboard` · `/users` · `/vendors` · `/vendor-applications`
+- `/stores` · `/markets` · `/categories` · `/products`
+- `/vouchers` · `/promo-banners` · `/flash-sale-events`
+- `/orders` · `/returns` · `/reviews` · `/finance` · `/notifications`
+
+## Project structure
 
 ```text
 src/
@@ -165,41 +100,13 @@ src/
   utils/
 ```
 
-## Notable Files
+## Release checklist
 
-- [src/components/layout/Sidebar.tsx](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/src/components/layout/Sidebar.tsx:1)
-- [src/components/layout/Topbar.tsx](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/src/components/layout/Topbar.tsx:1)
-- [src/pages/StoresPage.tsx](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/src/pages/StoresPage.tsx:1)
-- [src/pages/CategoriesPage.tsx](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/src/pages/CategoriesPage.tsx:1)
-- [src/pages/ProductsPage.tsx](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/src/pages/ProductsPage.tsx:1)
-- [src/api/client.ts](/Users/paul/Desktop/DeV/odos-workspace/ODOS_ADMIN/src/api/client.ts:1)
+1. Backend migrations applied (`alembic upgrade head`).
+2. `npm run build` passes locally.
+3. `VITE_API_BASE_URL` points at the target API.
+4. Admin origin is listed in backend `CORS_ORIGINS`.
 
-## Verification
+## License
 
-Typecheck:
-
-```bash
-./node_modules/.bin/tsc --noEmit --pretty false
-```
-
-Project build:
-
-```bash
-npm run build
-```
-
-## Notes
-
-- Category and product taxonomy in admin flows directly into the mobile shopper experience.
-- Run `alembic upgrade head` on the backend before testing new admin or mobile features.
-- Add your deployed admin URL to backend `CORS_ORIGINS` on Render (and redeploy backend if needed).
-- Mobile and admin READMEs live in sibling repos under the same workspace folder.
-
-## Repository status
-
-This admin app is the Vite SPA in `ODOS_ADMIN`. Pair it with:
-
-- **Backend** — `../ODOS_MOBILE_BACKEND` (FastAPI + Postgres)
-- **Mobile** — `../odos-mobile-expo` (Expo shopper app)
-
-When preparing a release, verify `npm run build` passes and `VITE_API_BASE_URL` points at the intended API (local or `https://odos-backend.onrender.com/api`).
+Proprietary — ODOS-DEVS.
