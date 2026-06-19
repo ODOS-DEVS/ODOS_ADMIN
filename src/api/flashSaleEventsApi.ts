@@ -1,31 +1,42 @@
 import type { FlashSaleEvent } from "@/types";
 import { mapFlashSaleEvent } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 
 type FlashSaleEventDraft = Pick<
   FlashSaleEvent,
-  "slug" | "title" | "subtitle" | "sortOrder" | "status" | "startsAt" | "endsAt" | "productIds"
+  | "slug"
+  | "title"
+  | "subtitle"
+  | "sortOrder"
+  | "status"
+  | "startsAt"
+  | "endsAt"
+  | "productIds"
 >;
 
-export async function getFlashSaleEvents(token: string) {
-  const events = await requestJson<
-    Array<{
-      id: string;
-      slug: string;
-      title: string;
-      subtitle?: string | null;
-      image_url?: string | null;
-      starts_at?: string | null;
-      ends_at: string;
-      sort_order: number;
-      status: FlashSaleEvent["status"];
-      product_ids: string[];
-      created_at: string;
-      updated_at: string;
-    }>
-  >("/admin/flash-sale-events", { token });
-  return events.map(mapFlashSaleEvent);
-}
+type BackendFlashSaleEvent = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  image_url?: string | null;
+  starts_at?: string | null;
+  ends_at: string;
+  sort_order: number;
+  status: FlashSaleEvent["status"];
+  product_ids: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+const flashSaleEventsListApi = createPaginatedAdminApi<BackendFlashSaleEvent, FlashSaleEvent>({
+  path: "/admin/flash-sale-events",
+  mapItem: mapFlashSaleEvent,
+});
+
+export const getFlashSaleEventsPage = flashSaleEventsListApi.getPage;
+export const getFlashSaleEvents = flashSaleEventsListApi.getAll;
 
 function buildPayload(payload: FlashSaleEventDraft) {
   return {
@@ -40,7 +51,10 @@ function buildPayload(payload: FlashSaleEventDraft) {
   };
 }
 
-export async function createFlashSaleEvent(token: string, payload: FlashSaleEventDraft) {
+export async function createFlashSaleEvent(
+  token: string,
+  payload: FlashSaleEventDraft,
+) {
   const event = await requestJson<{
     id: string;
     slug: string;

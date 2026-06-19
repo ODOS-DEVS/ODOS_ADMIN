@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import type { ReactNode } from "react";
 
 type SectionCardProps = {
@@ -5,21 +6,54 @@ type SectionCardProps = {
   description?: string;
   action?: ReactNode;
   children: ReactNode;
+  compact?: boolean;
+  className?: string;
+  bodyClassName?: string;
+  animationDelay?: number;
 };
 
-export function SectionCard({ title, description, action, children }: SectionCardProps) {
+export function SectionCard({
+  title,
+  description,
+  action,
+  children,
+  compact = false,
+  className,
+  bodyClassName,
+  animationDelay = 0,
+}: SectionCardProps) {
   return (
-    <section className="rounded-3xl border border-white/10 bg-panel/80 shadow-glow">
+    <section
+      style={{ animationDelay: `${animationDelay}ms` }}
+      className={clsx(
+        "animate-fade-up opacity-0",
+        "rounded-2xl border border-white/10 bg-panel/80 shadow-glow",
+        className,
+      )}
+    >
       {title || description || action ? (
-        <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            {title ? <h2 className="text-lg font-semibold text-textStrong">{title}</h2> : null}
-            {description ? <p className="mt-1 text-sm text-textMuted">{description}</p> : null}
+        <div
+          className={clsx(
+            "flex flex-col gap-2 border-b border-white/10 sm:flex-row sm:items-center sm:justify-between",
+            compact ? "px-4 py-3" : "px-5 py-4",
+          )}
+        >
+          <div className="min-w-0">
+            {title ? (
+              <h2 className={clsx("font-semibold text-textStrong", compact ? "text-base" : "text-lg")}>
+                {title}
+              </h2>
+            ) : null}
+            {description ? (
+              <p className={clsx("text-textMuted", compact ? "mt-0.5 text-xs" : "mt-1 text-sm")}>
+                {description}
+              </p>
+            ) : null}
           </div>
-          {action ? <div className="flex items-center gap-3">{action}</div> : null}
+          {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
         </div>
       ) : null}
-      <div className="p-5">{children}</div>
+      <div className={clsx(compact ? "p-4" : "p-5", bodyClassName)}>{children}</div>
     </section>
   );
 }

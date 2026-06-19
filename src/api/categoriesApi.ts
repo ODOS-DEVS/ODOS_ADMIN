@@ -1,25 +1,32 @@
 import type { Category } from "@/types";
 import { mapCategory } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 
-export async function getCategories(token: string) {
-  const categories = await requestJson<
-    Array<{
-      id: string;
-      name: string;
-      slug: string;
-      description: string;
-      image?: string | null;
-      image_url?: string | null;
-      subcategories?: string[] | null;
-      status: Category["status"];
-      created_at: string;
-    }>
-  >("/admin/categories", { token });
-  return categories.map(mapCategory);
-}
+type BackendCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  image?: string | null;
+  image_url?: string | null;
+  subcategories?: string[] | null;
+  status: Category["status"];
+  created_at: string;
+};
 
-type CategoryDraft = Pick<Category, "name" | "description" | "status" | "subcategories"> & {
+const categoriesListApi = createPaginatedAdminApi<BackendCategory, Category>({
+  path: "/admin/categories",
+  mapItem: mapCategory,
+});
+
+export const getCategoriesPage = categoriesListApi.getPage;
+export const getCategories = categoriesListApi.getAll;
+
+type CategoryDraft = Pick<
+  Category,
+  "name" | "description" | "status" | "subcategories"
+> & {
   slug?: string;
   image?: string | null;
   imageFile?: File | null;
@@ -61,7 +68,11 @@ export async function createCategory(token: string, payload: CategoryDraft) {
   return mapCategory(category);
 }
 
-export async function updateCategory(token: string, categoryId: string, payload: CategoryDraft) {
+export async function updateCategory(
+  token: string,
+  categoryId: string,
+  payload: CategoryDraft,
+) {
   const formData = new FormData();
   formData.append("name", payload.name.trim());
   formData.append("description", payload.description.trim());
@@ -103,8 +114,11 @@ export async function deleteCategory(
   options?: { permanent?: boolean },
 ) {
   const suffix = options?.permanent ? "?permanent=true" : "";
-  return requestJson<{ success: true }>(`/admin/categories/${categoryId}${suffix}`, {
-    method: "DELETE",
-    token,
-  });
+  return requestJson<{ success: true }>(
+    `/admin/categories/${categoryId}${suffix}`,
+    {
+      method: "DELETE",
+      token,
+    },
+  );
 }

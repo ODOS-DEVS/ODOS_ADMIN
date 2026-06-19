@@ -1,5 +1,6 @@
 import type { AdminStoreDetail, Store, StoreStatus } from "@/types";
 import { mapStore, mapStoreDetail } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 
 export type CreateStoreInput = {
@@ -17,30 +18,36 @@ export type CreateStoreInput = {
   bannerImageFile?: File | null;
 };
 
-export async function getStores(token: string) {
-  const stores = await requestJson<
-    Array<{
-      id: string;
-      vendor_id: string | null;
-      name: string;
-      slug: string;
-      description: string;
-      category: string;
-      audience_slugs?: string[] | null;
-      market_id: string | null;
-      location: string | null;
-      region: string;
-      city: string;
-      banner_image?: string | null;
-      logo_image?: string | null;
-      status: StoreStatus;
-      created_at: string;
-    }>
-  >("/admin/stores", { token });
-  return stores.map(mapStore);
-}
+type BackendStore = {
+  id: string;
+  vendor_id: string | null;
+  name: string;
+  slug: string;
+  description: string;
+  category: string;
+  audience_slugs?: string[] | null;
+  market_id: string | null;
+  location: string | null;
+  region: string;
+  city: string;
+  banner_image?: string | null;
+  logo_image?: string | null;
+  status: StoreStatus;
+  created_at: string;
+};
 
-export async function getStore(token: string, storeId: string): Promise<AdminStoreDetail> {
+const storesListApi = createPaginatedAdminApi<BackendStore, Store>({
+  path: "/admin/stores",
+  mapItem: mapStore,
+});
+
+export const getStoresPage = storesListApi.getPage;
+export const getStores = storesListApi.getAll;
+
+export async function getStore(
+  token: string,
+  storeId: string,
+): Promise<AdminStoreDetail> {
   const store = await requestJson<{
     id: string;
     vendor_id: string | null;
@@ -139,7 +146,11 @@ export async function createStore(token: string, input: CreateStoreInput) {
   return mapStore(store);
 }
 
-export async function updateStoreStatus(token: string, storeId: string, status: StoreStatus) {
+export async function updateStoreStatus(
+  token: string,
+  storeId: string,
+  status: StoreStatus,
+) {
   const store = await requestJson<{
     id: string;
     vendor_id: string | null;

@@ -34,18 +34,24 @@ function buildWebSocketUrl(token: string) {
 }
 
 export function AdminRealtimeProvider({ children }: { children: React.ReactNode }) {
-  const { adminUser, refreshAdminUser, token } = useAdminAuth();
+  const { adminUser, isHydrating, refreshAdminUser, token } = useAdminAuth();
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
+  const connectGenerationRef = useRef(0);
   const isDocumentVisibleRef = useRef(true);
   const latestTokenRef = useRef<string | null>(null);
+  const connectedUrlRef = useRef<string | null>(null);
+  const shouldReconnectRef = useRef(false);
+  const refreshAdminUserRef = useRef(refreshAdminUser);
   const listenersRef = useRef<
     Map<string, Set<(event: AdminRealtimeEventEnvelope) => void>>
   >(new Map());
   const [connectionState, setConnectionState] = useState<
     "disconnected" | "connecting" | "connected"
   >("disconnected");
+
+  refreshAdminUserRef.current = refreshAdminUser;
 
   const clearReconnectTimeout = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -54,22 +60,24 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
     }
   }, []);
 
-  const disconnect = useCallback(() => {
-    clearReconnectTimeout();
-    reconnectAttemptRef.current = 0;
-    if (socketRef.current) {
-      socketRef.current.close();
-      socketRef.current = null;
+  const teardownSocket = useCallback((socket: WebSocket | null) => {
+    if (!socket) {
+      return;
     }
-    setConnectionState("disconnected");
-  }, [clearReconnectTimeout]);
+
+    socket.onopen = null;
+    socket.onmessage = null;
+    socket.onerror = null;
+    socket.onclose = null;
+
+    if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+      socket.close();
+    }
+  }, []);
 
   const dispatchEvent = useCallback((event: AdminRealtimeEventEnvelope) => {
-    const exactListeners = listenersRef.current.get(event.type);
-    exactListeners?.forEach((handler) => handler(event));
-
-    const wildcardListeners = listenersRef.current.get("*");
-    wildcardListeners?.forEach((handler) => handler(event));
+    listenersRef.current.get(event.type)?.forEach((handler) => handler(event));
+    listenersRef.current.get("*")?.forEach((handler) => handler(event));
   }, []);
 
   const handleSocketMessage = useCallback(
@@ -79,13 +87,37 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
         dispatchEvent(event);
 
         if (event.type === "account.updated") {
-          await refreshAdminUser();
+          await refreshAdminUserRef.current();
         }
       } catch {
         // Ignore malformed realtime messages.
       }
     },
-    [dispatchEvent, refreshAdminUser],
+    [dispatchEvent],
+  );
+
+  const connectRef = useRef<(nextToken: string) => void>(() => {});
+
+  const scheduleReconnect = useCallback(
+    (nextToken: string) => {
+      if (!shouldReconnectRef.current || !isDocumentVisibleRef.current) {
+        return;
+      }
+
+      clearReconnectTimeout();
+      const attempt = reconnectAttemptRef.current + 1;
+      reconnectAttemptRef.current = attempt;
+      const delay = Math.min(1000 * 2 ** (attempt - 1), MAX_RECONNECT_DELAY_MS);
+
+      reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        if (!shouldReconnectRef.current || latestTokenRef.current !== nextToken) {
+          return;
+        }
+        connectRef.current(nextToken);
+      }, delay);
+    },
+    [clearReconnectTimeout],
   );
 
   const connect = useCallback(
@@ -94,58 +126,105 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
         return;
       }
 
+      const nextUrl = buildWebSocketUrl(nextToken);
+      const existingSocket = socketRef.current;
+
+      if (
+        existingSocket &&
+        connectedUrlRef.current === nextUrl &&
+        (existingSocket.readyState === WebSocket.OPEN ||
+          existingSocket.readyState === WebSocket.CONNECTING)
+      ) {
+        return;
+      }
+
+      shouldReconnectRef.current = true;
       clearReconnectTimeout();
 
-      if (socketRef.current) {
-        socketRef.current.close();
+      if (existingSocket) {
+        teardownSocket(existingSocket);
         socketRef.current = null;
       }
 
+      const generation = connectGenerationRef.current + 1;
+      connectGenerationRef.current = generation;
+
       setConnectionState("connecting");
-      const socket = new WebSocket(buildWebSocketUrl(nextToken));
+      const socket = new WebSocket(nextUrl);
       socketRef.current = socket;
 
       socket.onopen = () => {
+        if (connectGenerationRef.current !== generation) {
+          return;
+        }
+
         reconnectAttemptRef.current = 0;
+        connectedUrlRef.current = nextUrl;
         setConnectionState("connected");
       };
 
       socket.onmessage = (event) => {
+        if (connectGenerationRef.current !== generation) {
+          return;
+        }
         void handleSocketMessage(String(event.data ?? ""));
       };
 
       socket.onerror = () => {
+        if (connectGenerationRef.current !== generation) {
+          return;
+        }
         setConnectionState("disconnected");
       };
 
       socket.onclose = () => {
-        if (socketRef.current === socket) {
-          socketRef.current = null;
-        }
-        setConnectionState("disconnected");
-
-        if (!latestTokenRef.current || !isDocumentVisibleRef.current) {
+        if (connectGenerationRef.current !== generation) {
           return;
         }
 
-        const attempt = reconnectAttemptRef.current + 1;
-        reconnectAttemptRef.current = attempt;
-        const delay = Math.min(1000 * 2 ** (attempt - 1), MAX_RECONNECT_DELAY_MS);
-        reconnectTimeoutRef.current = setTimeout(() => {
-          reconnectTimeoutRef.current = null;
-          if (!latestTokenRef.current || !isDocumentVisibleRef.current) {
-            return;
-          }
-          connect(latestTokenRef.current);
-        }, delay);
+        if (socketRef.current === socket) {
+          socketRef.current = null;
+        }
+        connectedUrlRef.current = null;
+        setConnectionState("disconnected");
+
+        if (!shouldReconnectRef.current || latestTokenRef.current !== nextToken) {
+          return;
+        }
+
+        if (!isDocumentVisibleRef.current) {
+          return;
+        }
+
+        scheduleReconnect(nextToken);
       };
     },
-    [clearReconnectTimeout, handleSocketMessage],
+    [clearReconnectTimeout, handleSocketMessage, scheduleReconnect, teardownSocket],
   );
+
+  connectRef.current = connect;
+
+  const disconnect = useCallback(() => {
+    shouldReconnectRef.current = false;
+    connectGenerationRef.current += 1;
+    clearReconnectTimeout();
+    reconnectAttemptRef.current = 0;
+    connectedUrlRef.current = null;
+    teardownSocket(socketRef.current);
+    socketRef.current = null;
+    setConnectionState("disconnected");
+  }, [clearReconnectTimeout, teardownSocket]);
+
+  const adminUserId = adminUser?.id ?? null;
 
   useEffect(() => {
     latestTokenRef.current = token;
-    if (!token || !adminUser) {
+
+    if (isHydrating) {
+      return;
+    }
+
+    if (!token || !adminUserId) {
       disconnect();
       return;
     }
@@ -157,35 +236,42 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
     connect(token);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-      }
+      shouldReconnectRef.current = false;
+      connectGenerationRef.current += 1;
+      clearReconnectTimeout();
+      teardownSocket(socketRef.current);
+      socketRef.current = null;
+      connectedUrlRef.current = null;
+      setConnectionState("disconnected");
     };
-  }, [adminUser, connect, disconnect, token]);
+  }, [adminUserId, connect, disconnect, isHydrating, clearReconnectTimeout, teardownSocket, token]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       isDocumentVisibleRef.current = document.visibilityState === "visible";
       if (isDocumentVisibleRef.current) {
         const activeToken = latestTokenRef.current;
-        if (activeToken && !socketRef.current) {
+        if (activeToken && adminUserId && !socketRef.current) {
+          shouldReconnectRef.current = true;
           connect(activeToken);
         }
         return;
       }
 
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-      }
+      shouldReconnectRef.current = false;
+      clearReconnectTimeout();
+      connectGenerationRef.current += 1;
+      teardownSocket(socketRef.current);
+      socketRef.current = null;
+      connectedUrlRef.current = null;
+      setConnectionState("disconnected");
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [connect]);
+  }, [adminUserId, clearReconnectTimeout, connect, teardownSocket]);
 
   const subscribe = useCallback(
     (eventType: string, handler: (event: AdminRealtimeEventEnvelope) => void) => {

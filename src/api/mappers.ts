@@ -114,6 +114,9 @@ type BackendAdminUserDetail = BackendAdminUser & {
   system_notifications: boolean;
   location_notifications: boolean;
   location_updates: boolean;
+  personalization_enabled?: boolean;
+  analytics_enabled?: boolean;
+  phone_verified?: boolean;
   vendor_rejection_reason?: string | null;
   is_verified: boolean;
   last_login_at?: string | null;
@@ -135,6 +138,65 @@ type BackendAdminUserDetail = BackendAdminUser & {
     last_order_at?: string | null;
     last_review_at?: string | null;
   };
+  orders?: BackendOrder[];
+  reviews?: BackendAdminReview[];
+  return_requests?: BackendAdminReturnRequest[];
+  payment_transactions?: Array<{
+    id: string;
+    order_id: string;
+    order_number: string;
+    user_id: string;
+    customer_email: string;
+    provider: string;
+    reference: string;
+    amount: number;
+    currency: string;
+    status: string;
+    preferred_channel?: string | null;
+    processor_fee_amount: number;
+    gateway_response?: string | null;
+    provider_transaction_id?: string | null;
+    paid_at?: string | null;
+    verified_at?: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+  cart_items?: Array<{
+    id: string;
+    product_id: string;
+    title: string;
+    image_url?: string | null;
+    category?: string | null;
+    price: string;
+    quantity: number;
+    created_at: string;
+    updated_at: string;
+  }>;
+  wishlist_items?: Array<{
+    id: string;
+    product_id: string;
+    title: string;
+    image_url?: string | null;
+    category?: string | null;
+    price?: string | null;
+    created_at: string;
+  }>;
+  notifications?: Array<{
+    id: string;
+    kind: string;
+    title: string;
+    message: string;
+    created_at: string;
+  }>;
+  customer_wallet?: {
+    balance: number;
+    currency: string;
+    lifetime_topups: number;
+    lifetime_spend: number;
+    lifetime_refunds: number;
+    transaction_count: number;
+  } | null;
+  behavior_event_count?: number;
 };
 
 export type BackendVendorApplication = {
@@ -449,6 +511,9 @@ type BackendVoucherCampaign = {
   starts_at?: string | null;
   ends_at?: string | null;
   created_at: string;
+  approval_status?: string;
+  campaign_tag?: string | null;
+  review_notes?: string | null;
 };
 
 type BackendAdminReview = {
@@ -564,6 +629,9 @@ export function mapAdminUserDetail(user: BackendAdminUserDetail): AdminUserDetai
     systemNotifications: user.system_notifications,
     locationNotifications: user.location_notifications,
     locationUpdates: user.location_updates,
+    personalizationEnabled: user.personalization_enabled ?? true,
+    analyticsEnabled: user.analytics_enabled ?? true,
+    phoneVerified: user.phone_verified ?? false,
     vendorRejectionReason: user.vendor_rejection_reason ?? null,
     isVerified: user.is_verified,
     lastLoginAt: user.last_login_at ?? null,
@@ -648,6 +716,67 @@ export function mapAdminUserDetail(user: BackendAdminUserDetail): AdminUserDetai
       lastOrderAt: user.stats.last_order_at ?? null,
       lastReviewAt: user.stats.last_review_at ?? null,
     },
+    orders: (user.orders ?? []).map(mapOrder),
+    reviews: (user.reviews ?? []).map(mapAdminReview),
+    returnRequests: (user.return_requests ?? []).map(mapAdminReturnRequest),
+    paymentTransactions: (user.payment_transactions ?? []).map((transaction) => ({
+      id: transaction.id,
+      orderId: transaction.order_id,
+      orderNumber: transaction.order_number,
+      userId: transaction.user_id,
+      customerEmail: transaction.customer_email,
+      provider: transaction.provider,
+      reference: transaction.reference,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      status: transaction.status,
+      preferredChannel: transaction.preferred_channel ?? null,
+      processorFeeAmount: transaction.processor_fee_amount,
+      gatewayResponse: transaction.gateway_response ?? null,
+      providerTransactionId: transaction.provider_transaction_id ?? null,
+      paidAt: transaction.paid_at ?? null,
+      verifiedAt: transaction.verified_at ?? null,
+      createdAt: transaction.created_at,
+      updatedAt: transaction.updated_at,
+    })),
+    cartItems: (user.cart_items ?? []).map((item) => ({
+      id: item.id,
+      productId: item.product_id,
+      title: item.title,
+      imageUrl: item.image_url ?? null,
+      category: item.category ?? null,
+      price: item.price,
+      quantity: item.quantity,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    })),
+    wishlistItems: (user.wishlist_items ?? []).map((item) => ({
+      id: item.id,
+      productId: item.product_id,
+      title: item.title,
+      imageUrl: item.image_url ?? null,
+      category: item.category ?? null,
+      price: item.price ?? null,
+      createdAt: item.created_at,
+    })),
+    notifications: (user.notifications ?? []).map((notification) => ({
+      id: notification.id,
+      kind: notification.kind,
+      title: notification.title,
+      message: notification.message,
+      createdAt: notification.created_at,
+    })),
+    customerWallet: user.customer_wallet
+      ? {
+          balance: user.customer_wallet.balance,
+          currency: user.customer_wallet.currency,
+          lifetimeTopups: user.customer_wallet.lifetime_topups,
+          lifetimeSpend: user.customer_wallet.lifetime_spend,
+          lifetimeRefunds: user.customer_wallet.lifetime_refunds,
+          transactionCount: user.customer_wallet.transaction_count,
+        }
+      : null,
+    behaviorEventCount: user.behavior_event_count ?? 0,
   };
 }
 
@@ -789,6 +918,10 @@ type BackendPromoBanner = {
   accent?: string | null;
   sort_order: number;
   status: "active" | "disabled";
+  link_type: string;
+  campaign_tag?: string | null;
+  placement: string;
+  destination_label?: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
   created_at: string;
@@ -806,6 +939,10 @@ export function mapPromoBanner(banner: BackendPromoBanner): PromoBanner {
     accent: (banner.accent as PromoBanner["accent"]) ?? null,
     sortOrder: banner.sort_order,
     status: banner.status,
+    linkType: (banner.link_type as PromoBanner["linkType"]) ?? "deals",
+    campaignTag: banner.campaign_tag ?? null,
+    placement: (banner.placement as PromoBanner["placement"]) ?? "home",
+    destinationLabel: banner.destination_label ?? null,
     startsAt: banner.starts_at ?? null,
     endsAt: banner.ends_at ?? null,
     createdAt: banner.created_at,
@@ -1056,6 +1193,9 @@ export function mapVoucherCampaign(voucher: BackendVoucherCampaign): VoucherCamp
     startsAt: voucher.starts_at ?? null,
     endsAt: voucher.ends_at ?? null,
     createdAt: voucher.created_at,
+    approvalStatus: voucher.approval_status ?? "approved",
+    campaignTag: voucher.campaign_tag ?? null,
+    reviewNotes: voucher.review_notes ?? null,
   };
 }
 

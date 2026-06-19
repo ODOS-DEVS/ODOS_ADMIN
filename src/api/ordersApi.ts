@@ -1,24 +1,36 @@
-import type { AdminOrderDetail, AdminReturnRequest, Order, OrderStatus } from "@/types";
+import type {
+  AdminOrderDetail,
+  AdminReturnRequest,
+  Order,
+  OrderStatus,
+} from "@/types";
 import { mapAdminReturnRequest, mapOrder, mapOrderDetail } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 
-export async function getOrders(token: string) {
-  const orders = await requestJson<
-    Array<{
-      id: string;
-      order_number: string;
-      customer_name: string;
-      store_name: string;
-      total_amount: number;
-      status: OrderStatus;
-      payment_status: Order["paymentStatus"];
-      created_at: string;
-    }>
-  >("/admin/orders", { token });
-  return orders.map(mapOrder);
-}
+type BackendOrder = {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  store_name: string;
+  total_amount: number;
+  status: OrderStatus;
+  payment_status: Order["paymentStatus"];
+  created_at: string;
+};
 
-export async function getOrder(token: string, orderId: string): Promise<AdminOrderDetail> {
+const ordersListApi = createPaginatedAdminApi<BackendOrder, Order>({
+  path: "/admin/orders",
+  mapItem: mapOrder,
+});
+
+export const getOrdersPage = ordersListApi.getPage;
+export const getOrders = ordersListApi.getAll;
+
+export async function getOrder(
+  token: string,
+  orderId: string,
+): Promise<AdminOrderDetail> {
   const order = await requestJson<{
     id: string;
     order_number: string;
@@ -107,7 +119,11 @@ export async function getOrder(token: string, orderId: string): Promise<AdminOrd
   return mapOrderDetail(order);
 }
 
-export async function updateOrderStatus(token: string, orderId: string, status: OrderStatus) {
+export async function updateOrderStatus(
+  token: string,
+  orderId: string,
+  status: OrderStatus,
+) {
   const order = await requestJson<{
     id: string;
     order_number: string;
@@ -125,39 +141,45 @@ export async function updateOrderStatus(token: string, orderId: string, status: 
   return mapOrder(order);
 }
 
-export async function getReturnRequests(token: string): Promise<AdminReturnRequest[]> {
-  const requests = await requestJson<
-    Array<{
-      id: string;
-      order_id: string;
-      order_number: string;
-      order_item_id: string;
-      product_id: string;
-      product_title: string;
-      product_image_url?: string | null;
-      product_image_key?: string | null;
-      store_name: string;
-      user_id: string;
-      customer_name: string;
-      customer_email: string;
-      request_type: string;
-      status: string;
-      quantity: number;
-      reason: string;
-      details?: string | null;
-      evidence_image_urls?: string[] | null;
-      admin_note?: string | null;
-      refund_amount?: number | null;
-      reviewed_by_user_id?: string | null;
-      reviewed_by_name?: string | null;
-      reviewed_at?: string | null;
-      resolved_at?: string | null;
-      created_at: string;
-      updated_at: string;
-    }>
-  >("/admin/returns", { token });
-  return requests.map(mapAdminReturnRequest);
-}
+type BackendReturnRequest = {
+  id: string;
+  order_id: string;
+  order_number: string;
+  order_item_id: string;
+  product_id: string;
+  product_title: string;
+  product_image_url?: string | null;
+  product_image_key?: string | null;
+  store_name: string;
+  user_id: string;
+  customer_name: string;
+  customer_email: string;
+  request_type: string;
+  status: string;
+  quantity: number;
+  reason: string;
+  details?: string | null;
+  evidence_image_urls?: string[] | null;
+  admin_note?: string | null;
+  refund_amount?: number | null;
+  reviewed_by_user_id?: string | null;
+  reviewed_by_name?: string | null;
+  reviewed_at?: string | null;
+  resolved_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+const returnRequestsListApi = createPaginatedAdminApi<
+  BackendReturnRequest,
+  AdminReturnRequest
+>({
+  path: "/admin/returns",
+  mapItem: mapAdminReturnRequest,
+});
+
+export const getReturnRequestsPage = returnRequestsListApi.getPage;
+export const getReturnRequests = returnRequestsListApi.getAll;
 
 export async function updateReturnRequest(
   token: string,

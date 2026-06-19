@@ -1,144 +1,90 @@
 import {
-  Activity,
-  BarChart3,
-  BellRing,
+  ArrowLeft,
+  ArrowRight,
   CircleDollarSign,
-  Package,
+  RefreshCw,
   ShoppingCart,
-  Store,
-  Users,
+  TrendingUp,
+  Wallet,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { getDashboardOverview } from "@/api/dashboardApi";
+import { getFinanceOverview } from "@/api/financeApi";
+import {
+  AnalyticsSkeleton,
+  InsightPill,
+  MetricBar,
+  MetricRow,
+} from "@/components/analytics/AnalyticsUi";
+import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { LoadingState } from "@/components/ui/LoadingState";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import type { DashboardPayload } from "@/types";
-import { formatCurrency, formatDateTime } from "@/utils/format";
+import type { AdminFinanceOverview, DashboardPayload } from "@/types";
+import { buildAnalyticsSnapshot } from "@/utils/analyticsMetrics";
+import { formatCurrency } from "@/utils/format";
 
-type InsightMetric = {
-  label: string;
-  value: string;
-  hint: string;
-  icon: LucideIcon;
+type BriefAnalyticsState = {
+  dashboard: DashboardPayload;
+  finance: AdminFinanceOverview | null;
 };
 
 export function AnalyticsPage() {
   const { token } = useAdminAuth();
-  const [data, setData] = useState<DashboardPayload | null>(null);
+  const navigate = useNavigate();
+  const [state, setState] = useState<BriefAnalyticsState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadAnalytics = useCallback(async () => {
-    if (!token) return;
-    setIsLoading(true);
-    setError(null);
+  const loadAnalytics = useCallback(
+    async (background = false) => {
+      if (!token) return;
 
-    try {
-      const payload = await getDashboardOverview(token);
-      setData(payload);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load analytics.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [token]);
+      if (background) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+      setError(null);
+
+      try {
+        const dashboard = await getDashboardOverview(token);
+        const finance = await getFinanceOverview(token).catch(() => null);
+        setState({ dashboard, finance });
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load analytics.");
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [token],
+  );
 
   useEffect(() => {
     void loadAnalytics();
   }, [loadAnalytics]);
 
-  const insights = useMemo<InsightMetric[]>(() => {
-    if (!data) return [];
+  const snapshot = useMemo(
+    () => (state ? buildAnalyticsSnapshot(state.dashboard, state.finance) : null),
+    [state],
+  );
 
-    const averageOrderValue =
-      data.stats.totalOrders > 0 ? data.stats.totalRevenue / data.stats.totalOrders : 0;
-    const vendorCoverage =
-      data.stats.totalStores > 0 ? data.stats.totalProducts / data.stats.totalStores : 0;
-    const approvalPressure =
-      data.stats.totalVendors > 0
-        ? data.stats.pendingVendorApplications / data.stats.totalVendors
-        : data.stats.pendingVendorApplications > 0
-          ? 1
-          : 0;
-    const orderAttention =
-      data.stats.totalOrders > 0 ? data.stats.pendingOrders / data.stats.totalOrders : 0;
-
-    return [
-      {
-        label: "Average order value",
-        value: formatCurrency(Math.round(averageOrderValue)),
-        hint: "Revenue spread across confirmed shopper demand.",
-        icon: CircleDollarSign,
-      },
-      {
-        label: "Products per store",
-        value: vendorCoverage.toFixed(1),
-        hint: "A quick read on storefront catalog depth.",
-        icon: Package,
-      },
-      {
-        label: "Approval pressure",
-        value: `${Math.round(approvalPressure * 100)}%`,
-        hint: "How much vendor review work is waiting in the queue.",
-        icon: Users,
-      },
-      {
-        label: "Orders needing action",
-        value: `${Math.round(orderAttention * 100)}%`,
-        hint: "Share of orders still moving through fulfillment.",
-        icon: ShoppingCart,
-      },
-    ];
-  }, [data]);
-
-  const scaleMax = useMemo(() => {
-    if (!data) return 1;
-    return Math.max(
-      data.stats.totalUsers,
-      data.stats.totalVendors,
-      data.stats.totalStores,
-      data.stats.totalProducts,
-      1,
-    );
-  }, [data]);
-
-  const footprintSeries = useMemo(() => {
-    if (!data) return [];
-    return [
-      { label: "Users", value: data.stats.totalUsers, color: "from-sky-400 to-cyan-300" },
-      { label: "Vendors", value: data.stats.totalVendors, color: "from-emerald-400 to-lime-300" },
-      { label: "Stores", value: data.stats.totalStores, color: "from-amber-400 to-orange-300" },
-      { label: "Products", value: data.stats.totalProducts, color: "from-fuchsia-400 to-pink-300" },
-    ];
-  }, [data]);
-
-  const notificationMix = useMemo(() => {
-    if (!data) return [];
-    const counts = data.recentNotifications.reduce<Record<string, number>>((acc, item) => {
-      acc[item.type] = (acc[item.type] ?? 0) + 1;
-      return acc;
-    }, {});
-    const maxCount = Math.max(...Object.values(counts), 1);
-
-    return Object.entries(counts).map(([type, count]) => ({
-      type,
-      count,
-      width: `${Math.max((count / maxCount) * 100, 24)}%`,
-    }));
-  }, [data]);
+  const footprintMax = useMemo(() => {
+    if (!state) return 1;
+    const { stats } = state.dashboard;
+    return Math.max(stats.totalUsers, stats.totalVendors, stats.totalStores, stats.totalProducts, 1);
+  }, [state]);
 
   if (isLoading) {
-    return <LoadingState label="Loading ODOS analytics..." />;
+    return <AnalyticsSkeleton />;
   }
 
-  if (error || !data) {
+  if (error || !state || !snapshot) {
     return (
       <ErrorState
         description={error ?? "Analytics are unavailable right now."}
@@ -147,222 +93,201 @@ export function AnalyticsPage() {
     );
   }
 
-  const completedOrders = Math.max(data.stats.totalOrders - data.stats.pendingOrders, 0);
-  const completionRate =
-    data.stats.totalOrders > 0 ? (completedOrders / data.stats.totalOrders) * 100 : 0;
+  const { dashboard, finance } = state;
+  const { stats } = dashboard;
+  const grossCollected = finance?.grossCollectedTotal ?? stats.totalRevenue;
+  const paidOrders = finance?.paidOrderCount ?? stats.totalOrders;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Analytics"
-        title="ODOS performance snapshot"
-        description="Read the shape of the marketplace at a glance with richer visual cues for growth, fulfillment, and activity."
-      />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {insights.map((item) => (
-          <StatCard
-            key={item.label}
-            label={item.label}
-            value={item.value}
-            hint={item.hint}
-            icon={item.icon}
-          />
-        ))}
+    <div className="space-y-4">
+      <div className="animate-fade-up opacity-0" style={{ animationDelay: "0ms" }}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
+              Analytics
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">
+              At-a-glance performance
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-textMuted">
+              Key commerce and treasury metrics. Open the full report for every breakdown,
+              distribution, and operational signal across the platform.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              leftIcon={
+                <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              }
+              onClick={() => void loadAnalytics(true)}
+              disabled={isRefreshing}
+            >
+              Refresh
+            </Button>
+            <Button
+              leftIcon={<ArrowRight className="size-4" />}
+              onClick={() => navigate("/analytics/full")}
+            >
+              View full analytics report
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard
+          label="Gross collected"
+          value={formatCurrency(Math.round(grossCollected))}
+          hint="Total checkout value processed"
+          icon={CircleDollarSign}
+          tone="success"
+          animationDelay={60}
+        />
+        <StatCard
+          label="Paid orders"
+          value={new Intl.NumberFormat("en-GH").format(paidOrders)}
+          hint={finance ? "Verified successful payments" : "All platform orders"}
+          icon={ShoppingCart}
+          animationDelay={110}
+          onClick={() => navigate("/orders")}
+        />
+        <StatCard
+          label="Average order value"
+          value={formatCurrency(Math.round(snapshot.paidAverageOrderValue))}
+          hint="Revenue per paid order"
+          icon={TrendingUp}
+          tone="info"
+          animationDelay={160}
+        />
+        <StatCard
+          label="Platform commission"
+          value={formatCurrency(Math.round(finance?.commissionBalance ?? 0))}
+          hint="ODOS commission balance"
+          icon={Wallet}
+          animationDelay={210}
+          onClick={() => navigate("/finance")}
+        />
+      </div>
+
+      <div
+        className="animate-fade-up opacity-0 grid grid-cols-2 gap-2 md:grid-cols-4"
+        style={{ animationDelay: "260ms" }}
+      >
+        <InsightPill
+          label="Fulfillment rate"
+          value={`${Math.round(snapshot.completionRate)}%`}
+          hint={`${snapshot.completedOrders} orders completed`}
+        />
+        <InsightPill
+          label="Catalog depth"
+          value={snapshot.productsPerStore.toFixed(1)}
+          hint="Products per store"
+        />
+        <InsightPill
+          label="Refund exposure"
+          value={`${snapshot.refundRate.toFixed(1)}%`}
+          hint="Refunds vs gross collected"
+        />
+        <InsightPill
+          label="Processor fees"
+          value={`${snapshot.feeRate.toFixed(1)}%`}
+          hint="Payment processing cost share"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-12">
         <SectionCard
+          compact
+          className="xl:col-span-7"
+          animationDelay={320}
           title="Marketplace footprint"
-          description="A quick visual balance of the people, storefronts, and catalog depth currently powering ODOS."
+          description="Scale across users, vendors, stores, and catalog"
         >
-          <div className="space-y-4">
-            {footprintSeries.map((item) => (
-              <div key={item.label}>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-textMuted">{item.label}</span>
-                  <span className="font-medium text-textStrong">
-                    {new Intl.NumberFormat("en-GH").format(item.value)}
-                  </span>
-                </div>
-                <div className="h-3 rounded-full bg-white/5">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${item.color}`}
-                    style={{ width: `${Math.max((item.value / scaleMax) * 100, 10)}%` }}
-                  />
-                </div>
-              </div>
+          <div className="space-y-3">
+            {(
+              [
+                { label: "Users", value: stats.totalUsers, tone: "sky" as const },
+                { label: "Vendors", value: stats.totalVendors, tone: "emerald" as const },
+                { label: "Stores", value: stats.totalStores, tone: "amber" as const },
+                { label: "Products", value: stats.totalProducts, tone: "fuchsia" as const },
+              ] as const
+            ).map((item, index) => (
+              <MetricBar
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                max={footprintMax}
+                displayValue={new Intl.NumberFormat("en-GH").format(item.value)}
+                tone={item.tone}
+                animationDelay={340 + index * 40}
+              />
             ))}
           </div>
         </SectionCard>
 
         <SectionCard
-          title="Fulfillment rhythm"
-          description="How much of the current order volume is still moving through the operational pipeline."
+          compact
+          className="xl:col-span-5"
+          animationDelay={360}
+          title="Treasury snapshot"
+          description="Balances and payout exposure"
+          action={
+            <Button variant="ghost" onClick={() => navigate("/finance")}>
+              Finance
+            </Button>
+          }
         >
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm text-textMuted">Completed flow</p>
-                <p className="mt-2 text-4xl font-semibold text-textStrong">
-                  {Math.round(completionRate)}%
-                </p>
-              </div>
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-emerald-200">
-                <Activity className="size-5" />
-              </div>
-            </div>
-            <div className="mt-5 h-3 rounded-full bg-white/5">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-300"
-                style={{ width: `${Math.max(completionRate, 8)}%` }}
+          {finance ? (
+            <div className="space-y-2">
+              <MetricRow
+                label="Current balance"
+                value={formatCurrency(finance.currentBalance)}
+                tone="success"
+              />
+              <MetricRow
+                label="Vendor liability"
+                value={formatCurrency(finance.vendorLiabilityBalance)}
+              />
+              <MetricRow
+                label="Pending withdrawals"
+                value={formatCurrency(finance.pendingWithdrawalTotal)}
+                tone="warning"
+              />
+              <MetricRow
+                label="Refunded total"
+                value={formatCurrency(finance.refundedTotal)}
+                tone="info"
               />
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-textMuted">Pending</p>
-                <p className="mt-3 text-2xl font-semibold text-textStrong">
-                  {new Intl.NumberFormat("en-GH").format(data.stats.pendingOrders)}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-textMuted">Completed</p>
-                <p className="mt-3 text-2xl font-semibold text-textStrong">
-                  {new Intl.NumberFormat("en-GH").format(completedOrders)}
-                </p>
-              </div>
-            </div>
-          </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-white/10 px-3 py-5 text-xs leading-5 text-textMuted">
+              Treasury metrics are unavailable until payments flow through checkout.
+            </p>
+          )}
         </SectionCard>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <SectionCard
-          title="Recent activity mix"
-          description="The kinds of events reaching the admin desk most often right now."
-        >
-          <div className="space-y-4">
-            {notificationMix.length ? (
-              notificationMix.map((item) => (
-                <div key={item.type}>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="capitalize text-textMuted">{item.type}</span>
-                    <span className="font-medium text-textStrong">{item.count}</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-white/5">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-accent to-amber-300"
-                      style={{ width: item.width }}
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-textMuted">
-                Recent activity will appear here as the notification stream grows.
-              </p>
-            )}
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Latest momentum"
-          description="A compact pulse of the most recent orders and queue items reaching the platform."
-        >
-          <div className="space-y-3">
-            {data.recentOrders.map((order, index) => (
-              <div
-                key={order.id}
-                className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-[auto_1fr_auto]"
-              >
-                <div className="flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30 text-accentSoft">
-                  {index === 0 ? <BarChart3 className="size-5" /> : <Store className="size-5" />}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-textStrong">{order.orderNumber}</p>
-                  <p className="mt-1 text-sm text-textMuted">
-                    {order.customerName} · {order.storeName}
-                  </p>
-                  <p className="mt-2 text-xs text-textMuted">{formatDateTime(order.createdAt)}</p>
-                </div>
-                <div className="flex flex-col items-start gap-2 md:items-end">
-                  <p className="font-medium text-textStrong">{formatCurrency(order.totalAmount)}</p>
-                  <StatusBadge status={order.status} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <SectionCard
-          title="Revenue lens"
-          description="How the gross marketplace revenue compares with catalog and vendor scale."
-        >
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                label: "Gross revenue",
-                value: formatCurrency(Math.round(data.stats.totalRevenue)),
-                icon: CircleDollarSign,
-              },
-              {
-                label: "Approved vendors",
-                value: new Intl.NumberFormat("en-GH").format(data.stats.totalVendors),
-                icon: Users,
-              },
-              {
-                label: "Catalog size",
-                value: new Intl.NumberFormat("en-GH").format(data.stats.totalProducts),
-                icon: Package,
-              },
-            ].map((card) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={card.label}
-                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-textMuted">{card.label}</p>
-                    <div className="rounded-2xl border border-accent/20 bg-accent/10 p-2 text-accentSoft">
-                      <Icon className="size-4" />
-                    </div>
-                  </div>
-                  <p className="mt-4 text-2xl font-semibold text-textStrong">{card.value}</p>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Recent signals"
-          description="Notifications worth keeping an eye on while the marketplace scales."
-        >
-          <div className="space-y-3">
-            {data.recentNotifications.map((notification) => (
-              <div
-                key={notification.id}
-                className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-              >
-                <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-2 text-amber-200">
-                  <BellRing className="size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-textStrong">{notification.title}</p>
-                    <StatusBadge status={notification.read ? "active" : "unread"} />
-                  </div>
-                  <p className="mt-2 text-sm text-textMuted">{notification.message}</p>
-                  <p className="mt-3 text-xs text-textMuted">{formatDateTime(notification.createdAt)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      </div>
+      <SectionCard
+        compact
+        animationDelay={420}
+        title="Need the complete picture?"
+        description="Orders, payments, ledger, vendors, returns, reviews, marketing, support, and more — all in one owner-level report."
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-textMuted">
+            {stats.pendingVendorApplications > 0
+              ? `${stats.pendingVendorApplications} vendor application${stats.pendingVendorApplications === 1 ? "" : "s"} pending · ${stats.pendingOrders} orders awaiting fulfillment`
+              : `${stats.pendingOrders} orders awaiting fulfillment · ${stats.totalOrders} total orders tracked`}
+          </p>
+          <Button
+            leftIcon={<ArrowRight className="size-4" />}
+            onClick={() => navigate("/analytics/full")}
+          >
+            Open full analytics report
+          </Button>
+        </div>
+      </SectionCard>
     </div>
   );
 }

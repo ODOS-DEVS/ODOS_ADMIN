@@ -13,6 +13,7 @@ type DataTableProps<T> = {
   data: T[];
   keyExtractor: (row: T) => string;
   rowClassName?: string;
+  compact?: boolean;
 };
 
 export function DataTable<T>({
@@ -20,6 +21,7 @@ export function DataTable<T>({
   data,
   keyExtractor,
   rowClassName,
+  compact = false,
 }: DataTableProps<T>) {
   return (
     <div className="overflow-x-auto">
@@ -30,7 +32,8 @@ export function DataTable<T>({
               <th
                 key={column.key}
                 className={clsx(
-                  "px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.22em] text-textMuted",
+                  "text-left text-xs font-semibold uppercase tracking-[0.18em] text-textMuted",
+                  compact ? "px-3 py-2" : "px-4 py-3",
                   column.className,
                 )}
               >
@@ -46,7 +49,14 @@ export function DataTable<T>({
               className={clsx("transition hover:bg-white/[0.03]", rowClassName)}
             >
               {columns.map((column) => (
-                <td key={column.key} className="px-4 py-4 align-top text-sm text-textStrong">
+                <td
+                  key={column.key}
+                  className={clsx(
+                    "align-middle text-sm text-textStrong",
+                    compact ? "px-3 py-2.5" : "px-4 py-4 align-top",
+                    column.className,
+                  )}
+                >
                   {column.render(row)}
                 </td>
               ))}
