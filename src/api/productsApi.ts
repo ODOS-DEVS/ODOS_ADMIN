@@ -1,5 +1,6 @@
 import type { Product, ProductStatus } from "@/types";
 import { mapProduct } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 
 type BackendProduct = {
@@ -59,13 +60,19 @@ export type CreateProductInput = {
   imageFiles?: File[] | null;
 };
 
-export async function getProducts(token: string) {
-  const products = await requestJson<BackendProduct[]>("/admin/products", { token });
-  return products.map(mapProduct);
-}
+const productsListApi = createPaginatedAdminApi<BackendProduct, Product>({
+  path: "/admin/products",
+  mapItem: mapProduct,
+});
+
+export const getProductsPage = productsListApi.getPage;
+export const getProducts = productsListApi.getAll;
 
 export async function getProduct(token: string, productId: string) {
-  const product = await requestJson<BackendProduct>(`/admin/products/${productId}`, { token });
+  const product = await requestJson<BackendProduct>(
+    `/admin/products/${productId}`,
+    { token },
+  );
   return mapProduct(product);
 }
 
@@ -134,22 +141,36 @@ export async function createProduct(token: string, input: CreateProductInput) {
   return mapProduct(product);
 }
 
-export async function updateProduct(token: string, productId: string, input: CreateProductInput) {
+export async function updateProduct(
+  token: string,
+  productId: string,
+  input: CreateProductInput,
+) {
   const formData = buildProductFormData(input);
 
-  const product = await requestJson<BackendProduct>(`/admin/products/${productId}`, {
-    method: "PATCH",
-    token,
-    body: formData,
-  });
+  const product = await requestJson<BackendProduct>(
+    `/admin/products/${productId}`,
+    {
+      method: "PATCH",
+      token,
+      body: formData,
+    },
+  );
   return mapProduct(product);
 }
 
-export async function updateProductStatus(token: string, productId: string, status: ProductStatus) {
-  const product = await requestJson<BackendProduct>(`/admin/products/${productId}/status`, {
-    method: "PATCH",
-    token,
-    body: JSON.stringify({ status }),
-  });
+export async function updateProductStatus(
+  token: string,
+  productId: string,
+  status: ProductStatus,
+) {
+  const product = await requestJson<BackendProduct>(
+    `/admin/products/${productId}/status`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ status }),
+    },
+  );
   return mapProduct(product);
 }

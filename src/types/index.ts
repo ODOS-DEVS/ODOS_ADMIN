@@ -146,6 +146,45 @@ export type AdminUserStats = {
   lastReviewAt?: string | null;
 };
 
+export type AdminUserCartItem = {
+  id: string;
+  productId: string;
+  title: string;
+  imageUrl?: string | null;
+  category?: string | null;
+  price: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminUserWishlistItem = {
+  id: string;
+  productId: string;
+  title: string;
+  imageUrl?: string | null;
+  category?: string | null;
+  price?: string | null;
+  createdAt: string;
+};
+
+export type AdminUserNotification = {
+  id: string;
+  kind: string;
+  title: string;
+  message: string;
+  createdAt: string;
+};
+
+export type AdminUserWalletSummary = {
+  balance: number;
+  currency: string;
+  lifetimeTopups: number;
+  lifetimeSpend: number;
+  lifetimeRefunds: number;
+  transactionCount: number;
+};
+
 export type AdminUserDetail = AdminUser & {
   dateOfBirth?: string | null;
   gender?: string | null;
@@ -157,6 +196,9 @@ export type AdminUserDetail = AdminUser & {
   systemNotifications: boolean;
   locationNotifications: boolean;
   locationUpdates: boolean;
+  personalizationEnabled: boolean;
+  analyticsEnabled: boolean;
+  phoneVerified: boolean;
   vendorRejectionReason?: string | null;
   isVerified: boolean;
   lastLoginAt?: string | null;
@@ -167,6 +209,15 @@ export type AdminUserDetail = AdminUser & {
   vendorApplication?: AdminUserVendorApplication | null;
   stores: AdminUserStoreSummary[];
   stats: AdminUserStats;
+  orders: Order[];
+  reviews: AdminReview[];
+  returnRequests: AdminReturnRequest[];
+  paymentTransactions: AdminPaymentTransaction[];
+  cartItems: AdminUserCartItem[];
+  wishlistItems: AdminUserWishlistItem[];
+  notifications: AdminUserNotification[];
+  customerWallet: AdminUserWalletSummary | null;
+  behaviorEventCount: number;
 };
 
 export type VendorApplication = {
@@ -285,6 +336,21 @@ export type Market = {
 
 export type PromoBannerAccent = "gold" | "default" | "teal";
 
+export type PromoBannerPlacement = "home" | "deals";
+
+export type PromoBannerLinkType =
+  | "deals"
+  | "flash_sales"
+  | "popular"
+  | "search"
+  | "category"
+  | "product"
+  | "store"
+  | "vouchers"
+  | "campaign"
+  | "external"
+  | "screen";
+
 export type PromoBanner = {
   id: string;
   title: string;
@@ -295,6 +361,10 @@ export type PromoBanner = {
   accent?: PromoBannerAccent | null;
   sortOrder: number;
   status: "active" | "disabled";
+  linkType: PromoBannerLinkType;
+  campaignTag?: string | null;
+  placement: PromoBannerPlacement;
+  destinationLabel?: string | null;
   startsAt?: string | null;
   endsAt?: string | null;
   createdAt: string;
@@ -390,6 +460,9 @@ export type VoucherCampaign = {
   startsAt?: string | null;
   endsAt?: string | null;
   createdAt: string;
+  approvalStatus?: string;
+  campaignTag?: string | null;
+  reviewNotes?: string | null;
 };
 
 export type AdminReview = {

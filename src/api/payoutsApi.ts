@@ -1,4 +1,5 @@
 import { mapAdminVendorWithdrawalRequest } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 import type { AdminVendorWithdrawalRequest } from "@/types";
 
@@ -32,13 +33,16 @@ type BackendAdminVendorWithdrawalRequest = {
   updated_at: string;
 };
 
-export async function getVendorWithdrawalRequests(token: string) {
-  const requests = await requestJson<BackendAdminVendorWithdrawalRequest[]>(
-    "/admin/payouts/withdrawals",
-    { token },
-  );
-  return requests.map(mapAdminVendorWithdrawalRequest);
-}
+const vendorWithdrawalsListApi = createPaginatedAdminApi<
+  BackendAdminVendorWithdrawalRequest,
+  AdminVendorWithdrawalRequest
+>({
+  path: "/admin/payouts/withdrawals",
+  mapItem: mapAdminVendorWithdrawalRequest,
+});
+
+export const getVendorWithdrawalRequestsPage = vendorWithdrawalsListApi.getPage;
+export const getVendorWithdrawalRequests = vendorWithdrawalsListApi.getAll;
 
 export async function updateVendorWithdrawalRequest(
   token: string,

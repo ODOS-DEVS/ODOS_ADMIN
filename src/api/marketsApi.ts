@@ -1,21 +1,25 @@
 import type { Market } from "@/types";
 import { mapMarket } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 
-export async function getMarkets(token: string) {
-  const markets = await requestJson<
-    Array<{
-      id: string;
-      name: string;
-      slug: string;
-      image?: string | null;
-      image_url?: string | null;
-      status: Market["status"];
-      created_at: string;
-    }>
-  >("/admin/markets", { token });
-  return markets.map(mapMarket);
-}
+type BackendMarket = {
+  id: string;
+  name: string;
+  slug: string;
+  image?: string | null;
+  image_url?: string | null;
+  status: Market["status"];
+  created_at: string;
+};
+
+const marketsListApi = createPaginatedAdminApi<BackendMarket, Market>({
+  path: "/admin/markets",
+  mapItem: mapMarket,
+});
+
+export const getMarketsPage = marketsListApi.getPage;
+export const getMarkets = marketsListApi.getAll;
 
 type MarketDraft = Pick<Market, "name" | "status"> & {
   slug?: string;
@@ -53,7 +57,11 @@ export async function createMarket(token: string, payload: MarketDraft) {
   return mapMarket(market);
 }
 
-export async function updateMarket(token: string, marketId: string, payload: MarketDraft) {
+export async function updateMarket(
+  token: string,
+  marketId: string,
+  payload: MarketDraft,
+) {
   const formData = new FormData();
   formData.append("name", payload.name.trim());
   formData.append("status", payload.status);

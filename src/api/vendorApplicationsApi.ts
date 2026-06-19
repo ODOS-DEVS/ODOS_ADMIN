@@ -1,16 +1,26 @@
 import type { VendorApplication } from "@/types";
-import { mapVendorApplication, type BackendVendorApplication } from "@/api/mappers";
+import {
+  mapVendorApplication,
+  type BackendVendorApplication,
+} from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 
-export async function getVendorApplications(token: string) {
-  const applications = await requestJson<BackendVendorApplication[]>(
-    "/admin/vendor-applications",
-    { token },
-  );
-  return applications.map(mapVendorApplication);
-}
+const vendorApplicationsListApi = createPaginatedAdminApi<
+  BackendVendorApplication,
+  VendorApplication
+>({
+  path: "/admin/vendor-applications",
+  mapItem: mapVendorApplication,
+});
 
-export async function approveVendorApplication(token: string, applicationId: string) {
+export const getVendorApplicationsPage = vendorApplicationsListApi.getPage;
+export const getVendorApplications = vendorApplicationsListApi.getAll;
+
+export async function approveVendorApplication(
+  token: string,
+  applicationId: string,
+) {
   const application = await requestJson<BackendVendorApplication>(
     `/admin/vendor-applications/${applicationId}/approve`,
     {

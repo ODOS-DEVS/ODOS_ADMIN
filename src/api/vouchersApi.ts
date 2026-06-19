@@ -1,4 +1,5 @@
 import { mapVoucherCampaign } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 import type {
   VoucherAvailability,
@@ -32,6 +33,9 @@ type BackendVoucherCampaign = {
   starts_at?: string | null;
   ends_at?: string | null;
   created_at: string;
+  approval_status?: string;
+  campaign_tag?: string | null;
+  review_notes?: string | null;
 };
 
 export type VoucherDraft = {
@@ -74,10 +78,13 @@ function toBackendPayload(input: VoucherDraft) {
   };
 }
 
-export async function getVouchers(token: string) {
-  const vouchers = await requestJson<BackendVoucherCampaign[]>("/admin/vouchers", { token });
-  return vouchers.map(mapVoucherCampaign);
-}
+const vouchersListApi = createPaginatedAdminApi<BackendVoucherCampaign, VoucherCampaign>({
+  path: "/admin/vouchers",
+  mapItem: mapVoucherCampaign,
+});
+
+export const getVouchersPage = vouchersListApi.getPage;
+export const getVouchers = vouchersListApi.getAll;
 
 export async function createVoucher(token: string, payload: VoucherDraft) {
   const voucher = await requestJson<BackendVoucherCampaign>("/admin/vouchers", {
@@ -102,4 +109,21 @@ export async function archiveVoucher(token: string, voucherId: string) {
     method: "DELETE",
     token,
   });
+}
+
+export async function reviewVoucher(
+  token: string,
+  voucherId: string,
+  payload: { approvalStatus: "approved" | "rejected" | "disabled"; reviewNotes?: string | null; isActive?: boolean },
+) {
+  const voucher = await requestJson<BackendVoucherCampaign>(`/admin/vouchers/${voucherId}/review`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({
+      approval_status: payload.approvalStatus,
+      review_notes: payload.reviewNotes ?? null,
+      is_active: payload.isActive,
+    }),
+  });
+  return mapVoucherCampaign(voucher);
 }

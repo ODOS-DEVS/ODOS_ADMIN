@@ -1,4 +1,5 @@
 import { mapAdminReview } from "@/api/mappers";
+import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 import type { AdminReview } from "@/types";
 
@@ -26,10 +27,13 @@ export type ReviewModerationInput = {
   moderationReason?: string | null;
 };
 
-export async function getReviews(token: string) {
-  const reviews = await requestJson<BackendAdminReview[]>("/admin/reviews", { token });
-  return reviews.map(mapAdminReview);
-}
+const reviewsListApi = createPaginatedAdminApi<BackendAdminReview, AdminReview>({
+  path: "/admin/reviews",
+  mapItem: mapAdminReview,
+});
+
+export const getReviewsPage = reviewsListApi.getPage;
+export const getReviews = reviewsListApi.getAll;
 
 export async function updateReviewModeration(
   token: string,

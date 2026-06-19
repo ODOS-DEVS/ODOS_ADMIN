@@ -6,14 +6,14 @@ import { CategoriesPage } from "@/pages/CategoriesPage";
 import { BootstrapAdminPage } from "@/pages/BootstrapAdminPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { FinancePage } from "@/pages/FinancePage";
+import { FlashSaleEventsPage } from "@/pages/FlashSaleEventsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MarketsPage } from "@/pages/MarketsPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { OrdersPage } from "@/pages/OrdersPage";
-import { ProductsPage } from "@/pages/ProductsPage";
 import { PayoutsPage } from "@/pages/PayoutsPage";
+import { ProductsPage } from "@/pages/ProductsPage";
 import { PromoBannersPage } from "@/pages/PromoBannersPage";
-import { FlashSaleEventsPage } from "@/pages/FlashSaleEventsPage";
 import { ReturnsPage } from "@/pages/ReturnsPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -23,6 +23,7 @@ import { UsersPage } from "@/pages/UsersPage";
 import { VendorApplicationsPage } from "@/pages/VendorApplicationsPage";
 import { VendorsPage } from "@/pages/VendorsPage";
 import { VouchersPage } from "@/pages/VouchersPage";
+import { AdminFullRoutes } from "@/routes/adminFullRoutes";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { getStoredAdminPreferences } from "@/utils/adminPreferences";
 
@@ -61,6 +62,7 @@ export function AppRoutes() {
         <Route path="/support-chats" element={<SupportChatsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        {AdminFullRoutes()}
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
