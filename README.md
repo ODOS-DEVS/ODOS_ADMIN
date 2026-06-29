@@ -19,6 +19,7 @@ React admin dashboard for operating the ODOS marketplace — catalog, users, ven
 - Dashboard overview, users (with detail profiles), vendors, vendor applications
 - Stores, markets, categories, products (including studio-style editors)
 - Orders, returns, reviews, finance, payouts, support chats, notifications
+- Delivery settings (standard / express / same-day fees and ETAs)
 
 **Merchandising**
 
@@ -92,7 +93,7 @@ After deploy, add the admin site origin to backend `CORS_ORIGINS` and redeploy t
 - `/dashboard` · `/users` · `/vendors` · `/vendor-applications`
 - `/stores` · `/markets` · `/categories` · `/products`
 - `/vouchers` · `/promo-banners` · `/flash-sale-events`
-- `/orders` · `/returns` · `/reviews` · `/finance` · `/notifications`
+- `/orders` · `/returns` · `/reviews` · `/finance` · `/notifications` · `/delivery-settings`
 
 **Full directories** (infinite scroll, detail drill-down)
 

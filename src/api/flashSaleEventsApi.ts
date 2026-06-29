@@ -30,7 +30,10 @@ type BackendFlashSaleEvent = {
   updated_at: string;
 };
 
-const flashSaleEventsListApi = createPaginatedAdminApi<BackendFlashSaleEvent, FlashSaleEvent>({
+const flashSaleEventsListApi = createPaginatedAdminApi<
+  BackendFlashSaleEvent,
+  FlashSaleEvent
+>({
   path: "/admin/flash-sale-events",
   mapItem: mapFlashSaleEvent,
 });

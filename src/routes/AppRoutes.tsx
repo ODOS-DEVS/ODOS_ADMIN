@@ -5,6 +5,7 @@ import { AnalyticsPage } from "@/pages/AnalyticsPage";
 import { CategoriesPage } from "@/pages/CategoriesPage";
 import { BootstrapAdminPage } from "@/pages/BootstrapAdminPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { DeliverySettingsPage } from "@/pages/DeliverySettingsPage";
 import { FinancePage } from "@/pages/FinancePage";
 import { FlashSaleEventsPage } from "@/pages/FlashSaleEventsPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -59,6 +60,7 @@ export function AppRoutes() {
         <Route path="/promo-banners" element={<PromoBannersPage />} />
         <Route path="/flash-sale-events" element={<FlashSaleEventsPage />} />
         <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/delivery-settings" element={<DeliverySettingsPage />} />
         <Route path="/support-chats" element={<SupportChatsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings" element={<SettingsPage />} />

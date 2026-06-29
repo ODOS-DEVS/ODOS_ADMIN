@@ -380,6 +380,8 @@ type BackendOrderDetail = BackendOrder & {
   subtotal_amount: number;
   shipping_amount: number;
   discount_amount: number;
+  delivery_method: string;
+  delivery_method_label: string;
   progress?: number | null;
   tracking_eta?: string | null;
   cancellation_reason?: string | null;
@@ -1126,6 +1128,8 @@ export function mapOrderDetail(order: BackendOrderDetail): AdminOrderDetail {
     subtotalAmount: order.subtotal_amount,
     shippingAmount: order.shipping_amount,
     discountAmount: order.discount_amount,
+    deliveryMethod: order.delivery_method,
+    deliveryMethodLabel: order.delivery_method_label,
     progress: order.progress ?? null,
     trackingEta: order.tracking_eta ?? null,
     cancellationReason: order.cancellation_reason ?? null,
