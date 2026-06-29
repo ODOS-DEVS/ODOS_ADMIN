@@ -14,9 +14,9 @@ function normalizeApiBaseUrl(value: string) {
 }
 
 const API_BASE_URL = normalizeApiBaseUrl(RAW_API_BASE_URL);
-const BACKEND_WARMUP_WINDOW_MS = 60_000;
-const BACKEND_WARMUP_TIMEOUT_MS = 30_000;
-const BACKEND_WARMUP_RETRY_DELAYS_MS = [2_000, 5_000, 8_000];
+const BACKEND_WARMUP_WINDOW_MS = 120_000;
+const BACKEND_WARMUP_TIMEOUT_MS = 90_000;
+const BACKEND_WARMUP_RETRY_DELAYS_MS = [3_000, 6_000, 10_000, 15_000];
 
 let backendWarmupPromise: Promise<void> | null = null;
 let lastBackendReadyAt = 0;
@@ -152,9 +152,25 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
         "The admin API URL is invalid. Set VITE_API_BASE_URL to a full URL like https://odos-backend.onrender.com/api",
       );
     }
+
+    const browserOrigin =
+      typeof window !== "undefined" && window.location?.origin ? window.location.origin : "unknown";
+    const pointsAtLocalApi =
+      API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1");
+    const runningOnRemoteHost =
+      browserOrigin !== "unknown" &&
+      !browserOrigin.includes("localhost") &&
+      !browserOrigin.includes("127.0.0.1");
+
+    if (pointsAtLocalApi && runningOnRemoteHost) {
+      throw new ApiError(
+        `This admin site is configured with a local API URL (${API_BASE_URL}). Rebuild with VITE_API_BASE_URL=https://odos-backend.onrender.com/api`,
+      );
+    }
+
     if (error instanceof Error && /failed to fetch|networkerror|load failed|abort/i.test(error.message)) {
       throw new ApiError(
-        "We couldn't reach the ODOS backend. If you're using Render, wait a few seconds for the backend to wake up, then try again. If it keeps happening, confirm VITE_API_BASE_URL and CORS_ORIGINS are correct.",
+        `We couldn't reach the ODOS backend at ${API_BASE_URL}. Render free tier can take up to 60 seconds to wake up — wait and try again. If it keeps failing, add ${browserOrigin} to backend CORS_ORIGINS and redeploy the API.`,
       );
     }
     throw error;
