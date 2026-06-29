@@ -94,7 +94,8 @@ export function CategoryStudioPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [hydrated, setHydrated] = useState(isCreate);
 
-  const { activeSection, setActiveSection } = useTabSection<StudioSection>("identity");
+  const { activeSection, setActiveSection } =
+    useTabSection<StudioSection>("identity");
 
   useEffect(() => {
     if (isCreate || !record) return;
@@ -113,11 +114,31 @@ export function CategoryStudioPage() {
 
   const readiness = useMemo(() => {
     const checks = [
-      { id: "name", label: "Category name set", done: Boolean(form.name.trim()) },
-      { id: "description", label: "Shopper description written", done: form.description.trim().length >= 12 },
-      { id: "image", label: "Category artwork uploaded", done: Boolean(previewUrl) },
-      { id: "taxonomy", label: "At least 2 subcategories", done: form.subcategories.length >= 2 },
-      { id: "slug", label: "URL slug configured", done: Boolean(form.slug.trim()) },
+      {
+        id: "name",
+        label: "Category name set",
+        done: Boolean(form.name.trim()),
+      },
+      {
+        id: "description",
+        label: "Shopper description written",
+        done: form.description.trim().length >= 12,
+      },
+      {
+        id: "image",
+        label: "Category artwork uploaded",
+        done: Boolean(previewUrl),
+      },
+      {
+        id: "taxonomy",
+        label: "At least 2 subcategories",
+        done: form.subcategories.length >= 2,
+      },
+      {
+        id: "slug",
+        label: "URL slug configured",
+        done: Boolean(form.slug.trim()),
+      },
     ];
     const score = checks.filter((check) => check.done).length;
     return { checks, score, total: checks.length };
@@ -125,12 +146,15 @@ export function CategoryStudioPage() {
 
   const canSave = form.name.trim().length > 0 && !isSaving;
 
-  function updatePreviewFromFile(file: File | null, fallbackUrl?: string | null) {
+  function updatePreviewFromFile(
+    file: File | null,
+    fallbackUrl?: string | null,
+  ) {
     setForm((current) => ({ ...current, imageFile: file }));
     if (previewUrl?.startsWith("blob:")) {
       URL.revokeObjectURL(previewUrl);
     }
-    setPreviewUrl(file ? URL.createObjectURL(file) : fallbackUrl ?? null);
+    setPreviewUrl(file ? URL.createObjectURL(file) : (fallbackUrl ?? null));
   }
 
   function handleNameChange(value: string) {
@@ -151,7 +175,11 @@ export function CategoryStudioPage() {
     const next = value.trim();
     if (!next) return;
     setForm((current) => {
-      if (current.subcategories.some((item) => item.toLowerCase() === next.toLowerCase())) {
+      if (
+        current.subcategories.some(
+          (item) => item.toLowerCase() === next.toLowerCase(),
+        )
+      ) {
         return current;
       }
       return { ...current, subcategories: [...current.subcategories, next] };
@@ -162,7 +190,9 @@ export function CategoryStudioPage() {
   function removeSubcategory(index: number) {
     setForm((current) => ({
       ...current,
-      subcategories: current.subcategories.filter((_, itemIndex) => itemIndex !== index),
+      subcategories: current.subcategories.filter(
+        (_, itemIndex) => itemIndex !== index,
+      ),
     }));
   }
 
@@ -206,7 +236,8 @@ export function CategoryStudioPage() {
     } catch (saveError) {
       showToast({
         title: "Unable to save category",
-        description: saveError instanceof Error ? saveError.message : "Please try again.",
+        description:
+          saveError instanceof Error ? saveError.message : "Please try again.",
         tone: "error",
       });
     } finally {
@@ -235,15 +266,20 @@ export function CategoryStudioPage() {
             Category studio
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">
-            {isCreate ? "Design a new category" : `Edit ${form.name || "category"}`}
+            {isCreate
+              ? "Design a new category"
+              : `Edit ${form.name || "category"}`}
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-textMuted">
-            Shape how shoppers discover this aisle — with live mobile previews, structured
-            subcategories, and a publish checklist.
+            Shape how shoppers discover this aisle — with live mobile previews,
+            structured subcategories, and a publish checklist.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate("/categories/full")}>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/categories/full")}
+          >
             Cancel
           </Button>
           <Button
@@ -271,7 +307,9 @@ export function CategoryStudioPage() {
           <div className="rounded-[24px] border border-white/10 bg-panel/80 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-textStrong">Launch readiness</p>
+                <p className="text-sm font-semibold text-textStrong">
+                  Launch readiness
+                </p>
                 <p className="mt-1 text-xs text-textMuted">
                   {readiness.score} of {readiness.total} checks complete
                 </p>
@@ -283,18 +321,25 @@ export function CategoryStudioPage() {
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-accent to-sky-400 transition-all"
-                style={{ width: `${(readiness.score / readiness.total) * 100}%` }}
+                style={{
+                  width: `${(readiness.score / readiness.total) * 100}%`,
+                }}
               />
             </div>
             <div className="mt-4 space-y-2">
               {readiness.checks.map((check) => (
-                <div key={check.id} className="flex items-center gap-2 text-xs text-textMuted">
+                <div
+                  key={check.id}
+                  className="flex items-center gap-2 text-xs text-textMuted"
+                >
                   {check.done ? (
                     <CheckCircle2 className="size-4 text-emerald-400" />
                   ) : (
                     <Circle className="size-4 text-white/20" />
                   )}
-                  <span className={check.done ? "text-textStrong" : undefined}>{check.label}</span>
+                  <span className={check.done ? "text-textStrong" : undefined}>
+                    {check.label}
+                  </span>
                 </div>
               ))}
             </div>
@@ -316,7 +361,9 @@ export function CategoryStudioPage() {
                       : "border-white/10 bg-white/[0.03] hover:border-white/20"
                   }`}
                 >
-                  <p className="text-sm font-semibold text-textStrong">{section.label}</p>
+                  <p className="text-sm font-semibold text-textStrong">
+                    {section.label}
+                  </p>
                   <p className="mt-1 text-xs text-textMuted">{section.hint}</p>
                 </button>
               );
@@ -330,7 +377,9 @@ export function CategoryStudioPage() {
                   <Tag className="size-4" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-textStrong">Category identity</h2>
+                  <h2 className="text-lg font-semibold text-textStrong">
+                    Category identity
+                  </h2>
                   <p className="text-sm text-textMuted">
                     The name and story shoppers see when they browse ODOS.
                   </p>
@@ -339,7 +388,9 @@ export function CategoryStudioPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-textStrong">Category name</label>
+                  <label className="text-sm font-medium text-textStrong">
+                    Category name
+                  </label>
                   <input
                     className="app-input"
                     value={form.name}
@@ -349,20 +400,27 @@ export function CategoryStudioPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">URL slug</label>
+                  <label className="text-sm font-medium text-textStrong">
+                    URL slug
+                  </label>
                   <input
                     className="app-input font-mono text-sm"
                     value={form.slug}
                     onChange={(event) => {
                       setSlugTouched(true);
-                      setForm((current) => ({ ...current, slug: slugify(event.target.value) }));
+                      setForm((current) => ({
+                        ...current,
+                        slug: slugify(event.target.value),
+                      }));
                     }}
                     placeholder="fashion-apparel"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Status</label>
+                  <label className="text-sm font-medium text-textStrong">
+                    Status
+                  </label>
                   <select
                     className="app-select"
                     value={form.status}
@@ -383,18 +441,23 @@ export function CategoryStudioPage() {
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-textStrong">Shopper description</label>
+                  <label className="text-sm font-medium text-textStrong">
+                    Shopper description
+                  </label>
                   <textarea
                     className="app-textarea min-h-32"
                     value={form.description}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, description: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
                     }
                     placeholder="Tell shoppers what they'll find in this category..."
                   />
                   <p className="text-xs text-textMuted">
-                    Aim for at least 12 characters. This copy appears on category cards and detail
-                    screens.
+                    Aim for at least 12 characters. This copy appears on
+                    category cards and detail screens.
                   </p>
                 </div>
               </div>
@@ -408,9 +471,12 @@ export function CategoryStudioPage() {
                   <ImagePlus className="size-4" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-textStrong">Visual artwork</h2>
+                  <h2 className="text-lg font-semibold text-textStrong">
+                    Visual artwork
+                  </h2>
                   <p className="text-sm text-textMuted">
-                    Upload the hero image used on category cards across the mobile app.
+                    Upload the hero image used on category cards across the
+                    mobile app.
                   </p>
                 </div>
               </div>
@@ -429,13 +495,18 @@ export function CategoryStudioPage() {
                 onDrop={(event) => {
                   event.preventDefault();
                   const file = event.dataTransfer.files?.[0] ?? null;
-                  if (file) updatePreviewFromFile(file, record?.imageUrl ?? null);
+                  if (file)
+                    updatePreviewFromFile(file, record?.imageUrl ?? null);
                 }}
               >
                 <div className="flex flex-col items-center gap-5 lg:flex-row">
                   <div className="size-44 overflow-hidden rounded-[28px] border border-white/10 bg-[#07111f]">
                     {previewUrl ? (
-                      <img src={previewUrl} alt="Category artwork" className="size-full object-cover" />
+                      <img
+                        src={previewUrl}
+                        alt="Category artwork"
+                        className="size-full object-cover"
+                      />
                     ) : (
                       <div className="flex size-full flex-col items-center justify-center gap-2 px-4 text-center text-xs text-textMuted">
                         <Upload className="size-6 text-accentSoft" />
@@ -445,8 +516,8 @@ export function CategoryStudioPage() {
                   </div>
                   <div className="flex-1 space-y-3 text-center lg:text-left">
                     <p className="text-sm text-textMuted">
-                      Use a bold, high-contrast visual. Square or portrait crops work best for the
-                      shopper browse card.
+                      Use a bold, high-contrast visual. Square or portrait crops
+                      work best for the shopper browse card.
                     </p>
                     <div className="flex flex-wrap justify-center gap-2 lg:justify-start">
                       <Button
@@ -459,7 +530,12 @@ export function CategoryStudioPage() {
                       {previewUrl ? (
                         <Button
                           variant="ghost"
-                          onClick={() => updatePreviewFromFile(null, record?.imageUrl ?? null)}
+                          onClick={() =>
+                            updatePreviewFromFile(
+                              null,
+                              record?.imageUrl ?? null,
+                            )
+                          }
                         >
                           Remove image
                         </Button>
@@ -478,7 +554,9 @@ export function CategoryStudioPage() {
                   <Layers3 className="size-4" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-textStrong">Subcategory taxonomy</h2>
+                  <h2 className="text-lg font-semibold text-textStrong">
+                    Subcategory taxonomy
+                  </h2>
                   <p className="text-sm text-textMuted">
                     Build filter chips shoppers tap inside this category.
                   </p>
@@ -504,7 +582,8 @@ export function CategoryStudioPage() {
 
               {form.subcategories.length === 0 ? (
                 <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-textMuted">
-                  No subcategories yet. Add at least two to help shoppers filter products quickly.
+                  No subcategories yet. Add at least two to help shoppers filter
+                  products quickly.
                 </div>
               ) : (
                 <div className="mt-5 flex flex-wrap gap-2">
@@ -528,16 +607,18 @@ export function CategoryStudioPage() {
               )}
 
               <div className="mt-6 grid gap-3 md:grid-cols-3">
-                {["Ladies Wear", "Men's Wear", "Kids Wear"].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => addSubcategory(suggestion)}
-                    className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-sm text-textMuted transition hover:border-accent/30 hover:text-textStrong"
-                  >
-                    + {suggestion}
-                  </button>
-                ))}
+                {["Ladies Wear", "Men's Wear", "Kids Wear"].map(
+                  (suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => addSubcategory(suggestion)}
+                      className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-sm text-textMuted transition hover:border-accent/30 hover:text-textStrong"
+                    >
+                      + {suggestion}
+                    </button>
+                  ),
+                )}
               </div>
             </section>
           ) : null}
@@ -549,7 +630,9 @@ export function CategoryStudioPage() {
                   <CheckCircle2 className="size-4" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-textStrong">Review & publish</h2>
+                  <h2 className="text-lg font-semibold text-textStrong">
+                    Review & publish
+                  </h2>
                   <p className="text-sm text-textMuted">
                     Confirm the category is ready before it goes live on ODOS.
                   </p>
@@ -558,23 +641,39 @@ export function CategoryStudioPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-accentSoft">Summary</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-accentSoft">
+                    Summary
+                  </p>
                   <p className="mt-2 text-lg font-semibold text-textStrong">
                     {form.name.trim() || "Untitled category"}
                   </p>
-                  <p className="mt-2 text-sm text-textMuted">{form.description || "No description yet."}</p>
+                  <p className="mt-2 text-sm text-textMuted">
+                    {form.description || "No description yet."}
+                  </p>
                   <p className="mt-3 text-xs text-textMuted">
                     {form.subcategories.length} subcategories ·{" "}
-                    {form.status === "active" ? "Will be live" : "Will stay hidden"}
+                    {form.status === "active"
+                      ? "Will be live"
+                      : "Will stay hidden"}
                   </p>
                 </div>
 
                 <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-accentSoft">Before you publish</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-accentSoft">
+                    Before you publish
+                  </p>
                   <ul className="mt-3 space-y-2 text-sm text-textMuted">
-                    <li>• Artwork should feel premium on a dark and light phone theme.</li>
-                    <li>• Subcategories become product filters in the shopper app.</li>
-                    <li>• Disabling keeps existing products but hides browse entry points.</li>
+                    <li>
+                      • Artwork should feel premium on a dark and light phone
+                      theme.
+                    </li>
+                    <li>
+                      • Subcategories become product filters in the shopper app.
+                    </li>
+                    <li>
+                      • Disabling keeps existing products but hides browse entry
+                      points.
+                    </li>
                   </ul>
                 </div>
               </div>

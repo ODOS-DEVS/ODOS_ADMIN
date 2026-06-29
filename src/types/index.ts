@@ -586,6 +586,8 @@ export type AdminOrderDetail = Order & {
   subtotalAmount: number;
   shippingAmount: number;
   discountAmount: number;
+  deliveryMethod: string;
+  deliveryMethodLabel: string;
   progress?: number | null;
   trackingEta?: string | null;
   cancellationReason?: string | null;

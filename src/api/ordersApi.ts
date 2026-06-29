@@ -50,6 +50,8 @@ export async function getOrder(
     subtotal_amount: number;
     shipping_amount: number;
     discount_amount: number;
+    delivery_method: string;
+    delivery_method_label: string;
     progress?: number | null;
     tracking_eta?: string | null;
     cancellation_reason?: string | null;

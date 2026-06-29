@@ -72,6 +72,8 @@ export function OrderDetailPage() {
             <AdminDetailTile label="Customer" value={order.customerName} />
             <AdminDetailTile label="Email" value={order.customerEmail} />
             <AdminDetailTile label="Phone" value={order.customerPhoneNumber ?? "—"} />
+            <AdminDetailTile label="Delivery method" value={order.deliveryMethodLabel} />
+            <AdminDetailTile label="Tracking ETA" value={order.trackingEta ?? "—"} />
             <AdminDetailTile label="Delivery name" value={order.addressFullName} />
             <AdminDetailTile label="Delivery phone" value={order.addressPhone} />
             <AdminDetailTile label="Address" value={`${order.addressStreet}, ${order.addressCity}, ${order.addressRegion}`} />
