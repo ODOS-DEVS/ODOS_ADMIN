@@ -1,16 +1,19 @@
-import { Edit3, Info, Plus, Trash2 } from "lucide-react";
+import { Edit3, Hash, Info, Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
   archiveVoucher,
+  bulkGenerateVouchers,
   createVoucher,
+  getPromotionAnalytics,
   getVouchersPage,
   reviewVoucher,
   type VoucherDraft,
   updateVoucher,
 } from "@/api/vouchersApi";
+import type { PromotionAnalytics, PromotionType } from "@/types";
 import { getStores } from "@/api/storesApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
@@ -51,6 +54,16 @@ type VoucherFormValues = {
   startsAt: string;
   endsAt: string;
   isActive: boolean;
+  promotionType: PromotionType;
+  priority: string;
+  stackable: boolean;
+  autoApply: boolean;
+  campaignTag: string;
+  exclusiveGroup: string;
+  bogoBuyQuantity: string;
+  bogoGetQuantity: string;
+  firstOrderOnly: boolean;
+  newUserOnly: boolean;
 };
 
 const initialVoucherForm: VoucherFormValues = {
@@ -70,6 +83,16 @@ const initialVoucherForm: VoucherFormValues = {
   startsAt: "",
   endsAt: "",
   isActive: true,
+  promotionType: "coupon",
+  priority: "0",
+  stackable: false,
+  autoApply: false,
+  campaignTag: "",
+  exclusiveGroup: "",
+  bogoBuyQuantity: "",
+  bogoGetQuantity: "",
+  firstOrderOnly: false,
+  newUserOnly: false,
 };
 
 const statusOptions: Array<{ label: string; value: "all" | VoucherCampaignStatus }> = [
@@ -90,6 +113,15 @@ const availabilityOptions: Array<{ label: string; value: VoucherAvailability }> 
   { label: "Automatic for shoppers", value: "auto" },
   { label: "Claimable from store page", value: "claim" },
   { label: "Gifted to one shopper", value: "assigned" },
+];
+
+const promotionTypeOptions: Array<{ label: string; value: PromotionType }> = [
+  { label: "Coupon code", value: "coupon" },
+  { label: "Automatic discount", value: "automatic" },
+  { label: "Product-level", value: "product" },
+  { label: "Cart-level", value: "cart" },
+  { label: "Buy X get Y", value: "bogo" },
+  { label: "Free shipping", value: "free_shipping" },
 ];
 
 function toDateTimeLocal(value?: string | null) {
@@ -270,6 +302,10 @@ export function FullVouchersPage() {
   const [voucherForm, setVoucherForm] = useState<VoucherFormValues>(initialVoucherForm);
   const [archiveTarget, setArchiveTarget] = useState<VoucherCampaign | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [analytics, setAnalytics] = useState<PromotionAnalytics | null>(null);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [bulkPrefix, setBulkPrefix] = useState("PROMO");
+  const [bulkCount, setBulkCount] = useState("25");
 
   const loadStores = useCallback(async () => {
     if (!token) return;
@@ -283,6 +319,22 @@ export function FullVouchersPage() {
   useEffect(() => {
     void loadStores();
   }, [loadStores]);
+
+  const loadAnalytics = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      setAnalytics(await getPromotionAnalytics(token));
+    } catch {
+      // summary cards fall back to list totals
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void loadAnalytics();
+  }, [loadAnalytics]);
 
   const filteredVouchers = useMemo(() => {
     return vouchers.filter((voucher) => {
@@ -304,15 +356,23 @@ export function FullVouchersPage() {
     });
   }, [query, statusFilter, vouchers]);
 
-  const summary = useMemo(
-    () => ({
+  const summary = useMemo(() => {
+    if (analytics) {
+      return {
+        activeCount: analytics.activeCampaigns,
+        scheduledCount: vouchers.filter((voucher) => voucher.status === "scheduled").length,
+        totalRedemptions: analytics.totalRedemptions,
+        totalSavings: analytics.totalDiscountGiven,
+      };
+    }
+
+    return {
       activeCount: vouchers.filter((voucher) => voucher.status === "active").length,
       scheduledCount: vouchers.filter((voucher) => voucher.status === "scheduled").length,
       totalRedemptions: vouchers.reduce((sum, voucher) => sum + voucher.redemptionCount, 0),
       totalSavings: vouchers.reduce((sum, voucher) => sum + voucher.totalDiscountAmount, 0),
-    }),
-    [vouchers],
-  );
+    };
+  }, [analytics, vouchers]);
 
   const rewardPreview = useMemo(
     () =>
@@ -353,6 +413,16 @@ export function FullVouchersPage() {
       startsAt: toDateTimeLocal(voucher.startsAt),
       endsAt: toDateTimeLocal(voucher.endsAt),
       isActive: voucher.isActive,
+      promotionType: voucher.promotionType ?? "coupon",
+      priority: String(voucher.priority ?? 0),
+      stackable: voucher.stackable ?? false,
+      autoApply: voucher.autoApply ?? false,
+      campaignTag: voucher.campaignTag ?? "",
+      exclusiveGroup: voucher.exclusiveGroup ?? "",
+      bogoBuyQuantity: voucher.bogoBuyQuantity != null ? String(voucher.bogoBuyQuantity) : "",
+      bogoGetQuantity: voucher.bogoGetQuantity != null ? String(voucher.bogoGetQuantity) : "",
+      firstOrderOnly: voucher.firstOrderOnly ?? false,
+      newUserOnly: voucher.newUserOnly ?? false,
     });
     setIsEditorOpen(true);
   }
@@ -361,9 +431,9 @@ export function FullVouchersPage() {
     setVoucherForm((current) => ({ ...current, [key]: value }));
   }
 
-  function buildVoucherDraft(): VoucherDraft | null {
-    const code = voucherForm.code.trim().toUpperCase();
-    const title = voucherForm.title.trim();
+  function buildVoucherDraft(form: VoucherFormValues = voucherForm): VoucherDraft | null {
+    const code = form.code.trim().toUpperCase();
+    const title = form.title.trim();
     if (!code || !title) {
       showToast({
         title: "Missing voucher details",
@@ -372,7 +442,7 @@ export function FullVouchersPage() {
       });
       return null;
     }
-    if (voucherForm.scope === "store" && !voucherForm.storeId.trim()) {
+    if (form.scope === "store" && !form.storeId.trim()) {
       showToast({
         title: "Choose a store",
         description: "Store promotions must be attached to a real storefront.",
@@ -382,10 +452,10 @@ export function FullVouchersPage() {
     }
 
     const discountValue =
-      voucherForm.discountType === "free_shipping"
+      form.discountType === "free_shipping"
         ? 0
-        : parseRequiredNumber(voucherForm.discountValue, Number.NaN);
-    const minSubtotal = parseRequiredNumber(voucherForm.minSubtotal, Number.NaN);
+        : parseRequiredNumber(form.discountValue, Number.NaN);
+    const minSubtotal = parseRequiredNumber(form.minSubtotal, Number.NaN);
 
     if (!Number.isFinite(discountValue) || !Number.isFinite(minSubtotal)) {
       showToast({
@@ -396,8 +466,8 @@ export function FullVouchersPage() {
       return null;
     }
 
-    const startsAt = toIsoString(voucherForm.startsAt);
-    const endsAt = toIsoString(voucherForm.endsAt);
+    const startsAt = toIsoString(form.startsAt);
+    const endsAt = toIsoString(form.endsAt);
     if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
       showToast({
         title: "Check the schedule",
@@ -410,21 +480,41 @@ export function FullVouchersPage() {
     return {
       code,
       title,
-      description: voucherForm.description.trim() || null,
-      issuerName: voucherForm.issuerName.trim() || null,
-      scope: voucherForm.scope,
-      availability: voucherForm.availability,
-      storeId: voucherForm.scope === "store" ? voucherForm.storeId.trim() || null : null,
-      discountType: voucherForm.discountType,
+      description: form.description.trim() || null,
+      issuerName: form.issuerName.trim() || null,
+      scope: form.scope,
+      availability: form.availability,
+      storeId: form.scope === "store" ? form.storeId.trim() || null : null,
+      discountType: form.discountType,
       discountValue,
       minSubtotal,
-      maxDiscount: parseOptionalNumber(voucherForm.maxDiscount),
-      usageLimit: parseOptionalNumber(voucherForm.usageLimit),
-      perUserLimit: parseOptionalNumber(voucherForm.perUserLimit),
-      isActive: voucherForm.isActive,
+      maxDiscount: parseOptionalNumber(form.maxDiscount),
+      usageLimit: parseOptionalNumber(form.usageLimit),
+      perUserLimit: parseOptionalNumber(form.perUserLimit),
+      isActive: form.isActive,
       startsAt,
       endsAt,
+      campaignTag: form.campaignTag.trim() || null,
+      promotionType: form.promotionType,
+      priority: parseRequiredNumber(form.priority, 0),
+      stackable: form.stackable,
+      autoApply: form.autoApply,
+      exclusiveGroup: form.exclusiveGroup.trim() || null,
+      bogoBuyQuantity: parseOptionalNumber(form.bogoBuyQuantity),
+      bogoGetQuantity: parseOptionalNumber(form.bogoGetQuantity),
+      bogoGetDiscountPercent: 100,
+      firstOrderOnly: form.firstOrderOnly,
+      newUserOnly: form.newUserOnly,
     };
+  }
+
+  function buildBulkTemplate(prefix: string): VoucherDraft | null {
+    const normalizedPrefix = prefix.trim().toUpperCase();
+    return buildVoucherDraft({
+      ...voucherForm,
+      code: `${normalizedPrefix}0001`,
+      title: voucherForm.title.trim() || `${normalizedPrefix} batch campaign`,
+    });
   }
 
   async function handleSave() {
@@ -530,6 +620,62 @@ export function FullVouchersPage() {
     }
   }
 
+  async function handleBulkGenerate() {
+    if (!token) {
+      return;
+    }
+
+    const prefix = bulkPrefix.trim().toUpperCase();
+    const count = parseRequiredNumber(bulkCount, Number.NaN);
+    if (!prefix) {
+      showToast({
+        title: "Add a code prefix",
+        description: "Bulk codes are generated as PREFIX0001, PREFIX0002, and so on.",
+        tone: "error",
+      });
+      return;
+    }
+    if (!Number.isFinite(count) || count < 1 || count > 500) {
+      showToast({
+        title: "Invalid batch size",
+        description: "Generate between 1 and 500 codes at a time.",
+        tone: "error",
+      });
+      return;
+    }
+
+    const template = buildBulkTemplate(prefix);
+    if (!template) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const created = await bulkGenerateVouchers(token, {
+        prefix,
+        count,
+        template,
+      });
+      setItems((current) => [...created, ...current]);
+      await loadAnalytics();
+      showToast({
+        title: "Bulk codes generated",
+        description: `${created.length} vouchers created (${created[0]?.code} … ${created[created.length - 1]?.code}).`,
+        tone: "success",
+      });
+      setIsBulkOpen(false);
+      resetEditorState();
+    } catch (bulkError) {
+      showToast({
+        title: "Unable to generate codes",
+        description: bulkError instanceof Error ? bulkError.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <AdminFullHeader
@@ -540,9 +686,14 @@ export function FullVouchersPage() {
         onRefresh={() => void refresh()}
         refreshing={isLoading}
         actions={
-          <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
-            Create voucher
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" leftIcon={<Hash className="size-4" />} onClick={() => setIsBulkOpen(true)}>
+              Bulk generate
+            </Button>
+            <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
+              Create voucher
+            </Button>
+          </div>
         }
       />
 
@@ -578,6 +729,30 @@ export function FullVouchersPage() {
           <p className="mt-2 text-sm text-textMuted">Value already returned to customers.</p>
         </div>
       </div>
+
+      {analytics?.topCampaigns.length ? (
+        <SectionCard
+          title="Top performing campaigns"
+          description="Ranked by redemptions and discount value returned to shoppers."
+        >
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {analytics.topCampaigns.slice(0, 6).map((campaign) => (
+              <div
+                key={campaign.id}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              >
+                <p className="font-medium text-textStrong">{campaign.title}</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.22em] text-accentSoft">{campaign.code}</p>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-textMuted">
+                  <span>{campaign.redemptionCount} redemptions</span>
+                  <span>{formatCurrency(campaign.totalDiscountAmount)} saved</span>
+                  <span>{campaign.uniqueUserCount} shoppers</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      ) : null}
 
       <SectionCard
         title="Campaign library"
@@ -1029,6 +1204,160 @@ export function FullVouchersPage() {
               </VoucherEditorSection>
 
               <VoucherEditorSection
+                title="Promotion engine"
+                description="Control how this offer competes with other promotions at checkout."
+              >
+                <div className="grid gap-5">
+                  <VoucherEditorField
+                    label="Promotion type"
+                    helper="Coupon codes require shopper input. Automatic discounts apply when rules match."
+                  >
+                    <select
+                      className="app-select"
+                      value={voucherForm.promotionType}
+                      onChange={(event) => {
+                        const nextType = event.target.value as PromotionType;
+                        setVoucherForm((current) => ({
+                          ...current,
+                          promotionType: nextType,
+                          autoApply: nextType === "automatic" ? true : current.autoApply,
+                          discountType:
+                            nextType === "bogo"
+                              ? "bogo"
+                              : nextType === "free_shipping"
+                                ? "free_shipping"
+                                : current.discountType === "bogo" ||
+                                    current.discountType === "free_shipping"
+                                  ? "percent"
+                                  : current.discountType,
+                        }));
+                      }}
+                    >
+                      {promotionTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value} className="bg-panel">
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </VoucherEditorField>
+
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <VoucherEditorField
+                      label="Priority"
+                      helper="Higher priority promotions win conflicts when stacking is disabled."
+                    >
+                      <input
+                        className="app-input"
+                        type="number"
+                        step="1"
+                        value={voucherForm.priority}
+                        onChange={(event) => updateForm("priority", event.target.value)}
+                        placeholder="0"
+                      />
+                    </VoucherEditorField>
+
+                    <VoucherEditorField
+                      label="Campaign tag"
+                      helper="Optional label for reporting and grouping related offers."
+                      optional
+                    >
+                      <input
+                        className="app-input"
+                        value={voucherForm.campaignTag}
+                        onChange={(event) => updateForm("campaignTag", event.target.value)}
+                        placeholder="summer-2026"
+                      />
+                    </VoucherEditorField>
+                  </div>
+
+                  <VoucherEditorField
+                    label="Exclusive group"
+                    helper="Only one promotion from the same group can apply. Leave blank to allow independent resolution."
+                    optional
+                  >
+                    <input
+                      className="app-input"
+                      value={voucherForm.exclusiveGroup}
+                      onChange={(event) => updateForm("exclusiveGroup", event.target.value)}
+                      placeholder="checkout-primary"
+                    />
+                  </VoucherEditorField>
+
+                  {voucherForm.promotionType === "bogo" ? (
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <VoucherEditorField
+                        label="Buy quantity"
+                        helper="How many qualifying items the shopper must purchase."
+                      >
+                        <input
+                          className="app-input"
+                          type="number"
+                          min={1}
+                          step="1"
+                          value={voucherForm.bogoBuyQuantity}
+                          onChange={(event) => updateForm("bogoBuyQuantity", event.target.value)}
+                          placeholder="2"
+                        />
+                      </VoucherEditorField>
+
+                      <VoucherEditorField
+                        label="Get quantity"
+                        helper="How many items are discounted or free once the buy rule is met."
+                      >
+                        <input
+                          className="app-input"
+                          type="number"
+                          min={1}
+                          step="1"
+                          value={voucherForm.bogoGetQuantity}
+                          onChange={(event) => updateForm("bogoGetQuantity", event.target.value)}
+                          placeholder="1"
+                        />
+                      </VoucherEditorField>
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-3">
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                      <input
+                        type="checkbox"
+                        checked={voucherForm.stackable}
+                        onChange={(event) => updateForm("stackable", event.target.checked)}
+                      />
+                      Stackable with other eligible promotions
+                    </label>
+
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                      <input
+                        type="checkbox"
+                        checked={voucherForm.autoApply}
+                        onChange={(event) => updateForm("autoApply", event.target.checked)}
+                      />
+                      Auto-apply when eligible (no code required)
+                    </label>
+
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                      <input
+                        type="checkbox"
+                        checked={voucherForm.firstOrderOnly}
+                        onChange={(event) => updateForm("firstOrderOnly", event.target.checked)}
+                      />
+                      First order only
+                    </label>
+
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                      <input
+                        type="checkbox"
+                        checked={voucherForm.newUserOnly}
+                        onChange={(event) => updateForm("newUserOnly", event.target.checked)}
+                      />
+                      New shoppers only
+                    </label>
+                  </div>
+                </div>
+              </VoucherEditorSection>
+
+              <VoucherEditorSection
                 title="Timing and limits"
                 description="Use these controls only when you want the system to schedule or limit the offer automatically."
               >
@@ -1108,6 +1437,83 @@ export function FullVouchersPage() {
               </div>
             </div>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={isBulkOpen}
+        onClose={() => setIsBulkOpen(false)}
+        title="Bulk generate coupon codes"
+        description="Create many unique codes from one campaign template. Codes are generated as PREFIX0001, PREFIX0002, and so on."
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="secondary" onClick={() => setIsBulkOpen(false)}>
+              Cancel
+            </Button>
+            <Button isLoading={actionLoading} onClick={() => void handleBulkGenerate()}>
+              Generate codes
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+            Configure discount rules in the create voucher form first, then generate a batch using those settings.
+            Open create voucher, set your template, and return here — or edit the form below before generating.
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <VoucherEditorField
+              label="Code prefix"
+              helper="Letters and numbers only. Each code appends a 4-digit sequence."
+            >
+              <input
+                className="app-input uppercase"
+                value={bulkPrefix}
+                onChange={(event) => setBulkPrefix(event.target.value.toUpperCase())}
+                placeholder="SUMMER"
+              />
+            </VoucherEditorField>
+
+            <VoucherEditorField label="Number of codes" helper="Maximum 500 codes per batch.">
+              <input
+                className="app-input"
+                type="number"
+                min={1}
+                max={500}
+                step={1}
+                value={bulkCount}
+                onChange={(event) => setBulkCount(event.target.value)}
+                placeholder="25"
+              />
+            </VoucherEditorField>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-textMuted">
+            <p className="font-medium text-textStrong">Template preview</p>
+            <p className="mt-2">
+              {buildRewardPreview(
+                voucherForm.discountType,
+                parseRequiredNumber(voucherForm.discountValue, 0),
+              )}{" "}
+              · min spend {formatCurrency(parseRequiredNumber(voucherForm.minSubtotal, 0))}
+            </p>
+            <p className="mt-1">
+              {voucherForm.promotionType} · priority {voucherForm.priority || "0"}
+              {voucherForm.stackable ? " · stackable" : ""}
+              {voucherForm.autoApply ? " · auto-apply" : ""}
+            </p>
+          </div>
+
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setIsBulkOpen(false);
+              openCreateModal();
+            }}
+          >
+            Edit campaign template
+          </Button>
         </div>
       </Modal>
 
