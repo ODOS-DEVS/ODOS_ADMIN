@@ -102,19 +102,39 @@ export function DashboardPage() {
     }
     setError(null);
 
+    const partialErrors: string[] = [];
+    let payload: DashboardPayload | null = null;
+    let withdrawals: AdminVendorWithdrawalRequest[] = [];
+
     try {
-      const [payload, withdrawals] = await Promise.all([
-        getDashboardOverview(token),
-        getVendorWithdrawalRequests(token),
-      ]);
-      setData(payload);
-      setPayoutRequests(withdrawals);
+      payload = await getDashboardOverview(token);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard.");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      partialErrors.push(
+        loadError instanceof Error ? loadError.message : "Unable to load dashboard overview.",
+      );
     }
+
+    try {
+      withdrawals = await getVendorWithdrawalRequests(token);
+    } catch (loadError) {
+      partialErrors.push(
+        loadError instanceof Error ? loadError.message : "Unable to load payout requests.",
+      );
+    }
+
+    if (payload) {
+      setData(payload);
+    }
+    setPayoutRequests(withdrawals);
+
+    if (!payload && partialErrors.length > 0) {
+      setError(partialErrors[0]);
+    } else if (payload && partialErrors.length > 0) {
+      setError(null);
+    }
+
+    setIsLoading(false);
+    setIsRefreshing(false);
   }, [token]);
 
   useEffect(() => {
