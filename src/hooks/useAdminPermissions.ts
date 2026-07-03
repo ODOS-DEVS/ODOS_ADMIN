@@ -1,0 +1,120 @@
+import { useMemo } from "react";
+
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+
+export type AdminPermissionLevel =
+  | "super_admin"
+  | "admin"
+  | "support"
+  | "finance"
+  | "inventory"
+  | "analyst";
+
+const PERMISSION_FEATURES: Record<AdminPermissionLevel, Set<string> | "*"> = {
+  super_admin: "*",
+  admin: new Set([
+    "dashboard",
+    "analytics",
+    "audit_log",
+    "users",
+    "vendors",
+    "orders",
+    "returns",
+    "products",
+    "stores",
+    "markets",
+    "categories",
+    "promotions",
+    "reviews",
+    "notifications",
+    "support",
+    "delivery",
+  ]),
+  support: new Set([
+    "dashboard",
+    "audit_log",
+    "users",
+    "orders",
+    "returns",
+    "notifications",
+    "support",
+  ]),
+  finance: new Set([
+    "dashboard",
+    "analytics",
+    "audit_log",
+    "finance",
+    "payouts",
+    "orders",
+  ]),
+  inventory: new Set([
+    "dashboard",
+    "audit_log",
+    "products",
+    "stores",
+    "markets",
+    "categories",
+    "promotions",
+  ]),
+  analyst: new Set(["dashboard", "analytics", "audit_log"]),
+};
+
+export const ROUTE_FEATURES: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/analytics": "analytics",
+  "/audit": "audit_log",
+  "/users": "users",
+  "/vendors": "vendors",
+  "/vendor-applications": "vendors",
+  "/stores": "stores",
+  "/markets": "markets",
+  "/categories": "categories",
+  "/products": "products",
+  "/finance": "finance",
+  "/payouts": "payouts",
+  "/returns": "returns",
+  "/reviews": "reviews",
+  "/vouchers": "promotions",
+  "/promo-banners": "promotions",
+  "/flash-sale-events": "promotions",
+  "/orders": "orders",
+  "/delivery-settings": "delivery",
+  "/support-chats": "support",
+  "/notifications": "notifications",
+  "/settings": "dashboard",
+};
+
+function normalizePermission(value: string | null | undefined): AdminPermissionLevel {
+  const raw = (value ?? "admin").trim().toLowerCase();
+  if (raw in PERMISSION_FEATURES) {
+    return raw as AdminPermissionLevel;
+  }
+  return "admin";
+}
+
+export function useAdminPermissions() {
+  const { adminUser } = useAdminAuth();
+
+  return useMemo(() => {
+    const level = normalizePermission(adminUser?.adminPermission);
+    const allowed = PERMISSION_FEATURES[level];
+
+    const canAccess = (feature: string) => {
+      if (allowed === "*") return true;
+      return allowed.has(feature);
+    };
+
+    const canAccessRoute = (route: string) => {
+      const feature = ROUTE_FEATURES[route];
+      if (!feature) return true;
+      return canAccess(feature);
+    };
+
+    return {
+      level,
+      isSuperAdmin: level === "super_admin",
+      canAccess,
+      canAccessRoute,
+    };
+  }, [adminUser?.adminPermission]);
+}
