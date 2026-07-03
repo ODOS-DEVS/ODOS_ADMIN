@@ -18,6 +18,7 @@ const BACKEND_WARMUP_WINDOW_MS = 120_000;
 const BACKEND_WARMUP_TIMEOUT_MS = 60_000;
 const BACKEND_WARMUP_RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 15_000, 25_000, 35_000];
 const REQUEST_RETRY_DELAYS_MS = [0, 4_000, 10_000];
+const REQUEST_TIMEOUT_MS = 45_000;
 
 let backendWarmupPromise: Promise<void> | null = null;
 let lastBackendReadyAt = 0;
@@ -178,6 +179,12 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
       await delay(retryDelay);
     }
 
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const upstreamSignal = options.signal;
+    const abortFromUpstream = () => controller.abort();
+    upstreamSignal?.addEventListener("abort", abortFromUpstream);
+
     try {
       await warmBackendIfNeeded();
       const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -185,6 +192,7 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
         headers,
         mode: "cors",
         cache: "no-store",
+        signal: controller.signal,
       });
       lastBackendReadyAt = Date.now();
 
@@ -208,6 +216,11 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
 
       return (await response.json()) as T;
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError" && !upstreamSignal?.aborted) {
+        throw new ApiError(
+          `The request to ${path} timed out after ${Math.round(REQUEST_TIMEOUT_MS / 1000)} seconds. Try again in a moment.`,
+        );
+      }
       if (error instanceof Error && /expected pattern|invalid url/i.test(error.message)) {
         throw new ApiError(
           "The admin API URL is invalid. Set VITE_API_BASE_URL to a full URL like https://odos-backend.onrender.com/api",
@@ -239,6 +252,9 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
       }
 
       throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+      upstreamSignal?.removeEventListener("abort", abortFromUpstream);
     }
   }
 
