@@ -10,6 +10,7 @@ import {
   MessageSquareMore,
   Package,
   RefreshCcw,
+  Shield,
   ShoppingBag,
   Star,
   Store,
@@ -26,10 +27,12 @@ import { NavLink } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/audit", label: "Audit log", icon: Shield },
   { to: "/users", label: "Users", icon: Users },
   { to: "/vendors", label: "Vendors", icon: UserCog },
   {
@@ -62,6 +65,8 @@ type SidebarProps = {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { adminUser, logout } = useAdminAuth();
+  const { canAccessRoute } = useAdminPermissions();
+  const visibleNavItems = navItems.filter((item) => canAccessRoute(item.to));
   const initials = adminUser?.fullName
     ?.split(" ")
     .map((segment) => segment[0])
@@ -91,7 +96,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="mt-6 flex-1 space-y-1 overflow-y-auto pr-1">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

@@ -25,6 +25,7 @@ type BackendAdminAuthUser = {
   phone_number: string | null;
   avatar_url?: string | null;
   roles: string[];
+  admin_permission?: string | null;
   vendor_status: AdminUser["vendorStatus"];
   account_status?: AdminUser["accountStatus"];
   vendor_id?: string | null;

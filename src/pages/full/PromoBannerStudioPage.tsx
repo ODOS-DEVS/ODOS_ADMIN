@@ -578,6 +578,23 @@ export function PromoBannerStudioPage() {
                 </label>
               ) : null}
 
+              {destinationOption?.needsTarget === "percent" ? (
+                <label className="block space-y-2">
+                  <span className="text-sm text-textMuted">Minimum vendor discount (%)</span>
+                  <input
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    inputMode="numeric"
+                    placeholder="e.g. 20"
+                    value={form.destinationTarget}
+                    onChange={(event) => updateForm("destinationTarget", event.target.value)}
+                  />
+                  <p className="text-xs leading-5 text-textMuted">
+                    Shoppers only see products where a shop set their own sale price at this
+                    discount or higher. ODOS never changes vendor pricing.
+                  </p>
+                </label>
+              ) : null}
+
               {destinationOption?.needsTarget === "url" ? (
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Website URL</span>

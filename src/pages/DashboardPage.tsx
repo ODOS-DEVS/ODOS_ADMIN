@@ -13,6 +13,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { LiveEventFeed } from "@/components/audit/LiveEventFeed";
 import { getDashboardOverview } from "@/api/dashboardApi";
 import { getVendorWithdrawalRequests } from "@/api/payoutsApi";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
@@ -74,7 +75,7 @@ const secondaryStats = [
   { key: "totalProducts", label: "Products", icon: Package, route: "/products" },
 ] as const;
 
-type FeedTab = "applications" | "activity";
+type FeedTab = "applications" | "activity" | "audit";
 
 function formatStatValue(key: string, value: number) {
   if (key === "totalRevenue") {
@@ -412,6 +413,11 @@ export function DashboardPage() {
                     label: "Activity",
                     count: data.recentNotifications.length,
                   },
+                  {
+                    id: "audit" as const,
+                    label: "Live audit",
+                    count: 0,
+                  },
                 ] as const
               ).map((tab) => (
                 <button
@@ -458,6 +464,8 @@ export function DashboardPage() {
                     </button>
                   ))
                 )
+              ) : feedTab === "audit" ? (
+                <LiveEventFeed compact />
               ) : data.recentNotifications.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-xs text-textMuted">
                   No recent notifications.
@@ -491,10 +499,21 @@ export function DashboardPage() {
               <Button
                 variant="ghost"
                 onClick={() =>
-                  navigate(feedTab === "applications" ? "/vendor-applications" : "/notifications")
+                  navigate(
+                    feedTab === "applications"
+                      ? "/vendor-applications"
+                      : feedTab === "audit"
+                        ? "/audit"
+                        : "/notifications",
+                  )
                 }
               >
-                View all {feedTab === "applications" ? "applications" : "notifications"}
+                View all{" "}
+                {feedTab === "applications"
+                  ? "applications"
+                  : feedTab === "audit"
+                    ? "audit log"
+                    : "notifications"}
               </Button>
             </div>
           </SectionCard>

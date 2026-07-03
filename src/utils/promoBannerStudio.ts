@@ -22,13 +22,21 @@ export const PROMO_DESTINATION_OPTIONS: Array<{
   label: string;
   description: string;
   defaultCtaLabel: string;
-  needsTarget?: "category" | "product" | "store" | "search" | "url" | "campaign" | "screen";
+  needsTarget?: "category" | "product" | "store" | "search" | "url" | "campaign" | "screen" | "percent";
 }> = [
   {
     value: "deals",
     label: "Deals hub",
     description: "Opens the deals & promos screen with live offers.",
     defaultCtaLabel: "Browse deals",
+  },
+  {
+    value: "discounted_products",
+    label: "Vendor sale browse",
+    description:
+      "Opens products where shops set their own sale pricing at your minimum percent off.",
+    defaultCtaLabel: "Shop deals",
+    needsTarget: "percent",
   },
   {
     value: "flash_sales",
@@ -173,6 +181,10 @@ export function buildPromoBannerForm(banner?: PromoBanner | null): PromoBannerFo
     destinationTarget = campaignTag || destinationTarget;
   }
 
+  if (linkType === "discounted_products" && !destinationTarget && banner.ctaLink) {
+    destinationTarget = banner.ctaLink;
+  }
+
   return {
     title: banner.title,
     subtitle: banner.subtitle ?? "",
@@ -205,6 +217,9 @@ export function describePromoDestinationOption(linkType: PromoBannerLinkType, ta
     const campaign = PROMO_CAMPAIGN_OPTIONS.find((entry) => entry.value === cleaned);
     return campaign ? `${base} · ${campaign.label}` : `${base} · ${cleaned}`;
   }
+  if (linkType === "discounted_products" && cleaned) {
+    return `${base} · ${cleaned}%+ off`;
+  }
   return `${base} · ${cleaned}`;
 }
 
@@ -216,6 +231,8 @@ export function buildPromoBannerPayload(form: PromoBannerFormState) {
   let ctaLink: string | null = null;
   if (form.linkType === "campaign") {
     ctaLink = campaignTag;
+  } else if (form.linkType === "discounted_products") {
+    ctaLink = target || null;
   } else if (destinationOption?.needsTarget) {
     ctaLink = target || null;
   }
@@ -263,6 +280,12 @@ export function validatePromoBannerForm(form: PromoBannerFormState): string | nu
   }
   if (destination?.needsTarget === "campaign" && !(form.campaignTag || form.destinationTarget).trim()) {
     return "Choose a seasonal campaign for this banner.";
+  }
+  if (destination?.needsTarget === "percent") {
+    const percent = Number(form.destinationTarget.trim());
+    if (!Number.isFinite(percent) || percent < 1 || percent > 90) {
+      return "Enter a minimum vendor discount between 1 and 90 percent.";
+    }
   }
   if (destination?.needsTarget === "screen" && !form.destinationTarget.trim()) {
     return "Add the in-app route for this banner.";

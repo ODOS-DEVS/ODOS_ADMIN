@@ -60,10 +60,19 @@ export type AdminUser = {
   phone: string | null;
   avatarUrl?: string | null;
   roles: AccountRole[];
+  adminPermission?: AdminPermissionLevel | null;
   vendorStatus: VendorStatus;
   accountStatus: AccountStatus;
   joinedAt: string;
 };
+
+export type AdminPermissionLevel =
+  | "super_admin"
+  | "admin"
+  | "support"
+  | "finance"
+  | "inventory"
+  | "analyst";
 
 export type AdminUserAddress = {
   id: string;
@@ -340,6 +349,7 @@ export type PromoBannerPlacement = "home" | "deals";
 
 export type PromoBannerLinkType =
   | "deals"
+  | "discounted_products"
   | "flash_sales"
   | "popular"
   | "search"

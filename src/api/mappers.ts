@@ -30,6 +30,7 @@ type BackendAdminUser = {
   phone_number: string | null;
   avatar_url?: string | null;
   roles: string[];
+  admin_permission?: string | null;
   vendor_status: AdminUser["vendorStatus"];
   account_status: AdminUser["accountStatus"];
   joined_at: string;
@@ -612,6 +613,7 @@ export function mapAdminUser(user: BackendAdminUser): AdminUser {
     phone: user.phone_number,
     avatarUrl: user.avatar_url ?? null,
     roles: user.roles as AdminUser["roles"],
+    adminPermission: (user.admin_permission as AdminUser["adminPermission"]) ?? "admin",
     vendorStatus: user.vendor_status,
     accountStatus: user.account_status,
     joinedAt: user.joined_at,
