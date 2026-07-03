@@ -15,8 +15,8 @@ function normalizeApiBaseUrl(value: string) {
 
 const API_BASE_URL = normalizeApiBaseUrl(RAW_API_BASE_URL);
 const BACKEND_WARMUP_WINDOW_MS = 120_000;
-const BACKEND_WARMUP_TIMEOUT_MS = 90_000;
-const BACKEND_WARMUP_RETRY_DELAYS_MS = [3_000, 6_000, 10_000, 15_000];
+const BACKEND_WARMUP_TIMEOUT_MS = 45_000;
+const BACKEND_WARMUP_RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 12_000, 20_000, 30_000];
 
 let backendWarmupPromise: Promise<void> | null = null;
 let lastBackendReadyAt = 0;
@@ -54,6 +54,19 @@ function delay(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function isNetworkFailure(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    /failed to fetch|networkerror|load failed|abort|timed out|timeout|network request failed/i.test(
+      message,
+    ) || error.name === "AbortError"
+  );
+}
+
 async function pingBackendHealth() {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), BACKEND_WARMUP_TIMEOUT_MS);
@@ -66,6 +79,7 @@ async function pingBackendHealth() {
         "Cache-Control": "no-store",
       },
       cache: "no-store",
+      mode: "cors",
       signal: controller.signal,
     });
 
@@ -79,7 +93,7 @@ async function pingBackendHealth() {
   }
 }
 
-async function ensureBackendAwake() {
+export async function warmBackendIfNeeded() {
   if (!SHOULD_WARM_REMOTE_BACKEND) {
     return;
   }
@@ -140,10 +154,11 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
 
   let response: Response;
   try {
-    await ensureBackendAwake();
+    await warmBackendIfNeeded();
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers,
+      mode: "cors",
     });
     lastBackendReadyAt = Date.now();
   } catch (error) {
@@ -168,9 +183,9 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
       );
     }
 
-    if (error instanceof Error && /failed to fetch|networkerror|load failed|abort/i.test(error.message)) {
+    if (isNetworkFailure(error)) {
       throw new ApiError(
-        `We couldn't reach the ODOS backend at ${API_BASE_URL}. Render free tier can take up to 60 seconds to wake up — wait and try again. If it keeps failing, add ${browserOrigin} to backend CORS_ORIGINS and redeploy the API.`,
+        `We couldn't reach the ODOS backend at ${API_BASE_URL}. The server may still be waking up on Render's free tier — wait about a minute, then tap Try again.`,
       );
     }
     throw error;
