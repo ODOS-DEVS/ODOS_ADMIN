@@ -15,8 +15,9 @@ function normalizeApiBaseUrl(value: string) {
 
 const API_BASE_URL = normalizeApiBaseUrl(RAW_API_BASE_URL);
 const BACKEND_WARMUP_WINDOW_MS = 120_000;
-const BACKEND_WARMUP_TIMEOUT_MS = 45_000;
-const BACKEND_WARMUP_RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 12_000, 20_000, 30_000];
+const BACKEND_WARMUP_TIMEOUT_MS = 60_000;
+const BACKEND_WARMUP_RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 15_000, 25_000, 35_000];
+const REQUEST_RETRY_DELAYS_MS = [0, 4_000, 10_000];
 
 let backendWarmupPromise: Promise<void> | null = null;
 let lastBackendReadyAt = 0;
@@ -65,6 +66,16 @@ function isNetworkFailure(error: unknown) {
       message,
     ) || error.name === "AbortError"
   );
+}
+
+function shouldRetryRequest(error: unknown) {
+  if (isNetworkFailure(error)) {
+    return true;
+  }
+  if (error instanceof ApiError && error.status && error.status >= 502) {
+    return true;
+  }
+  return false;
 }
 
 async function pingBackendHealth() {
@@ -130,6 +141,12 @@ export async function warmBackendIfNeeded() {
   return backendWarmupPromise;
 }
 
+function buildNetworkError() {
+  return new ApiError(
+    `We couldn't reach the ODOS backend at ${API_BASE_URL}. Render's free tier sleeps when idle — wait about a minute, then tap Try again.`,
+  );
+}
+
 export async function requestJson<T>(path: string, options: RequestOptions = {}) {
   if (!RAW_API_BASE_URL) {
     throw new ApiError("Missing VITE_API_BASE_URL");
@@ -152,59 +169,84 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
     headers.set("Content-Type", "application/json");
   }
 
-  let response: Response;
-  try {
-    await warmBackendIfNeeded();
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers,
-      mode: "cors",
-    });
-    lastBackendReadyAt = Date.now();
-  } catch (error) {
-    if (error instanceof Error && /expected pattern|invalid url/i.test(error.message)) {
-      throw new ApiError(
-        "The admin API URL is invalid. Set VITE_API_BASE_URL to a full URL like https://odos-backend.onrender.com/api",
-      );
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < REQUEST_RETRY_DELAYS_MS.length; attempt += 1) {
+    const retryDelay = REQUEST_RETRY_DELAYS_MS[attempt];
+    if (retryDelay > 0) {
+      lastBackendReadyAt = 0;
+      await delay(retryDelay);
     }
 
-    const browserOrigin =
-      typeof window !== "undefined" && window.location?.origin ? window.location.origin : "unknown";
-    const pointsAtLocalApi =
-      API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1");
-    const runningOnRemoteHost =
-      browserOrigin !== "unknown" &&
-      !browserOrigin.includes("localhost") &&
-      !browserOrigin.includes("127.0.0.1");
-
-    if (pointsAtLocalApi && runningOnRemoteHost) {
-      throw new ApiError(
-        `This admin site is configured with a local API URL (${API_BASE_URL}). Rebuild with VITE_API_BASE_URL=https://odos-backend.onrender.com/api`,
-      );
-    }
-
-    if (isNetworkFailure(error)) {
-      throw new ApiError(
-        `We couldn't reach the ODOS backend at ${API_BASE_URL}. The server may still be waking up on Render's free tier — wait about a minute, then tap Try again.`,
-      );
-    }
-    throw error;
-  }
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
     try {
-      const payload = (await response.json()) as { detail?: string };
-      if (typeof payload.detail === "string" && payload.detail.trim()) {
-        message = payload.detail;
+      await warmBackendIfNeeded();
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        headers,
+        mode: "cors",
+        cache: "no-store",
+      });
+      lastBackendReadyAt = Date.now();
+
+      if (!response.ok) {
+        let message = `Request failed with status ${response.status}`;
+        try {
+          const payload = (await response.json()) as { detail?: string };
+          if (typeof payload.detail === "string" && payload.detail.trim()) {
+            message = payload.detail;
+          }
+        } catch {
+          // ignore non-json error payloads
+        }
+        const apiError = new ApiError(message, response.status);
+        if (shouldRetryRequest(apiError) && attempt < REQUEST_RETRY_DELAYS_MS.length - 1) {
+          lastError = apiError;
+          continue;
+        }
+        throw apiError;
       }
-    } catch {
-      // ignore non-json error payloads
+
+      return (await response.json()) as T;
+    } catch (error) {
+      if (error instanceof Error && /expected pattern|invalid url/i.test(error.message)) {
+        throw new ApiError(
+          "The admin API URL is invalid. Set VITE_API_BASE_URL to a full URL like https://odos-backend.onrender.com/api",
+        );
+      }
+
+      const browserOrigin =
+        typeof window !== "undefined" && window.location?.origin ? window.location.origin : "unknown";
+      const pointsAtLocalApi =
+        API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1");
+      const runningOnRemoteHost =
+        browserOrigin !== "unknown" &&
+        !browserOrigin.includes("localhost") &&
+        !browserOrigin.includes("127.0.0.1");
+
+      if (pointsAtLocalApi && runningOnRemoteHost) {
+        throw new ApiError(
+          `This admin site is configured with a local API URL (${API_BASE_URL}). Rebuild with VITE_API_BASE_URL=https://odos-backend.onrender.com/api`,
+        );
+      }
+
+      if (shouldRetryRequest(error) && attempt < REQUEST_RETRY_DELAYS_MS.length - 1) {
+        lastError = error;
+        continue;
+      }
+
+      if (isNetworkFailure(error)) {
+        throw buildNetworkError();
+      }
+
+      throw error;
     }
-    throw new ApiError(message, response.status);
   }
 
-  return (await response.json()) as T;
+  if (isNetworkFailure(lastError)) {
+    throw buildNetworkError();
+  }
+
+  throw lastError;
 }
 
 export { API_BASE_URL };
