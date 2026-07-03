@@ -9,8 +9,9 @@ export type VendorStatus =
 export type AccountStatus = "active" | "blocked" | "inactive";
 export type StoreStatus = "active" | "suspended" | "draft";
 export type ProductStatus = "pending" | "active" | "hidden" | "suspended";
-export type VoucherDiscountType = "percent" | "fixed" | "free_shipping";
-export type VoucherScope = "odos" | "store";
+export type VoucherDiscountType = "percent" | "fixed" | "free_shipping" | "bogo";
+export type PromotionType = "coupon" | "automatic" | "product" | "cart" | "bogo" | "free_shipping";
+export type VoucherScope = "odos" | "store" | "category" | "product";
 export type VoucherAvailability = "auto" | "claim" | "assigned";
 export type VoucherCampaignStatus =
   | "active"
@@ -473,6 +474,24 @@ export type VoucherCampaign = {
   approvalStatus?: string;
   campaignTag?: string | null;
   reviewNotes?: string | null;
+  promotionType?: PromotionType;
+  priority?: number;
+  stackable?: boolean;
+  exclusiveGroup?: string | null;
+  autoApply?: boolean;
+  bogoBuyQuantity?: number | null;
+  bogoGetQuantity?: number | null;
+  bogoGetDiscountPercent?: number | null;
+  firstOrderOnly?: boolean;
+  newUserOnly?: boolean;
+};
+
+export type PromotionAnalytics = {
+  totalCampaigns: number;
+  activeCampaigns: number;
+  totalRedemptions: number;
+  totalDiscountGiven: number;
+  topCampaigns: VoucherCampaign[];
 };
 
 export type AdminReview = {

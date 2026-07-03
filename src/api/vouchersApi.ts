@@ -2,6 +2,8 @@ import { mapVoucherCampaign } from "@/api/mappers";
 import { createPaginatedAdminApi } from "@/api/createPaginatedAdminApi";
 import { requestJson } from "@/api/client";
 import type {
+  PromotionAnalytics,
+  PromotionType,
   VoucherAvailability,
   VoucherCampaign,
   VoucherDiscountType,
@@ -36,6 +38,19 @@ type BackendVoucherCampaign = {
   approval_status?: string;
   campaign_tag?: string | null;
   review_notes?: string | null;
+  promotion_type?: PromotionType;
+  priority?: number;
+  stackable?: boolean;
+  exclusive_group?: string | null;
+  auto_apply?: boolean;
+  bogo_buy_quantity?: number | null;
+  bogo_get_quantity?: number | null;
+  bogo_get_discount_percent?: number | null;
+  first_order_only?: boolean;
+  new_user_only?: boolean;
+  category_slugs?: string[] | null;
+  product_ids?: string[] | null;
+  excluded_product_ids?: string[] | null;
 };
 
 export type VoucherDraft = {
@@ -55,6 +70,20 @@ export type VoucherDraft = {
   isActive: boolean;
   startsAt?: string | null;
   endsAt?: string | null;
+  campaignTag?: string | null;
+  promotionType?: PromotionType;
+  priority?: number;
+  stackable?: boolean;
+  exclusiveGroup?: string | null;
+  autoApply?: boolean;
+  bogoBuyQuantity?: number | null;
+  bogoGetQuantity?: number | null;
+  bogoGetDiscountPercent?: number | null;
+  firstOrderOnly?: boolean;
+  newUserOnly?: boolean;
+  categorySlugs?: string[] | null;
+  productIds?: string[] | null;
+  excludedProductIds?: string[] | null;
 };
 
 function toBackendPayload(input: VoucherDraft) {
@@ -75,6 +104,20 @@ function toBackendPayload(input: VoucherDraft) {
     is_active: input.isActive,
     starts_at: input.startsAt ?? null,
     ends_at: input.endsAt ?? null,
+    campaign_tag: input.campaignTag?.trim() || null,
+    promotion_type: input.promotionType ?? "coupon",
+    priority: input.priority ?? 0,
+    stackable: input.stackable ?? false,
+    exclusive_group: input.exclusiveGroup?.trim() || null,
+    auto_apply: input.autoApply ?? false,
+    bogo_buy_quantity: input.bogoBuyQuantity ?? null,
+    bogo_get_quantity: input.bogoGetQuantity ?? null,
+    bogo_get_discount_percent: input.bogoGetDiscountPercent ?? null,
+    first_order_only: input.firstOrderOnly ?? false,
+    new_user_only: input.newUserOnly ?? false,
+    category_slugs: input.categorySlugs ?? null,
+    product_ids: input.productIds ?? null,
+    excluded_product_ids: input.excludedProductIds ?? null,
   };
 }
 
@@ -126,4 +169,38 @@ export async function reviewVoucher(
     }),
   });
   return mapVoucherCampaign(voucher);
+}
+
+export async function getPromotionAnalytics(token: string): Promise<PromotionAnalytics> {
+  const response = await requestJson<{
+    total_campaigns: number;
+    active_campaigns: number;
+    total_redemptions: number;
+    total_discount_given: number;
+    top_campaigns: BackendVoucherCampaign[];
+  }>("/admin/vouchers/analytics", { token });
+
+  return {
+    totalCampaigns: response.total_campaigns,
+    activeCampaigns: response.active_campaigns,
+    totalRedemptions: response.total_redemptions,
+    totalDiscountGiven: response.total_discount_given,
+    topCampaigns: response.top_campaigns.map(mapVoucherCampaign),
+  };
+}
+
+export async function bulkGenerateVouchers(
+  token: string,
+  payload: { prefix: string; count: number; template: VoucherDraft },
+) {
+  const vouchers = await requestJson<BackendVoucherCampaign[]>("/admin/vouchers/bulk-generate", {
+    method: "POST",
+    token,
+    body: JSON.stringify({
+      prefix: payload.prefix.trim().toUpperCase(),
+      count: payload.count,
+      template: toBackendPayload(payload.template),
+    }),
+  });
+  return vouchers.map(mapVoucherCampaign);
 }

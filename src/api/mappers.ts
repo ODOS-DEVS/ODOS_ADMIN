@@ -517,6 +517,16 @@ type BackendVoucherCampaign = {
   approval_status?: string;
   campaign_tag?: string | null;
   review_notes?: string | null;
+  promotion_type?: VoucherCampaign["promotionType"];
+  priority?: number;
+  stackable?: boolean;
+  exclusive_group?: string | null;
+  auto_apply?: boolean;
+  bogo_buy_quantity?: number | null;
+  bogo_get_quantity?: number | null;
+  bogo_get_discount_percent?: number | null;
+  first_order_only?: boolean;
+  new_user_only?: boolean;
 };
 
 type BackendAdminReview = {
@@ -1202,6 +1212,16 @@ export function mapVoucherCampaign(voucher: BackendVoucherCampaign): VoucherCamp
     approvalStatus: voucher.approval_status ?? "approved",
     campaignTag: voucher.campaign_tag ?? null,
     reviewNotes: voucher.review_notes ?? null,
+    promotionType: voucher.promotion_type ?? "coupon",
+    priority: voucher.priority ?? 0,
+    stackable: voucher.stackable ?? false,
+    exclusiveGroup: voucher.exclusive_group ?? null,
+    autoApply: voucher.auto_apply ?? false,
+    bogoBuyQuantity: voucher.bogo_buy_quantity ?? null,
+    bogoGetQuantity: voucher.bogo_get_quantity ?? null,
+    bogoGetDiscountPercent: voucher.bogo_get_discount_percent ?? null,
+    firstOrderOnly: voucher.first_order_only ?? false,
+    newUserOnly: voucher.new_user_only ?? false,
   };
 }
 
