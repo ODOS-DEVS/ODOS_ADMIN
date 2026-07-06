@@ -67,7 +67,6 @@ export function VendorApplicationDetails({ application }: { application: VendorA
     { label: "Facebook", value: application.storeFacebookUrl },
     { label: "TikTok", value: application.storeTiktokUrl },
     { label: "X / Twitter", value: application.storeTwitterUrl },
-    { label: "WhatsApp link", value: application.storeWhatsappUrl },
     { label: "Website", value: application.storeWebsiteUrl },
   ];
 
@@ -101,7 +100,6 @@ export function VendorApplicationDetails({ application }: { application: VendorA
       <DetailSection title="Contact">
         <div className="grid gap-4 md:grid-cols-2">
           <DetailRow label="Phone number" value={application.phoneNumber} />
-          <DetailRow label="WhatsApp number" value={application.whatsappNumber ?? "Not provided"} />
         </div>
       </DetailSection>
 

@@ -559,7 +559,6 @@ function VendorSection({ user }: { user: AdminUserDetail }) {
             <DetailTile label="Status" value={<StatusBadge status={user.vendorApplication.status} />} />
             <DetailTile label="Store name" value={user.vendorApplication.storeName} />
             <DetailTile label="Phone" value={user.vendorApplication.phoneNumber} />
-            <DetailTile label="WhatsApp" value={user.vendorApplication.whatsappNumber ?? "—"} />
             <DetailTile
               label="Location"
               value={
