@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Bell,
@@ -29,33 +30,78 @@ import { Button } from "@/components/ui/Button";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/audit", label: "Audit log", icon: Shield },
-  { to: "/users", label: "Users", icon: Users },
-  { to: "/vendors", label: "Vendors", icon: UserCog },
+type NavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
-    to: "/vendor-applications",
-    label: "Vendor Applications",
-    icon: FolderKanban,
+    label: "Overview",
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/analytics", label: "Analytics", icon: BarChart3 },
+      { to: "/audit", label: "Audit log", icon: Shield },
+    ],
   },
-  { to: "/stores", label: "Stores", icon: Store },
-  { to: "/markets", label: "Markets", icon: Warehouse },
-  { to: "/categories", label: "Categories", icon: Tags },
-  { to: "/products", label: "Products", icon: Package },
-  { to: "/finance", label: "Finance", icon: Landmark },
-  { to: "/payouts", label: "Payouts", icon: Wallet },
-  { to: "/returns", label: "Returns", icon: RefreshCcw },
-  { to: "/reviews", label: "Reviews", icon: Star },
-  { to: "/vouchers", label: "Vouchers", icon: TicketPercent },
-  { to: "/promo-banners", label: "Promo Banners", icon: Megaphone },
-  { to: "/flash-sale-events", label: "Flash Sale Events", icon: Zap },
-  { to: "/orders", label: "Orders", icon: ShoppingBag },
-  { to: "/delivery-settings", label: "Delivery", icon: Truck },
-  { to: "/support-chats", label: "Support Chats", icon: MessageSquareMore },
-  { to: "/notifications", label: "Notifications", icon: Bell },
-  { to: "/settings", label: "Settings", icon: Boxes },
+  {
+    label: "People",
+    items: [
+      { to: "/users", label: "Users", icon: Users },
+      { to: "/vendors", label: "Vendors", icon: UserCog },
+      { to: "/vendor-applications", label: "Vendor applications", icon: FolderKanban },
+    ],
+  },
+  {
+    label: "Catalog",
+    items: [
+      { to: "/stores", label: "Stores", icon: Store },
+      { to: "/markets", label: "Markets", icon: Warehouse },
+      { to: "/categories", label: "Categories", icon: Tags },
+      { to: "/products", label: "Products", icon: Package },
+    ],
+  },
+  {
+    label: "Commerce",
+    items: [
+      { to: "/orders", label: "Orders", icon: ShoppingBag },
+      { to: "/returns", label: "Returns", icon: RefreshCcw },
+      { to: "/delivery-settings", label: "Delivery", icon: Truck },
+    ],
+  },
+  {
+    label: "Marketing",
+    items: [
+      { to: "/vouchers", label: "Vouchers", icon: TicketPercent },
+      { to: "/promo-banners", label: "Promo banners", icon: Megaphone },
+      { to: "/flash-sale-events", label: "Flash sale events", icon: Zap },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { to: "/finance", label: "Finance", icon: Landmark },
+      { to: "/payouts", label: "Payouts", icon: Wallet },
+    ],
+  },
+  {
+    label: "Community",
+    items: [
+      { to: "/reviews", label: "Reviews", icon: Star },
+      { to: "/support-chats", label: "Support chats", icon: MessageSquareMore },
+      { to: "/notifications", label: "Notifications", icon: Bell },
+    ],
+  },
+  {
+    label: "System",
+    items: [{ to: "/settings", label: "Settings", icon: Boxes }],
+  },
 ];
 
 type SidebarProps = {
@@ -66,7 +112,12 @@ type SidebarProps = {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { adminUser, logout } = useAdminAuth();
   const { canAccessRoute } = useAdminPermissions();
-  const visibleNavItems = navItems.filter((item) => canAccessRoute(item.to));
+  const visibleNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => canAccessRoute(item.to)),
+    }))
+    .filter((group) => group.items.length > 0);
   const initials = adminUser?.fullName
     ?.split(" ")
     .map((segment) => segment[0])
@@ -90,32 +141,44 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         }`}
       >
         <div className="rounded-3xl border border-white/10 bg-panel-gradient px-4 py-5">
-          <p className="text-xs font-semibold text-center uppercase tracking-[0.28em] text-accentSoft">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.28em] text-accentSoft">
             ODOS Admin
           </p>
         </div>
 
-        <nav className="mt-6 flex-1 space-y-1 overflow-y-auto pr-1">
-          {visibleNavItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
-                    isActive
-                      ? "border border-accent/20 bg-accent/15 text-textStrong"
-                      : "text-textMuted hover:bg-white/5 hover:text-textStrong"
-                  }`
-                }
-              >
-                <Icon className="size-4" />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
+        <nav className="mt-6 flex-1 space-y-5 overflow-y-auto pr-1">
+          {visibleNavGroups.map((group, groupIndex) => (
+            <div key={group.label}>
+              <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-textMuted/80">
+                {group.label}
+              </p>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
+                          isActive
+                            ? "border border-accent/20 bg-accent/15 text-textStrong"
+                            : "text-textMuted hover:bg-white/5 hover:text-textStrong"
+                        }`
+                      }
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+              {groupIndex < visibleNavGroups.length - 1 ? (
+                <div className="mt-4 border-b border-white/5" />
+              ) : null}
+            </div>
+          ))}
         </nav>
 
         <div className="mt-5 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-glow">
@@ -140,8 +203,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </p>
             </div>
           </div>
-
-          
 
           <Button
             variant="ghost"
