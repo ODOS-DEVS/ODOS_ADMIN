@@ -29,6 +29,8 @@ const PERMISSION_FEATURES: Record<AdminPermissionLevel, Set<string> | "*"> = {
     "notifications",
     "support",
     "delivery",
+    "finance",
+    "payouts",
   ]),
   support: new Set([
     "dashboard",

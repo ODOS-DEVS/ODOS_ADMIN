@@ -50,6 +50,7 @@ export async function updateVendorWithdrawalRequest(
   payload: {
     status: AdminVendorWithdrawalRequest["status"];
     adminNote?: string | null;
+    confirmManualPayout?: boolean;
   },
 ) {
   const request = await requestJson<BackendAdminVendorWithdrawalRequest>(
@@ -60,6 +61,7 @@ export async function updateVendorWithdrawalRequest(
       body: JSON.stringify({
         status: payload.status,
         admin_note: payload.adminNote ?? null,
+        confirm_manual_payout: payload.confirmManualPayout ?? false,
       }),
     },
   );

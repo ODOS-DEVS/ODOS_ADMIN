@@ -1,6 +1,6 @@
 import { Eye, RefreshCcw, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   getVendorWithdrawalRequestsPage,
@@ -59,7 +59,7 @@ function nextStatusOptions(
   if (request.status === "approved") {
     return [
       { label: "Approved", value: "approved" },
-      { label: "Start payout", value: "paid" },
+      { label: "Start Paystack payout", value: "paid" },
       { label: "Rejected", value: "rejected" },
     ];
   }
@@ -69,7 +69,11 @@ function nextStatusOptions(
 export function FullPayoutsPage() {
   const { token } = useAdminAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
+  const isMainPayoutsRoute =
+    location.pathname === "/payouts" || location.pathname === "/payouts/full";
   const {
     items: requests,
     isLoading,
@@ -91,6 +95,18 @@ export function FullPayoutsPage() {
     useState<VendorWithdrawalStatus>("pending");
   const [draftAdminNote, setDraftAdminNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [quickActionId, setQuickActionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const requestedStatus = searchParams.get("status");
+    if (
+      requestedStatus === "pending" ||
+      requestedStatus === "approved" ||
+      requestedStatus === "paid"
+    ) {
+      setStatusFilter(requestedStatus);
+    }
+  }, [searchParams]);
 
   const filteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -187,13 +203,53 @@ export function FullPayoutsPage() {
     }
   }
 
+  async function handleQuickUpdate(
+    request: AdminVendorWithdrawalRequest,
+    status: VendorWithdrawalStatus,
+    options?: { confirmManualPayout?: boolean },
+  ) {
+    if (!token) {
+      return;
+    }
+
+    setQuickActionId(request.id);
+    try {
+      const updated = await updateVendorWithdrawalRequest(token, request.id, {
+        status,
+        adminNote: request.adminNote ?? null,
+        confirmManualPayout: options?.confirmManualPayout,
+      });
+      replaceItem(updated);
+      if (selectedRequest?.id === request.id) {
+        setSelectedRequest(updated);
+        setDraftStatus(updated.status);
+      }
+      showToast({
+        title: status === "approved" ? "Withdrawal approved" : "Withdrawal updated",
+        description: `${updated.vendorName} is now marked ${updated.status}.`,
+        tone: "success",
+      });
+    } catch (updateError) {
+      showToast({
+        title: "Unable to update withdrawal",
+        description:
+          updateError instanceof Error
+            ? updateError.message
+            : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setQuickActionId(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <AdminFullHeader
         eyebrow="Payouts"
-        title="Complete payout queue"
-        description="Vendor withdrawal requests, transfer status, and payout audit."
-        backRoute="/payouts"
+        title="Vendor withdrawal queue"
+        description="Review vendor cash-out requests, approve or reject them, then confirm payout once the vendor has been paid."
+        backRoute={isMainPayoutsRoute ? "/dashboard" : "/payouts"}
         onRefresh={() => void refresh()}
         refreshing={isLoading}
       />
@@ -224,6 +280,19 @@ export function FullPayoutsPage() {
             {formatCurrency(summary.paidTotal)}
           </p>
         </div>
+      </div>
+
+      <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 px-5 py-4 text-sm text-textStrong">
+        <p className="font-medium text-amber-100">How vendor payouts work</p>
+        <p className="mt-2 text-textMuted">
+          Approve first, then pay the vendor. Use{" "}
+          <span className="text-textStrong">Send via Paystack</span> only if your
+          Paystack business is Registered and transfers are enabled. If Paystack
+          shows a Starter-business error, send the money yourself through mobile
+          money or bank transfer, then click{" "}
+          <span className="text-textStrong">Confirm manual payout</span> so ODOS
+          deducts the vendor wallet and records the payout.
+        </p>
       </div>
 
       <SectionCard
@@ -290,18 +359,58 @@ export function FullPayoutsPage() {
                 header: "Actions",
                 render: (request) => (
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate(`/payouts/full/${request.id}`)}
-                    >
-                      Open dossier
-                    </Button>
+                    {request.status === "pending" ? (
+                      <>
+                        <Button
+                          variant="primary"
+                          isLoading={quickActionId === request.id}
+                          onClick={() => void handleQuickUpdate(request, "approved")}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          isLoading={quickActionId === request.id}
+                          onClick={() => void handleQuickUpdate(request, "rejected")}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    ) : null}
+                    {request.status === "approved" ? (
+                      <>
+                        <Button
+                          variant="primary"
+                          isLoading={quickActionId === request.id}
+                          onClick={() => void handleQuickUpdate(request, "paid")}
+                        >
+                          Send via Paystack
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          isLoading={quickActionId === request.id}
+                          onClick={() =>
+                            void handleQuickUpdate(request, "paid", {
+                              confirmManualPayout: true,
+                            })
+                          }
+                        >
+                          Confirm manual payout
+                        </Button>
+                      </>
+                    ) : null}
                     <Button
                       variant="secondary"
                       leftIcon={<Eye className="size-4" />}
                       onClick={() => openRequest(request)}
                     >
-                      View
+                      Review
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => navigate(`/payouts/${request.id}`)}
+                    >
+                      Details
                     </Button>
                   </div>
                 ),

@@ -329,7 +329,7 @@ export function DashboardPage() {
               <Button
                 variant="ghost"
                 leftIcon={<ArrowRight className="size-4" />}
-                onClick={() => navigate("/payouts")}
+                onClick={() => navigate("/payouts?status=pending")}
               >
                 Open queue
               </Button>
@@ -371,7 +371,7 @@ export function DashboardPage() {
                   <button
                     key={request.id}
                     type="button"
-                    onClick={() => navigate("/payouts")}
+                    onClick={() => navigate("/payouts?status=pending")}
                     className="group w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-left transition hover:border-accent/30 hover:bg-white/[0.04]"
                   >
                     <div className="flex items-center justify-between gap-2">

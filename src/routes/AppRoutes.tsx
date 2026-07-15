@@ -13,7 +13,8 @@ import { LoginPage } from "@/pages/LoginPage";
 import { MarketsPage } from "@/pages/MarketsPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { OrdersPage } from "@/pages/OrdersPage";
-import { PayoutsPage } from "@/pages/PayoutsPage";
+import { FullPayoutsPage } from "@/pages/full/FullPayoutsPage";
+import { PayoutDetailPage } from "@/pages/full/entityDetailPages";
 import { ProductsPage } from "@/pages/ProductsPage";
 import { PromoBannersPage } from "@/pages/PromoBannersPage";
 import { ReturnsPage } from "@/pages/ReturnsPage";
@@ -55,7 +56,8 @@ export function AppRoutes() {
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/finance" element={<FinancePage />} />
-        <Route path="/payouts" element={<PayoutsPage />} />
+        <Route path="/payouts" element={<FullPayoutsPage />} />
+        <Route path="/payouts/:payoutId" element={<PayoutDetailPage />} />
         <Route path="/returns" element={<ReturnsPage />} />
         <Route path="/reviews" element={<ReviewsPage />} />
         <Route path="/vouchers" element={<VouchersPage />} />

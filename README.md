@@ -19,6 +19,7 @@ React admin dashboard for operating the ODOS marketplace — catalog, users, ven
 - Dashboard overview, users (with detail profiles), vendors, vendor applications
 - Stores, markets, categories, products (including studio-style editors)
 - Orders, returns, reviews, finance, payouts, support chats, notifications
+- **Payout approval queue** with manual payout confirmation for Paystack Starter business accounts
 - Delivery settings (standard / express / same-day fees and ETAs)
 
 **Merchandising**
