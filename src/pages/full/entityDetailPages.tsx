@@ -12,6 +12,7 @@ import {
 import { getSupportChatMessages, getSupportChatThreads } from "@/api/chatApi";
 import { getReturnRequests } from "@/api/ordersApi";
 import { getVendorWithdrawalRequests } from "@/api/payoutsApi";
+import { VendorWithdrawalApprovalPanel } from "@/components/payouts/VendorWithdrawalApprovalPanel";
 import { getProduct } from "@/api/productsApi";
 import { getReviews } from "@/api/reviewsApi";
 import { getStore } from "@/api/storesApi";
@@ -347,7 +348,7 @@ export function ProductDetailPage() {
 
 export function PayoutDetailPage() {
   const { payoutId = "" } = useParams();
-  const { record, isLoading, isRefreshing, error, reload } = useRecordDetail({
+  const { record, isLoading, isRefreshing, error, reload, setRecord } = useRecordDetail({
     id: payoutId,
     loadList: getVendorWithdrawalRequests,
   });
@@ -365,7 +366,7 @@ export function PayoutDetailPage() {
           eyebrow="Payout dossier"
           title={payout.vendorName}
           description={formatCurrency(payout.amount)}
-          backRoute="/payouts/full"
+          backRoute="/payouts"
           tabs={[
             { id: "overview", label: "Overview" },
             { id: "account", label: "Payout account" },
@@ -376,16 +377,25 @@ export function PayoutDetailPage() {
         >
           {(tab) =>
             tab === "overview" ? (
-              <SectionCard compact title="Withdrawal request">
-                <AdminKpiGrid
-                  items={[
-                    { label: "Status", value: payout.status },
-                    { label: "Amount", value: formatCurrency(payout.amount) },
-                    { label: "Wallet available", value: formatCurrency(payout.walletAvailableBalance) },
-                    { label: "Created", value: formatDateTime(payout.createdAt) },
-                  ]}
+              <>
+                <SectionCard compact title="Withdrawal request">
+                  <AdminKpiGrid
+                    items={[
+                      { label: "Status", value: payout.status },
+                      { label: "Amount", value: formatCurrency(payout.amount) },
+                      {
+                        label: "Wallet available",
+                        value: formatCurrency(payout.walletAvailableBalance),
+                      },
+                      { label: "Created", value: formatDateTime(payout.createdAt) },
+                    ]}
+                  />
+                </SectionCard>
+                <VendorWithdrawalApprovalPanel
+                  request={payout}
+                  onUpdated={(updated) => setRecord(updated)}
                 />
-              </SectionCard>
+              </>
             ) : (
               <SectionCard compact title="Payout destination">
                 <div className="grid gap-2 md:grid-cols-2">

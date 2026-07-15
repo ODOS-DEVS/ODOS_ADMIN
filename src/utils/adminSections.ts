@@ -72,13 +72,13 @@ export const ADMIN_BRIEF_SECTIONS = {
   },
   payouts: {
     eyebrow: "Payouts",
-    title: "Payout queue overview",
-    description: "Pending vendor withdrawals and transfer activity at a glance.",
-    fullRoute: "/payouts/full",
-    fullLabel: "Open full payout queue",
+    title: "Vendor withdrawal queue",
+    description: "Review, approve, reject, and mark vendor payout requests from one queue.",
+    fullRoute: "/payouts",
+    fullLabel: "Open withdrawal queue",
     calloutTitle: "Process every withdrawal",
     calloutDescription: "Review payout accounts, transfer references, wallet balances, and admin notes for each request.",
-    calloutCta: "Open full payout queue",
+    calloutCta: "Open withdrawal queue",
   },
   returns: {
     eyebrow: "Returns",

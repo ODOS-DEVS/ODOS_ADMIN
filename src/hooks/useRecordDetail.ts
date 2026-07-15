@@ -146,5 +146,5 @@ export function useRecordDetail<T>({
     [enabled, id, token],
   );
 
-  return { record, isLoading, isRefreshing, error, reload };
+  return { record, isLoading, isRefreshing, error, reload, setRecord };
 }
