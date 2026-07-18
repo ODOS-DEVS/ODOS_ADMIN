@@ -496,9 +496,11 @@ type BackendVoucherCampaign = {
   description?: string | null;
   issuer_name?: string | null;
   scope: VoucherCampaign["scope"];
+  owner_type?: VoucherCampaign["ownerType"];
   availability: VoucherCampaign["availability"];
   store_id?: string | null;
   store_name?: string | null;
+  eligible_store_ids?: string[] | null;
   reward_text: string;
   discount_type: VoucherCampaign["discountType"];
   discount_value: number;
@@ -527,6 +529,10 @@ type BackendVoucherCampaign = {
   bogo_get_discount_percent?: number | null;
   first_order_only?: boolean;
   new_user_only?: boolean;
+  category_slugs?: string[] | null;
+  excluded_category_slugs?: string[] | null;
+  product_ids?: string[] | null;
+  excluded_product_ids?: string[] | null;
 };
 
 type BackendAdminReview = {
@@ -1191,9 +1197,11 @@ export function mapVoucherCampaign(voucher: BackendVoucherCampaign): VoucherCamp
     description: voucher.description ?? null,
     issuerName: voucher.issuer_name ?? null,
     scope: voucher.scope,
+    ownerType: voucher.owner_type ?? "platform",
     availability: voucher.availability,
     storeId: voucher.store_id ?? null,
     storeName: voucher.store_name ?? null,
+    eligibleStoreIds: voucher.eligible_store_ids ?? null,
     rewardText: voucher.reward_text,
     discountType: voucher.discount_type,
     discountValue: voucher.discount_value,
@@ -1222,6 +1230,10 @@ export function mapVoucherCampaign(voucher: BackendVoucherCampaign): VoucherCamp
     bogoGetDiscountPercent: voucher.bogo_get_discount_percent ?? null,
     firstOrderOnly: voucher.first_order_only ?? false,
     newUserOnly: voucher.new_user_only ?? false,
+    categorySlugs: voucher.category_slugs ?? null,
+    excludedCategorySlugs: voucher.excluded_category_slugs ?? null,
+    productIds: voucher.product_ids ?? null,
+    excludedProductIds: voucher.excluded_product_ids ?? null,
   };
 }
 

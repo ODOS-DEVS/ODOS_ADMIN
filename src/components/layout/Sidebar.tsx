@@ -80,6 +80,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: "/vouchers", label: "Vouchers", icon: TicketPercent },
       { to: "/promo-banners", label: "Promo banners", icon: Megaphone },
+      { to: "/merchandising-campaigns", label: "Campaigns", icon: Tags },
       { to: "/flash-sale-events", label: "Flash sale events", icon: Zap },
     ],
   },

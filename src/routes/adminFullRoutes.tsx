@@ -6,6 +6,7 @@ import { FullCategoriesPage } from "@/pages/full/FullCategoriesPage";
 import { ProductStudioPage } from "@/pages/full/ProductStudioPage";
 import { FullFinancePage } from "@/pages/full/FullFinancePage";
 import { FullFlashSaleEventsPage } from "@/pages/full/FullFlashSaleEventsPage";
+import { FullMerchandisingCampaignsPage } from "@/pages/full/FullMerchandisingCampaignsPage";
 import { FullMarketsPage } from "@/pages/full/FullMarketsPage";
 import { FullNotificationsPage } from "@/pages/full/FullNotificationsPage";
 import { FullOrdersPage } from "@/pages/full/FullOrdersPage";
@@ -70,6 +71,7 @@ export function AdminFullRoutes() {
       <Route path="/promo-banners/full/new" element={<PromoBannerStudioPage />} />
       <Route path="/promo-banners/full/:bannerId/studio" element={<PromoBannerStudioPage />} />
       <Route path="/flash-sale-events/full" element={<FullFlashSaleEventsPage />} />
+      <Route path="/merchandising-campaigns/full" element={<FullMerchandisingCampaignsPage />} />
       <Route path="/support-chats/full" element={<FullSupportChatsPage />} />
       <Route path="/support-chats/full/:threadId" element={<SupportThreadDetailPage />} />
       <Route path="/notifications/full" element={<FullNotificationsPage />} />
