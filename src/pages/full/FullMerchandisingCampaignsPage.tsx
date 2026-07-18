@@ -129,7 +129,7 @@ export function FullMerchandisingCampaignsPage() {
     return products
       .filter(
         (product) =>
-          product.title.toLowerCase().includes(q) ||
+          product.name.toLowerCase().includes(q) ||
           product.id.toLowerCase().includes(q) ||
           (product.category ?? "").toLowerCase().includes(q),
       )
@@ -668,7 +668,7 @@ export function FullMerchandisingCampaignsPage() {
                           });
                         }}
                       />
-                      <span>{product.title}</span>
+                      <span>{product.name}</span>
                     </span>
                     {checked ? (
                       <button
