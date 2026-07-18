@@ -77,7 +77,9 @@ export const ROUTE_FEATURES: Record<string, string> = {
   "/returns": "returns",
   "/reviews": "reviews",
   "/vouchers": "promotions",
+  "/vouchers/full": "promotions",
   "/promo-banners": "promotions",
+  "/merchandising-campaigns": "promotions",
   "/flash-sale-events": "promotions",
   "/orders": "orders",
   "/delivery-settings": "delivery",
@@ -107,9 +109,19 @@ export function useAdminPermissions() {
     };
 
     const canAccessRoute = (route: string) => {
-      const feature = ROUTE_FEATURES[route];
-      if (!feature) return true;
-      return canAccess(feature);
+      const normalized = route.split("?")[0] || route;
+      const exact = ROUTE_FEATURES[normalized];
+      if (exact) {
+        return canAccess(exact);
+      }
+      // Match nested full-studio routes (e.g. /vouchers/full/:id).
+      const prefixMatch = Object.keys(ROUTE_FEATURES)
+        .filter((key) => normalized === key || normalized.startsWith(`${key}/`))
+        .sort((a, b) => b.length - a.length)[0];
+      if (!prefixMatch) {
+        return true;
+      }
+      return canAccess(ROUTE_FEATURES[prefixMatch]);
     };
 
     return {

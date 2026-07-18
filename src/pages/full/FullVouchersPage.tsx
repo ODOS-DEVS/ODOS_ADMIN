@@ -1,4 +1,4 @@
-import { Edit3, Hash, Info, Plus, Trash2 } from "lucide-react";
+import { Copy, Edit3, Hash, Info, Pause, Play, Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -7,8 +7,11 @@ import {
   archiveVoucher,
   bulkGenerateVouchers,
   createVoucher,
+  duplicateVoucher,
   getPromotionAnalytics,
   getVouchersPage,
+  pauseVoucher,
+  resumeVoucher,
   reviewVoucher,
   type VoucherDraft,
   updateVoucher,
@@ -64,6 +67,11 @@ type VoucherFormValues = {
   bogoGetQuantity: string;
   firstOrderOnly: boolean;
   newUserOnly: boolean;
+  categorySlugs: string;
+  excludedCategorySlugs: string;
+  productIds: string;
+  excludedProductIds: string;
+  eligibleStoreIds: string;
 };
 
 const initialVoucherForm: VoucherFormValues = {
@@ -93,7 +101,20 @@ const initialVoucherForm: VoucherFormValues = {
   bogoGetQuantity: "",
   firstOrderOnly: false,
   newUserOnly: false,
+  categorySlugs: "",
+  excludedCategorySlugs: "",
+  productIds: "",
+  excludedProductIds: "",
+  eligibleStoreIds: "",
 };
+
+function parseCommaList(value: string): string[] | null {
+  const items = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return items.length ? items : null;
+}
 
 const statusOptions: Array<{ label: string; value: "all" | VoucherCampaignStatus }> = [
   { label: "All statuses", value: "all" },
@@ -107,6 +128,8 @@ const statusOptions: Array<{ label: string; value: "all" | VoucherCampaignStatus
 const scopeOptions: Array<{ label: string; value: VoucherScope }> = [
   { label: "ODOS-wide", value: "odos" },
   { label: "Store-specific", value: "store" },
+  { label: "Category", value: "category" },
+  { label: "Product", value: "product" },
 ];
 
 const availabilityOptions: Array<{ label: string; value: VoucherAvailability }> = [
@@ -423,6 +446,11 @@ export function FullVouchersPage() {
       bogoGetQuantity: voucher.bogoGetQuantity != null ? String(voucher.bogoGetQuantity) : "",
       firstOrderOnly: voucher.firstOrderOnly ?? false,
       newUserOnly: voucher.newUserOnly ?? false,
+      categorySlugs: (voucher.categorySlugs ?? []).join(", "),
+      excludedCategorySlugs: (voucher.excludedCategorySlugs ?? []).join(", "),
+      productIds: (voucher.productIds ?? []).join(", "),
+      excludedProductIds: (voucher.excludedProductIds ?? []).join(", "),
+      eligibleStoreIds: (voucher.eligibleStoreIds ?? []).join(", "),
     });
     setIsEditorOpen(true);
   }
@@ -505,6 +533,13 @@ export function FullVouchersPage() {
       bogoGetDiscountPercent: 100,
       firstOrderOnly: form.firstOrderOnly,
       newUserOnly: form.newUserOnly,
+      ownerType: "platform",
+      categorySlugs: form.scope === "category" ? parseCommaList(form.categorySlugs) : null,
+      excludedCategorySlugs: parseCommaList(form.excludedCategorySlugs),
+      productIds: form.scope === "product" ? parseCommaList(form.productIds) : null,
+      excludedProductIds: parseCommaList(form.excludedProductIds),
+      eligibleStoreIds:
+        form.scope === "store" ? null : parseCommaList(form.eligibleStoreIds),
     };
   }
 
@@ -586,6 +621,56 @@ export function FullVouchersPage() {
     }
   }
 
+  async function handlePauseResume(voucher: VoucherCampaign) {
+    if (!token) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const updated = voucher.isActive
+        ? await pauseVoucher(token, voucher.id)
+        : await resumeVoucher(token, voucher.id);
+      replaceItem(updated);
+      showToast({
+        title: updated.isActive ? "Voucher resumed" : "Voucher paused",
+        description: `${updated.code} is now ${updated.isActive ? "active" : "paused"} at checkout.`,
+        tone: "success",
+      });
+    } catch (error) {
+      showToast({
+        title: "Unable to update voucher status",
+        description: error instanceof Error ? error.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleDuplicate(voucher: VoucherCampaign) {
+    if (!token) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const created = await duplicateVoucher(token, voucher.id);
+      setItems((current) => [created, ...current]);
+      showToast({
+        title: "Voucher duplicated",
+        description: `${created.code} was created as an inactive draft copy.`,
+        tone: "success",
+      });
+    } catch (error) {
+      showToast({
+        title: "Unable to duplicate voucher",
+        description: error instanceof Error ? error.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   async function handleReview(
     voucher: VoucherCampaign,
     approvalStatus: "approved" | "rejected",
@@ -594,10 +679,23 @@ export function FullVouchersPage() {
       return;
     }
 
+    let reviewNotes: string | null = null;
+    if (approvalStatus === "rejected") {
+      const entered = window.prompt(
+        `Optional rejection note for ${voucher.code}`,
+        voucher.reviewNotes ?? "",
+      );
+      if (entered === null) {
+        return;
+      }
+      reviewNotes = entered.trim() || null;
+    }
+
     setActionLoading(true);
     try {
       const updated = await reviewVoucher(token, voucher.id, {
         approvalStatus,
+        reviewNotes,
         isActive: approvalStatus === "approved",
       });
       replaceItem(updated);
@@ -905,6 +1003,28 @@ export function FullVouchersPage() {
                       Edit
                     </Button>
                     <Button
+                      variant="ghost"
+                      leftIcon={<Copy className="size-4" />}
+                      onClick={() => void handleDuplicate(voucher)}
+                      disabled={actionLoading}
+                    >
+                      Duplicate
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      leftIcon={
+                        voucher.isActive ? (
+                          <Pause className="size-4" />
+                        ) : (
+                          <Play className="size-4" />
+                        )
+                      }
+                      onClick={() => void handlePauseResume(voucher)}
+                      disabled={actionLoading || voucher.approvalStatus === "pending"}
+                    >
+                      {voucher.isActive ? "Pause" : "Resume"}
+                    </Button>
+                    <Button
                       variant="danger"
                       leftIcon={<Trash2 className="size-4" />}
                       onClick={() => setArchiveTarget(voucher)}
@@ -1106,9 +1226,76 @@ export function FullVouchersPage() {
                         ))}
                       </select>
                     </VoucherEditorField>
-                  ) : (
-                    <div className="hidden md:block" />
-                  )}
+                  ) : null}
+
+                  {voucherForm.scope === "category" ? (
+                    <VoucherEditorField
+                      label="Category slugs"
+                      helper="Comma-separated category slugs that are eligible for this promo."
+                    >
+                      <input
+                        className="app-input"
+                        value={voucherForm.categorySlugs}
+                        onChange={(event) => updateForm("categorySlugs", event.target.value)}
+                        placeholder="electronics, fashion"
+                      />
+                    </VoucherEditorField>
+                  ) : null}
+
+                  {voucherForm.scope === "product" ? (
+                    <VoucherEditorField
+                      label="Product IDs"
+                      helper="Comma-separated product IDs that are eligible for this promo."
+                    >
+                      <input
+                        className="app-input"
+                        value={voucherForm.productIds}
+                        onChange={(event) => updateForm("productIds", event.target.value)}
+                        placeholder="prod_123, prod_456"
+                      />
+                    </VoucherEditorField>
+                  ) : null}
+
+                  {voucherForm.scope !== "store" ? (
+                    <VoucherEditorField
+                      label="Eligible store IDs"
+                      helper="Optional. Limit a marketplace promo to selected vendor stores."
+                      optional
+                    >
+                      <input
+                        className="app-input"
+                        value={voucherForm.eligibleStoreIds}
+                        onChange={(event) => updateForm("eligibleStoreIds", event.target.value)}
+                        placeholder="store_1, store_2"
+                      />
+                    </VoucherEditorField>
+                  ) : null}
+
+                  <VoucherEditorField
+                    label="Excluded categories"
+                    helper="Optional. Category slugs that should never receive this discount."
+                    optional
+                  >
+                    <input
+                      className="app-input"
+                      value={voucherForm.excludedCategorySlugs}
+                      onChange={(event) => updateForm("excludedCategorySlugs", event.target.value)}
+                      placeholder="gift-cards"
+                    />
+                  </VoucherEditorField>
+
+                  <VoucherEditorField
+                    label="Excluded product IDs"
+                    helper="Optional. Specific products that should never receive this discount."
+                    optional
+                  >
+                    <input
+                      className="app-input"
+                      value={voucherForm.excludedProductIds}
+                      onChange={(event) => updateForm("excludedProductIds", event.target.value)}
+                      placeholder="prod_999"
+                    />
+                  </VoucherEditorField>
                 </div>
               </VoucherEditorSection>
             </div>

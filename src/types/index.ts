@@ -446,6 +446,8 @@ export type Product = {
   updatedAt: string;
 };
 
+export type VoucherOwnerType = "platform" | "vendor";
+
 export type VoucherCampaign = {
   id: string;
   code: string;
@@ -453,9 +455,11 @@ export type VoucherCampaign = {
   description?: string | null;
   issuerName?: string | null;
   scope: VoucherScope;
+  ownerType?: VoucherOwnerType;
   availability: VoucherAvailability;
   storeId?: string | null;
   storeName?: string | null;
+  eligibleStoreIds?: string[] | null;
   rewardText: string;
   discountType: VoucherDiscountType;
   discountValue: number;
@@ -484,6 +488,10 @@ export type VoucherCampaign = {
   bogoGetDiscountPercent?: number | null;
   firstOrderOnly?: boolean;
   newUserOnly?: boolean;
+  categorySlugs?: string[] | null;
+  excludedCategorySlugs?: string[] | null;
+  productIds?: string[] | null;
+  excludedProductIds?: string[] | null;
 };
 
 export type PromotionAnalytics = {

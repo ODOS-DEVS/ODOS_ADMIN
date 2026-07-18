@@ -150,6 +150,17 @@ export const ADMIN_BRIEF_SECTIONS = {
     calloutDescription: "Event schedules, featured product rosters, and status for all flash sales.",
     calloutCta: "Open full flash sale calendar",
   },
+  merchandisingCampaigns: {
+    eyebrow: "Campaigns",
+    title: "Merchandising campaigns overview",
+    description: "Seasonal and featured marketplace campaigns for shopper discovery.",
+    fullRoute: "/merchandising-campaigns/full",
+    fullLabel: "Open campaign studio",
+    calloutTitle: "Run every campaign",
+    calloutDescription:
+      "Schedule campaigns, assign products/categories/stores, and control home discovery.",
+    calloutCta: "Open campaign studio",
+  },
   supportChats: {
     eyebrow: "Support chats",
     title: "Support inbox overview",

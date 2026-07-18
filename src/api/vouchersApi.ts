@@ -17,9 +17,11 @@ type BackendVoucherCampaign = {
   description?: string | null;
   issuer_name?: string | null;
   scope: VoucherScope;
+  owner_type?: "platform" | "vendor";
   availability: VoucherAvailability;
   store_id?: string | null;
   store_name?: string | null;
+  eligible_store_ids?: string[] | null;
   reward_text: string;
   discount_type: VoucherDiscountType;
   discount_value: number;
@@ -49,6 +51,7 @@ type BackendVoucherCampaign = {
   first_order_only?: boolean;
   new_user_only?: boolean;
   category_slugs?: string[] | null;
+  excluded_category_slugs?: string[] | null;
   product_ids?: string[] | null;
   excluded_product_ids?: string[] | null;
 };
@@ -59,8 +62,10 @@ export type VoucherDraft = {
   description?: string | null;
   issuerName?: string | null;
   scope: VoucherScope;
+  ownerType?: "platform" | "vendor";
   availability: VoucherAvailability;
   storeId?: string | null;
+  eligibleStoreIds?: string[] | null;
   discountType: VoucherDiscountType;
   discountValue: number;
   minSubtotal: number;
@@ -82,6 +87,7 @@ export type VoucherDraft = {
   firstOrderOnly?: boolean;
   newUserOnly?: boolean;
   categorySlugs?: string[] | null;
+  excludedCategorySlugs?: string[] | null;
   productIds?: string[] | null;
   excludedProductIds?: string[] | null;
 };
@@ -93,8 +99,10 @@ function toBackendPayload(input: VoucherDraft) {
     description: input.description?.trim() || null,
     issuer_name: input.issuerName?.trim() || null,
     scope: input.scope,
+    owner_type: input.ownerType ?? "platform",
     availability: input.availability,
     store_id: input.scope === "store" ? input.storeId?.trim() || null : null,
+    eligible_store_ids: input.scope === "store" ? null : input.eligibleStoreIds ?? null,
     discount_type: input.discountType,
     discount_value: input.discountType === "free_shipping" ? 0 : input.discountValue,
     min_subtotal: input.minSubtotal,
@@ -116,6 +124,7 @@ function toBackendPayload(input: VoucherDraft) {
     first_order_only: input.firstOrderOnly ?? false,
     new_user_only: input.newUserOnly ?? false,
     category_slugs: input.categorySlugs ?? null,
+    excluded_category_slugs: input.excludedCategorySlugs ?? null,
     product_ids: input.productIds ?? null,
     excluded_product_ids: input.excludedProductIds ?? null,
   };
@@ -152,6 +161,33 @@ export async function archiveVoucher(token: string, voucherId: string) {
     method: "DELETE",
     token,
   });
+}
+
+export async function pauseVoucher(token: string, voucherId: string) {
+  const voucher = await requestJson<BackendVoucherCampaign>(`/admin/vouchers/${voucherId}/pause`, {
+    method: "POST",
+    token,
+  });
+  return mapVoucherCampaign(voucher);
+}
+
+export async function resumeVoucher(token: string, voucherId: string) {
+  const voucher = await requestJson<BackendVoucherCampaign>(`/admin/vouchers/${voucherId}/resume`, {
+    method: "POST",
+    token,
+  });
+  return mapVoucherCampaign(voucher);
+}
+
+export async function duplicateVoucher(token: string, voucherId: string) {
+  const voucher = await requestJson<BackendVoucherCampaign>(
+    `/admin/vouchers/${voucherId}/duplicate`,
+    {
+      method: "POST",
+      token,
+    },
+  );
+  return mapVoucherCampaign(voucher);
 }
 
 export async function reviewVoucher(
