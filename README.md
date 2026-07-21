@@ -26,7 +26,9 @@ React admin dashboard for operating the ODOS marketplace — catalog, users, ven
 
 - Promo banners with placement, destination, and live mobile preview (home carousel, deals, etc.)
 - Flash sale events and voucher / promotion management
+- **Merchandising campaigns** (opt-in targeting for seller participation)
 - Full analytics reports and section-level metrics
+- Review moderation with **seller reply** visibility on admin review detail
 
 **UX patterns**
 
@@ -93,7 +95,7 @@ After deploy, add the admin site origin to backend `CORS_ORIGINS` and redeploy t
 
 - `/dashboard` · `/users` · `/vendors` · `/vendor-applications`
 - `/stores` · `/markets` · `/categories` · `/products`
-- `/vouchers` · `/promo-banners` · `/flash-sale-events`
+- `/vouchers` · `/promo-banners` · `/flash-sale-events` · `/merchandising-campaigns`
 - `/orders` · `/returns` · `/reviews` · `/finance` · `/notifications` · `/delivery-settings`
 
 **Full directories** (infinite scroll, detail drill-down)
