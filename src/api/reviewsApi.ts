@@ -15,6 +15,8 @@ type BackendAdminReview = {
   user_email: string;
   rating: number;
   comment: string;
+  vendor_reply?: string | null;
+  vendor_replied_at?: string | null;
   is_hidden: boolean;
   moderation_reason?: string | null;
   moderated_at?: string | null;

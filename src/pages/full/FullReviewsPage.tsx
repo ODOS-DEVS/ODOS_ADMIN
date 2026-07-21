@@ -339,6 +339,20 @@ export function FullReviewsPage() {
               </p>
             </div>
 
+            {selectedReview.vendorReply ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Seller reply</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-textStrong">
+                  {selectedReview.vendorReply}
+                </p>
+                {selectedReview.vendorRepliedAt ? (
+                  <p className="mt-2 text-xs text-textMuted">
+                    Replied {formatDateTime(selectedReview.vendorRepliedAt)}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             {selectedReview.moderationReason ? (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Moderation note</p>

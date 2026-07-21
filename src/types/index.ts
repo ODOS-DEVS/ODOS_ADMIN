@@ -514,6 +514,8 @@ export type AdminReview = {
   userEmail: string;
   rating: number;
   comment: string;
+  vendorReply?: string | null;
+  vendorRepliedAt?: string | null;
   isHidden: boolean;
   moderationReason?: string | null;
   moderatedAt?: string | null;

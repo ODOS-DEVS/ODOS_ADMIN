@@ -547,6 +547,8 @@ type BackendAdminReview = {
   user_email: string;
   rating: number;
   comment: string;
+  vendor_reply?: string | null;
+  vendor_replied_at?: string | null;
   is_hidden: boolean;
   moderation_reason?: string | null;
   moderated_at?: string | null;
@@ -1250,6 +1252,8 @@ export function mapAdminReview(review: BackendAdminReview): AdminReview {
     userEmail: review.user_email,
     rating: review.rating,
     comment: review.comment,
+    vendorReply: review.vendor_reply ?? null,
+    vendorRepliedAt: review.vendor_replied_at ?? null,
     isHidden: review.is_hidden,
     moderationReason: review.moderation_reason ?? null,
     moderatedAt: review.moderated_at ?? null,
