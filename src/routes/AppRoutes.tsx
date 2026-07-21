@@ -27,13 +27,19 @@ import { UsersPage } from "@/pages/UsersPage";
 import { VendorApplicationsPage } from "@/pages/VendorApplicationsPage";
 import { VendorsPage } from "@/pages/VendorsPage";
 import { VouchersPage } from "@/pages/VouchersPage";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { AdminFullRoutes } from "@/routes/adminFullRoutes";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { getStoredAdminPreferences } from "@/utils/adminPreferences";
 
-export function AppRoutes() {
-  const defaultLandingPage = getStoredAdminPreferences().defaultLandingPage;
+function LandingRedirect() {
+  const { canAccessRoute } = useAdminPermissions();
+  const preferred = getStoredAdminPreferences().defaultLandingPage;
+  const target = canAccessRoute(preferred) ? preferred : "/dashboard";
+  return <Navigate to={target} replace />;
+}
 
+export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -45,7 +51,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to={defaultLandingPage} replace />} />
+        <Route index element={<LandingRedirect />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/audit" element={<AuditLogPage />} />

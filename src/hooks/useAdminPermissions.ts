@@ -89,11 +89,15 @@ export const ROUTE_FEATURES: Record<string, string> = {
 };
 
 function normalizePermission(value: string | null | undefined): AdminPermissionLevel {
-  const raw = (value ?? "admin").trim().toLowerCase();
-  if (raw in PERMISSION_FEATURES) {
+  const raw = (value ?? "").trim().toLowerCase();
+  if (raw && raw in PERMISSION_FEATURES) {
     return raw as AdminPermissionLevel;
   }
-  return "admin";
+  // Fail closed for unknown bands; treat missing as full admin for legacy accounts.
+  if (!raw) {
+    return "admin";
+  }
+  return "analyst";
 }
 
 export function useAdminPermissions() {
@@ -119,7 +123,7 @@ export function useAdminPermissions() {
         .filter((key) => normalized === key || normalized.startsWith(`${key}/`))
         .sort((a, b) => b.length - a.length)[0];
       if (!prefixMatch) {
-        return true;
+        return false;
       }
       return canAccess(ROUTE_FEATURES[prefixMatch]);
     };

@@ -52,6 +52,14 @@ export class ApiError extends Error {
   }
 }
 
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/** Register a callback for expired/invalid admin sessions (401). */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+  unauthorizedHandler = handler;
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -207,6 +215,9 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
           // ignore non-json error payloads
         }
         const apiError = new ApiError(message, response.status);
+        if (response.status === 401) {
+          unauthorizedHandler?.();
+        }
         if (shouldRetryRequest(apiError) && attempt < REQUEST_RETRY_DELAYS_MS.length - 1) {
           lastError = apiError;
           continue;

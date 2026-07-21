@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { getAdminMe, loginAdmin, signupFirstAdmin } from "@/api/adminAuthApi";
+import { setUnauthorizedHandler } from "@/api/client";
 import type { AdminSession, AdminUser } from "@/types";
 import {
   clearStoredAdminToken,
@@ -98,6 +99,18 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     clearStoredAdminToken();
     setToken(null);
     setAdminUser(null);
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearStoredAdminToken();
+      setToken(null);
+      setAdminUser(null);
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.assign("/login");
+      }
+    });
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   const bootstrapSignup = useCallback(async (payload: SignupPayload) => {
