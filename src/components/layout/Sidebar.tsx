@@ -29,11 +29,13 @@ import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useOpsQueueBadges } from "@/hooks/useOpsQueueBadges";
 
 type NavItem = {
   to: string;
   label: string;
   icon: LucideIcon;
+  badgeKey?: keyof ReturnType<typeof useOpsQueueBadges>["badges"];
 };
 
 type NavGroup = {
@@ -41,6 +43,7 @@ type NavGroup = {
   items: NavItem[];
 };
 
+/** High-churn desks go straight to full list pages. */
 const navGroups: NavGroup[] = [
   {
     label: "Overview",
@@ -53,50 +56,80 @@ const navGroups: NavGroup[] = [
   {
     label: "People",
     items: [
-      { to: "/users", label: "Users", icon: Users },
-      { to: "/vendors", label: "Vendors", icon: UserCog },
-      { to: "/vendor-applications", label: "Vendor applications", icon: FolderKanban },
+      { to: "/users/full", label: "Users", icon: Users },
+      { to: "/vendors/full", label: "Vendors", icon: UserCog },
+      {
+        to: "/vendor-applications/full",
+        label: "Vendor applications",
+        icon: FolderKanban,
+        badgeKey: "pendingVendorApplications",
+      },
     ],
   },
   {
     label: "Catalog",
     items: [
-      { to: "/stores", label: "Stores", icon: Store },
-      { to: "/markets", label: "Markets", icon: Warehouse },
-      { to: "/categories", label: "Categories", icon: Tags },
-      { to: "/products", label: "Products", icon: Package },
+      { to: "/stores/full", label: "Stores", icon: Store },
+      { to: "/markets/full", label: "Markets", icon: Warehouse },
+      { to: "/categories/full", label: "Categories", icon: Tags },
+      {
+        to: "/products/full",
+        label: "Products",
+        icon: Package,
+        badgeKey: "pendingProducts",
+      },
     ],
   },
   {
     label: "Commerce",
     items: [
-      { to: "/orders", label: "Orders", icon: ShoppingBag },
-      { to: "/returns", label: "Returns", icon: RefreshCcw },
+      {
+        to: "/orders/full",
+        label: "Orders",
+        icon: ShoppingBag,
+        badgeKey: "pendingOrders",
+      },
+      {
+        to: "/returns/full",
+        label: "Returns",
+        icon: RefreshCcw,
+        badgeKey: "openReturnRequests",
+      },
       { to: "/delivery-settings", label: "Delivery", icon: Truck },
     ],
   },
   {
     label: "Marketing",
     items: [
-      { to: "/vouchers", label: "Vouchers", icon: TicketPercent },
-      { to: "/promo-banners", label: "Promo banners", icon: Megaphone },
-      { to: "/merchandising-campaigns", label: "Campaigns", icon: Tags },
-      { to: "/flash-sale-events", label: "Flash sale events", icon: Zap },
+      { to: "/vouchers/full", label: "Vouchers", icon: TicketPercent },
+      { to: "/promo-banners/full", label: "Promo banners", icon: Megaphone },
+      { to: "/merchandising-campaigns/full", label: "Campaigns", icon: Tags },
+      { to: "/flash-sale-events/full", label: "Flash sale events", icon: Zap },
     ],
   },
   {
     label: "Finance",
     items: [
-      { to: "/finance", label: "Finance", icon: Landmark },
-      { to: "/payouts", label: "Payouts", icon: Wallet },
+      { to: "/finance/full", label: "Finance", icon: Landmark },
+      {
+        to: "/payouts",
+        label: "Payouts",
+        icon: Wallet,
+        badgeKey: "pendingWithdrawals",
+      },
     ],
   },
   {
     label: "Community",
     items: [
-      { to: "/reviews", label: "Reviews", icon: Star },
-      { to: "/support-chats", label: "Support chats", icon: MessageSquareMore },
-      { to: "/notifications", label: "Notifications", icon: Bell },
+      { to: "/reviews/full", label: "Reviews", icon: Star },
+      {
+        to: "/support-chats/full",
+        label: "Support chats",
+        icon: MessageSquareMore,
+        badgeKey: "supportWaitingOnAdmin",
+      },
+      { to: "/notifications/full", label: "Notifications", icon: Bell },
     ],
   },
   {
@@ -113,6 +146,7 @@ type SidebarProps = {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { adminUser, logout } = useAdminAuth();
   const { canAccessRoute } = useAdminPermissions();
+  const { badges } = useOpsQueueBadges();
   const visibleNavGroups = navGroups
     .map((group) => ({
       ...group,
@@ -137,7 +171,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         onClick={onClose}
       />
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-screen w-[280px] flex-col border-r border-white/10 bg-[#08101d]/95 px-5 py-6 shadow-glow transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-screen w-[280px] flex-col border-r border-white/10 bg-canvas/95 px-5 py-6 shadow-glow transition-transform duration-300 lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -156,6 +190,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
+                  const badge = item.badgeKey ? badges[item.badgeKey] : 0;
                   return (
                     <NavLink
                       key={item.to}
@@ -170,7 +205,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       }
                     >
                       <Icon className="size-4 shrink-0" />
-                      <span>{item.label}</span>
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {badge > 0 ? (
+                        <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-warning">
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      ) : null}
                     </NavLink>
                   );
                 })}

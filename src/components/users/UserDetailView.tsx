@@ -11,6 +11,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { EntityTimeline } from "@/components/admin/EntityOps";
 import {
   DetailTile,
   getUserInitials,
@@ -42,6 +43,7 @@ const USER_SECTIONS = [
   { id: "vendor", label: "Vendor" },
   { id: "settings", label: "Settings" },
   { id: "support", label: "Support" },
+  { id: "timeline", label: "Timeline" },
 ] as const;
 
 type UserSectionId = (typeof USER_SECTIONS)[number]["id"];
@@ -95,6 +97,9 @@ export function UserDetailView({ report }: UserDetailViewProps) {
         {activeSection === "settings" ? <SettingsSection user={user} /> : null}
         {activeSection === "support" ? (
           <SupportSection threads={supportThreads} onOpenInbox={() => navigate("/support-chats")} />
+        ) : null}
+        {activeSection === "timeline" ? (
+          <EntityTimeline entityType="user" entityId={user.id} actorId={user.id} />
         ) : null}
       </div>
     </div>
@@ -695,6 +700,7 @@ function SupportSection({
 }
 
 function OrderTable({ orders, compact = false }: { orders: Order[]; compact?: boolean }) {
+  const navigate = useNavigate();
   return (
     <DataTable<Order>
       compact={compact}
@@ -703,10 +709,14 @@ function OrderTable({ orders, compact = false }: { orders: Order[]; compact?: bo
           key: "order",
           header: "Order",
           render: (order) => (
-            <div>
-              <p className="font-medium">{order.orderNumber}</p>
+            <button
+              type="button"
+              className="text-left"
+              onClick={() => navigate(`/orders/full/${order.id}`)}
+            >
+              <p className="font-medium text-accentSoft">{order.orderNumber}</p>
               <p className="text-xs text-textMuted">{order.storeName}</p>
-            </div>
+            </button>
           ),
         },
         {

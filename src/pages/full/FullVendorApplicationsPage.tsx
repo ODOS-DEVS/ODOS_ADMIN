@@ -19,6 +19,7 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
+import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { VendorApplication, VendorStatus } from "@/types";
 import { formatDateTime } from "@/utils/format";
@@ -48,8 +49,14 @@ export function FullVendorApplicationsPage() {
     loadPage: getVendorApplicationsPage,
     getId: (application) => application.id,
   });
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const {
+    query,
+    setQuery,
+    statusFilter,
+    setStatusFilter,
+  } = useQueueSearchParams({
+    statusValues: ["pending", "under_review", "approved", "rejected"],
+  });
   const [selectedApplication, setSelectedApplication] = useState<VendorApplication | null>(null);
   const [approveTarget, setApproveTarget] = useState<VendorApplication | null>(null);
   const [rejectTarget, setRejectTarget] = useState<VendorApplication | null>(null);

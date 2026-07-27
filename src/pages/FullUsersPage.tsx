@@ -1,8 +1,9 @@
-import { ArrowLeft, ArrowRight, Ban, RefreshCw } from "lucide-react";
+import { ArrowRight, Ban } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getUsersPage, updateUserStatus } from "@/api/usersApi";
+import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { UserSectionNav } from "@/components/users/UsersUi";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +14,7 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
+import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { AccountStatus, AdminUser } from "@/types";
 import {
@@ -47,8 +49,14 @@ export function FullUsersPage() {
     loadPage: getUsersPage,
     getId: (user) => user.id,
   });
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const {
+    query,
+    setQuery,
+    statusFilter,
+    setStatusFilter,
+  } = useQueueSearchParams({
+    statusValues: ["active", "blocked", "inactive"],
+  });
   const [activeTab, setActiveTab] = useState<UserDirectoryTab>("all");
   const [statusTarget, setStatusTarget] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -90,34 +98,14 @@ export function FullUsersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
-            Full user directory
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">
-            Complete account registry
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm text-textMuted">
-            {snapshot.totalUsers} accounts · click any user to open their full profile with every order,
-            payment, review, return, cart item, wishlist entry, vendor record, wallet balance, and support
-            thread.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" leftIcon={<ArrowLeft className="size-4" />} onClick={() => navigate("/users")}>
-            Brief overview
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<RefreshCw className={`size-4 ${isLoading ? "animate-spin" : ""}`} />}
-            onClick={() => void refresh()}
-            disabled={isLoading}
-          >
-            Refresh
-          </Button>
-        </div>
-      </div>
+      <AdminFullHeader
+        eyebrow="Users"
+        title="Complete account registry"
+        description={`${snapshot.totalUsers} accounts · open any user for orders, payments, reviews, returns, cart, wishlist, vendor record, wallet, and support threads.`}
+        backRoute="/users"
+        onRefresh={() => void refresh()}
+        refreshing={isLoading}
+      />
 
       <UserSectionNav
         sections={DIRECTORY_TABS.map((tab) => ({

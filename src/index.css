@@ -43,6 +43,19 @@ body {
   .app-textarea {
     @apply w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-textStrong outline-none transition placeholder:text-textMuted focus:border-accent/50;
   }
+
+  /* Canonical card shells — match SectionCard visual language */
+  .app-card {
+    @apply rounded-2xl border border-white/10 bg-panel/80 shadow-glow;
+  }
+
+  .app-card-muted {
+    @apply rounded-2xl border border-white/10 bg-white/[0.03];
+  }
+
+  .app-card-soft {
+    @apply rounded-xl border border-white/10 bg-white/[0.02];
+  }
 }
 
 ::-webkit-scrollbar {

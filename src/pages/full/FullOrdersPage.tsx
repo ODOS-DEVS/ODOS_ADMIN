@@ -15,6 +15,7 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
+import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { AdminOrderDetail, Order, OrderStatus } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
@@ -76,8 +77,22 @@ export function FullOrdersPage() {
     loadPage: getOrdersPage,
     getId: (order) => order.id,
   });
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const {
+    query,
+    setQuery,
+    statusFilter,
+    setStatusFilter,
+  } = useQueueSearchParams({
+    statusValues: [
+      "pending",
+      "confirmed",
+      "processing",
+      "ready",
+      "out_for_delivery",
+      "delivered",
+      "cancelled",
+    ],
+  });
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [selectedOrderSummary, setSelectedOrderSummary] = useState<Order | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderDetail | null>(null);
@@ -286,7 +301,7 @@ export function FullOrdersPage() {
         size="xl"
       >
         {isDetailLoading ? (
-          <LoadingState label="Loading order details..." />
+          <LoadingState size="sm" label="Loading order details..." />
         ) : orderDetailError ? (
           <ErrorState
             description={orderDetailError}

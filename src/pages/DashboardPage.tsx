@@ -1,8 +1,11 @@
 import {
+  AlertTriangle,
   ArrowRight,
   Bell,
   CircleDollarSign,
+  MessageSquareMore,
   Package,
+  RefreshCcw,
   RefreshCw,
   ShoppingCart,
   Store,
@@ -24,6 +27,7 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import type {
   AdminVendorWithdrawalRequest,
   DashboardPayload,
@@ -35,50 +39,50 @@ import { formatCurrency, formatDateTime } from "@/utils/format";
 
 const heroStats = [
   {
-    key: "totalRevenue",
-    label: "Revenue",
+    key: "revenueToday",
+    label: "Revenue today",
     icon: CircleDollarSign,
-    hint: "Gross platform revenue",
+    hint: "Gross revenue since midnight UTC",
     tone: "success" as const,
-    route: "/finance",
+    route: "/finance/full",
   },
   {
-    key: "totalOrders",
-    label: "Orders",
+    key: "ordersToday",
+    label: "Orders today",
     icon: ShoppingCart,
-    hint: "All-time order volume",
+    hint: "Orders placed today",
     tone: "default" as const,
-    route: "/orders",
+    route: "/orders/full",
   },
   {
     key: "pendingOrders",
     label: "Pending orders",
     icon: Bell,
-    hint: "Needs attention now",
+    hint: "Needs fulfillment attention",
     tone: "warning" as const,
-    route: "/orders",
+    route: "/orders/full",
   },
   {
-    key: "pendingVendorApplications",
-    label: "Vendor applications",
-    icon: WalletCards,
-    hint: "Awaiting review",
-    tone: "warning" as const,
-    route: "/vendor-applications",
+    key: "totalRevenue",
+    label: "Lifetime revenue",
+    icon: CircleDollarSign,
+    hint: "All-time marketplace GMV",
+    tone: "default" as const,
+    route: "/finance/full",
   },
 ] as const;
 
 const secondaryStats = [
-  { key: "totalUsers", label: "Users", icon: Users, route: "/users" },
-  { key: "totalVendors", label: "Vendors", icon: UserCheck, route: "/vendors" },
-  { key: "totalStores", label: "Stores", icon: Store, route: "/stores" },
-  { key: "totalProducts", label: "Products", icon: Package, route: "/products" },
+  { key: "totalUsers", label: "Users", icon: Users, route: "/users/full" },
+  { key: "totalVendors", label: "Vendors", icon: UserCheck, route: "/vendors/full" },
+  { key: "totalStores", label: "Stores", icon: Store, route: "/stores/full" },
+  { key: "totalProducts", label: "Products", icon: Package, route: "/products/full" },
 ] as const;
 
 type FeedTab = "applications" | "activity" | "audit";
 
 function formatStatValue(key: string, value: number) {
-  if (key === "totalRevenue") {
+  if (key === "totalRevenue" || key === "revenueToday") {
     return formatCurrency(value);
   }
   return new Intl.NumberFormat("en-GH").format(value);
@@ -86,6 +90,7 @@ function formatStatValue(key: string, value: number) {
 
 export function DashboardPage() {
   const { token } = useAdminAuth();
+  const { canAccessRoute, canAccess } = useAdminPermissions();
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [payoutRequests, setPayoutRequests] = useState<AdminVendorWithdrawalRequest[]>([]);
@@ -94,49 +99,58 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [feedTab, setFeedTab] = useState<FeedTab>("applications");
 
-  const loadOverview = useCallback(async (background = false) => {
-    if (!token) return;
-    if (background) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-    setError(null);
-
-    const partialErrors: string[] = [];
-    let payload: DashboardPayload | null = null;
-    let withdrawals: AdminVendorWithdrawalRequest[] = [];
-
-    try {
-      payload = await getDashboardOverview(token);
-    } catch (loadError) {
-      partialErrors.push(
-        loadError instanceof Error ? loadError.message : "Unable to load dashboard overview.",
-      );
-    }
-
-    try {
-      withdrawals = await getVendorWithdrawalRequests(token);
-    } catch (loadError) {
-      partialErrors.push(
-        loadError instanceof Error ? loadError.message : "Unable to load payout requests.",
-      );
-    }
-
-    if (payload) {
-      setData(payload);
-    }
-    setPayoutRequests(withdrawals);
-
-    if (!payload && partialErrors.length > 0) {
-      setError(partialErrors[0]);
-    } else if (payload && partialErrors.length > 0) {
+  const loadOverview = useCallback(
+    async (background = false) => {
+      if (!token) return;
+      if (background) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       setError(null);
-    }
 
-    setIsLoading(false);
-    setIsRefreshing(false);
-  }, [token]);
+      const partialErrors: string[] = [];
+      let payload: DashboardPayload | null = null;
+      let withdrawals: AdminVendorWithdrawalRequest[] = [];
+
+      try {
+        payload = await getDashboardOverview(token);
+      } catch (loadError) {
+        partialErrors.push(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load dashboard overview.",
+        );
+      }
+
+      if (canAccess("payouts") || canAccess("finance")) {
+        try {
+          withdrawals = await getVendorWithdrawalRequests(token);
+        } catch (loadError) {
+          partialErrors.push(
+            loadError instanceof Error
+              ? loadError.message
+              : "Unable to load payout requests.",
+          );
+        }
+      }
+
+      if (payload) {
+        setData(payload);
+      }
+      setPayoutRequests(withdrawals);
+
+      if (!payload && partialErrors.length > 0) {
+        setError(partialErrors[0]);
+      } else if (payload) {
+        setError(null);
+      }
+
+      setIsLoading(false);
+      setIsRefreshing(false);
+    },
+    [canAccess, token],
+  );
 
   useEffect(() => {
     void loadOverview();
@@ -153,6 +167,67 @@ export function DashboardPage() {
     };
   }, [payoutRequests]);
 
+  const attentionItems = useMemo(() => {
+    if (!data) return [];
+    const s = data.stats;
+    const items = [
+      {
+        key: "applications",
+        label: "Vendor applications",
+        count: s.pendingVendorApplications,
+        route: "/vendor-applications/full?status=pending",
+        icon: WalletCards,
+        feature: "vendors" as const,
+      },
+      {
+        key: "products",
+        label: "Products awaiting review",
+        count: s.pendingProducts,
+        route: "/products/full?status=pending",
+        icon: Package,
+        feature: "products" as const,
+      },
+      {
+        key: "returns",
+        label: "Open returns",
+        count: s.openReturnRequests,
+        route: "/returns/full?queue=open",
+        icon: RefreshCcw,
+        feature: "returns" as const,
+      },
+      {
+        key: "support",
+        label: "Support waiting on admin",
+        count: s.supportWaitingOnAdmin,
+        route: "/support-chats/full?status=waiting_on_admin",
+        icon: MessageSquareMore,
+        feature: "support" as const,
+      },
+      {
+        key: "stock",
+        label: "Low-stock products",
+        count: s.lowStockProducts,
+        route: "/products/full?stock=low",
+        icon: AlertTriangle,
+        feature: "products" as const,
+      },
+      {
+        key: "payouts",
+        label: "Payout queue",
+        count: s.pendingWithdrawals || payoutSummary.pendingCount,
+        route: "/payouts?status=pending",
+        icon: WalletCards,
+        feature: "payouts" as const,
+      },
+    ];
+    return items.filter(
+      (item) =>
+        item.count > 0 &&
+        canAccess(item.feature) &&
+        canAccessRoute(item.route.split("?")[0]),
+    );
+  }, [canAccess, canAccessRoute, data, payoutSummary.pendingCount]);
+
   if (isLoading) {
     return <DashboardSkeleton />;
   }
@@ -168,26 +243,25 @@ export function DashboardPage() {
 
   const pendingOrders = data.stats.pendingOrders;
   const pendingApplications = data.stats.pendingVendorApplications;
+  const attentionTotal = attentionItems.reduce((sum, item) => sum + item.count, 0);
 
   return (
     <div className="space-y-4">
-      {/* Compact command header */}
-      <div
-        className="animate-fade-up opacity-0"
-        style={{ animationDelay: "0ms" }}
-      >
+      <div className="animate-fade-up opacity-0" style={{ animationDelay: "0ms" }}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
               Command center
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">
-              Platform overview
+              Marketplace operations
             </h1>
             <p className="mt-1 text-sm text-textMuted">
-              {pendingOrders > 0 || pendingApplications > 0 || payoutSummary.pendingCount > 0
-                ? `${pendingOrders} pending order${pendingOrders === 1 ? "" : "s"} · ${pendingApplications} vendor review${pendingApplications === 1 ? "" : "s"} · ${payoutSummary.pendingCount} payout${payoutSummary.pendingCount === 1 ? "" : "s"}`
-                : "Marketplace is running smoothly — no urgent queues."}
+              {attentionTotal > 0
+                ? `${attentionTotal} item${attentionTotal === 1 ? "" : "s"} need attention · ${pendingOrders} pending order${pendingOrders === 1 ? "" : "s"} · ${data.stats.ordersToday} order${data.stats.ordersToday === 1 ? "" : "s"} today`
+                : pendingOrders > 0 || pendingApplications > 0
+                  ? `${pendingOrders} pending order${pendingOrders === 1 ? "" : "s"} · ${pendingApplications} vendor review${pendingApplications === 1 ? "" : "s"}`
+                  : "Marketplace is running smoothly — no urgent queues."}
             </p>
           </div>
 
@@ -202,23 +276,64 @@ export function DashboardPage() {
             >
               Refresh
             </Button>
-            <Button variant="secondary" onClick={() => navigate("/orders")}>
-              Orders
-            </Button>
-            <Button variant="secondary" onClick={() => navigate("/payouts")}>
-              Payouts
-            </Button>
-            <Button
-              leftIcon={<ArrowRight className="size-4" />}
-              onClick={() => navigate("/analytics")}
-            >
-              Analytics
-            </Button>
+            {canAccessRoute("/orders/full") ? (
+              <Button variant="secondary" onClick={() => navigate("/orders/full")}>
+                Orders
+              </Button>
+            ) : null}
+            {canAccessRoute("/payouts") ? (
+              <Button variant="secondary" onClick={() => navigate("/payouts")}>
+                Payouts
+              </Button>
+            ) : null}
+            {canAccessRoute("/analytics") ? (
+              <Button
+                leftIcon={<ArrowRight className="size-4" />}
+                onClick={() => navigate("/analytics/full")}
+              >
+                Analytics
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>
 
-      {/* Hero KPIs — actionable metrics first */}
+      {attentionItems.length > 0 ? (
+        <SectionCard
+          compact
+          animationDelay={40}
+          title="Needs attention"
+          description="Queues that block customers, vendors, or cash-out"
+        >
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {attentionItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => navigate(item.route)}
+                  className="flex items-center gap-3 rounded-xl border border-warning/25 bg-warning/[0.07] px-3.5 py-3 text-left transition hover:border-warning/40 hover:bg-warning/[0.12]"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-warning/15 text-warning">
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-textStrong">
+                      {item.label}
+                    </span>
+                    <span className="block text-xs text-textMuted">Open queue</span>
+                  </span>
+                  <span className="text-lg font-semibold tabular-nums text-textStrong">
+                    {item.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </SectionCard>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {heroStats.map((item, index) => (
           <StatCard
@@ -229,12 +344,11 @@ export function DashboardPage() {
             icon={item.icon}
             tone={item.tone}
             animationDelay={60 + index * 50}
-            onClick={() => navigate(item.route)}
+            onClick={() => canAccessRoute(item.route) && navigate(item.route)}
           />
         ))}
       </div>
 
-      {/* Secondary metrics — one dense strip */}
       <div
         className="animate-fade-up opacity-0 rounded-2xl border border-white/10 bg-white/[0.02] p-2"
         style={{ animationDelay: "280ms" }}
@@ -248,13 +362,12 @@ export function DashboardPage() {
               value={formatStatValue(item.key, data.stats[item.key])}
               icon={item.icon}
               animationDelay={300 + index * 40}
-              onClick={() => navigate(item.route)}
+              onClick={() => canAccessRoute(item.route) && navigate(item.route)}
             />
           ))}
         </div>
       </div>
 
-      {/* Bento grid — orders + operations side by side */}
       <div className="grid gap-4 xl:grid-cols-12">
         <SectionCard
           compact
@@ -263,7 +376,7 @@ export function DashboardPage() {
           title="Recent orders"
           description="Latest transactions across the marketplace"
           action={
-            <Button variant="ghost" onClick={() => navigate("/orders")}>
+            <Button variant="ghost" onClick={() => navigate("/orders/full")}>
               View all
             </Button>
           }
@@ -319,80 +432,80 @@ export function DashboardPage() {
         </SectionCard>
 
         <div className="space-y-4 xl:col-span-5">
-          {/* Compact payout queue */}
-          <SectionCard
-            compact
-            animationDelay={420}
-            title="Payout queue"
-            description="Vendor withdrawal approvals"
-            action={
-              <Button
-                variant="ghost"
-                leftIcon={<ArrowRight className="size-4" />}
-                onClick={() => navigate("/payouts?status=pending")}
-              >
-                Open queue
-              </Button>
-            }
-          >
-            <div
-              className={
-                payoutSummary.pendingCount > 0
-                  ? "rounded-xl border border-warning/30 bg-warning/[0.08] px-3.5 py-3"
-                  : "rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-3"
+          {canAccess("payouts") || canAccess("finance") ? (
+            <SectionCard
+              compact
+              animationDelay={420}
+              title="Payout queue"
+              description="Vendor withdrawal approvals"
+              action={
+                <Button
+                  variant="ghost"
+                  leftIcon={<ArrowRight className="size-4" />}
+                  onClick={() => navigate("/payouts?status=pending")}
+                >
+                  Open queue
+                </Button>
               }
             >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-textMuted">
-                    Awaiting action
-                  </p>
-                  <p className="mt-1 text-xl font-semibold tabular-nums text-textStrong">
-                    {payoutSummary.pendingCount}{" "}
-                    <span className="text-sm font-normal text-textMuted">requests</span>
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-textMuted">Value</p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-textStrong">
-                    {formatCurrency(payoutSummary.pendingAmount)}
-                  </p>
+              <div
+                className={
+                  payoutSummary.pendingCount > 0
+                    ? "rounded-xl border border-warning/30 bg-warning/[0.08] px-3.5 py-3"
+                    : "rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-3"
+                }
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-textMuted">
+                      Awaiting action
+                    </p>
+                    <p className="mt-1 text-xl font-semibold tabular-nums text-textStrong">
+                      {payoutSummary.pendingCount}{" "}
+                      <span className="text-sm font-normal text-textMuted">requests</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-textMuted">Value</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-textStrong">
+                      {formatCurrency(payoutSummary.pendingAmount)}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {payoutSummary.recent.length === 0 ? (
-              <p className="mt-3 text-xs leading-5 text-textMuted">
-                No withdrawal requests yet. They will appear here when vendors cash out.
-              </p>
-            ) : (
-              <div className="mt-3 space-y-2">
-                {payoutSummary.recent.map((request) => (
-                  <button
-                    key={request.id}
-                    type="button"
-                    onClick={() => navigate("/payouts?status=pending")}
-                    className="group w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-left transition hover:border-accent/30 hover:bg-white/[0.04]"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-textStrong">
-                          {request.vendorName}
-                        </p>
-                        <p className="truncate text-xs text-textMuted">
-                          {request.currency} {request.amount.toFixed(2)} ·{" "}
-                          {formatDateTime(request.createdAt)}
-                        </p>
+              {payoutSummary.recent.length === 0 ? (
+                <p className="mt-3 text-xs leading-5 text-textMuted">
+                  No withdrawal requests yet. They will appear here when vendors cash out.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {payoutSummary.recent.map((request) => (
+                    <button
+                      key={request.id}
+                      type="button"
+                      onClick={() => navigate("/payouts?status=pending")}
+                      className="group w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-left transition hover:border-accent/30 hover:bg-white/[0.04]"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-textStrong">
+                            {request.vendorName}
+                          </p>
+                          <p className="truncate text-xs text-textMuted">
+                            {request.currency} {request.amount.toFixed(2)} ·{" "}
+                            {formatDateTime(request.createdAt)}
+                          </p>
+                        </div>
+                        <StatusBadge status={request.status} />
                       </div>
-                      <StatusBadge status={request.status} />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </SectionCard>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          ) : null}
 
-          {/* Tabbed feed — applications + activity in one panel */}
           <SectionCard
             compact
             animationDelay={480}
@@ -413,11 +526,7 @@ export function DashboardPage() {
                     label: "Activity",
                     count: data.recentNotifications.length,
                   },
-                  {
-                    id: "audit" as const,
-                    label: "Live audit",
-                    count: 0,
-                  },
+                  { id: "audit" as const, label: "Live audit", count: 0 },
                 ] as const
               ).map((tab) => (
                 <button
@@ -447,7 +556,7 @@ export function DashboardPage() {
                     <button
                       key={application.id}
                       type="button"
-                      onClick={() => navigate("/vendor-applications")}
+                      onClick={() => navigate("/vendor-applications/full")}
                       className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-left transition hover:border-accent/25 hover:bg-white/[0.04]"
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -501,10 +610,10 @@ export function DashboardPage() {
                 onClick={() =>
                   navigate(
                     feedTab === "applications"
-                      ? "/vendor-applications"
+                      ? "/vendor-applications/full"
                       : feedTab === "audit"
                         ? "/audit"
-                        : "/notifications",
+                        : "/notifications/full",
                   )
                 }
               >

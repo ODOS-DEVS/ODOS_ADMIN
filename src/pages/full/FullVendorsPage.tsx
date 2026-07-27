@@ -14,6 +14,7 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
+import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { Vendor } from "@/types";
 import { formatCurrency, formatDate } from "@/utils/format";
@@ -44,8 +45,14 @@ export function FullVendorsPage() {
     loadPage: getVendorsPage,
     getId: (vendor) => vendor.id,
   });
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const {
+    query,
+    setQuery,
+    statusFilter,
+    setStatusFilter,
+  } = useQueueSearchParams({
+    statusValues: ["active", "suspended"],
+  });
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [statusTarget, setStatusTarget] = useState<Vendor | null>(null);
   const [actionLoading, setActionLoading] = useState(false);

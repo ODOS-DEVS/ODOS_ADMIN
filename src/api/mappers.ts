@@ -617,6 +617,13 @@ type BackendDashboardPayload = {
     total_orders: number;
     pending_orders: number;
     total_revenue: number;
+    revenue_today?: number;
+    orders_today?: number;
+    pending_products?: number;
+    low_stock_products?: number;
+    open_return_requests?: number;
+    support_waiting_on_admin?: number;
+    pending_withdrawals?: number;
   };
   recent_orders: BackendOrder[];
   recent_vendor_applications: BackendVendorApplication[];
@@ -1330,6 +1337,13 @@ export function mapDashboard(payload: BackendDashboardPayload): DashboardPayload
       totalOrders: payload.stats.total_orders,
       pendingOrders: payload.stats.pending_orders,
       totalRevenue: payload.stats.total_revenue,
+      revenueToday: payload.stats.revenue_today ?? 0,
+      ordersToday: payload.stats.orders_today ?? 0,
+      pendingProducts: payload.stats.pending_products ?? 0,
+      lowStockProducts: payload.stats.low_stock_products ?? 0,
+      openReturnRequests: payload.stats.open_return_requests ?? 0,
+      supportWaitingOnAdmin: payload.stats.support_waiting_on_admin ?? 0,
+      pendingWithdrawals: payload.stats.pending_withdrawals ?? 0,
     },
     recentOrders: payload.recent_orders.map(mapOrder),
     recentVendorApplications: payload.recent_vendor_applications.map(mapVendorApplication),

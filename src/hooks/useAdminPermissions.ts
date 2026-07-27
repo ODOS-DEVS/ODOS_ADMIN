@@ -8,6 +8,8 @@ export type AdminPermissionLevel =
   | "support"
   | "finance"
   | "inventory"
+  | "marketing"
+  | "moderator"
   | "analyst";
 
 const PERMISSION_FEATURES: Record<AdminPermissionLevel, Set<string> | "*"> = {
@@ -57,6 +59,23 @@ const PERMISSION_FEATURES: Record<AdminPermissionLevel, Set<string> | "*"> = {
     "markets",
     "categories",
     "promotions",
+  ]),
+  marketing: new Set([
+    "dashboard",
+    "analytics",
+    "audit_log",
+    "promotions",
+    "notifications",
+    "products",
+  ]),
+  moderator: new Set([
+    "dashboard",
+    "audit_log",
+    "products",
+    "reviews",
+    "vendors",
+    "notifications",
+    "support",
   ]),
   analyst: new Set(["dashboard", "analytics", "audit_log"]),
 };

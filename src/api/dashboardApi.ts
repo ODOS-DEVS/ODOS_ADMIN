@@ -13,6 +13,13 @@ export async function getDashboardOverview(token: string) {
       total_orders: number;
       pending_orders: number;
       total_revenue: number;
+      revenue_today?: number;
+      orders_today?: number;
+      pending_products?: number;
+      low_stock_products?: number;
+      open_return_requests?: number;
+      support_waiting_on_admin?: number;
+      pending_withdrawals?: number;
     };
     recent_orders: Array<{
       id: string;

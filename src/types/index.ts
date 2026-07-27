@@ -73,6 +73,8 @@ export type AdminPermissionLevel =
   | "support"
   | "finance"
   | "inventory"
+  | "marketing"
+  | "moderator"
   | "analyst";
 
 export type AdminUserAddress = {
@@ -774,6 +776,13 @@ export type DashboardStats = {
   totalOrders: number;
   pendingOrders: number;
   totalRevenue: number;
+  revenueToday: number;
+  ordersToday: number;
+  pendingProducts: number;
+  lowStockProducts: number;
+  openReturnRequests: number;
+  supportWaitingOnAdmin: number;
+  pendingWithdrawals: number;
 };
 
 export type DashboardPayload = {

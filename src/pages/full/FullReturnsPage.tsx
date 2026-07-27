@@ -13,6 +13,7 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
+import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { AdminReturnRequest } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
@@ -68,8 +69,22 @@ export function FullReturnsPage() {
     loadPage: getReturnRequestsPage,
     getId: (request) => request.id,
   });
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ReturnStatusFilter>("all");
+  const {
+    query,
+    setQuery,
+    statusFilter,
+    setStatusFilter,
+    queueFilter,
+  } = useQueueSearchParams({
+    statusValues: [
+      "requested",
+      "under_review",
+      "approved",
+      "rejected",
+      "refunded",
+      "exchanged",
+    ],
+  });
   const [selectedRequest, setSelectedRequest] = useState<AdminReturnRequest | null>(null);
   const [draftStatus, setDraftStatus] = useState<AdminReturnRequest["status"]>("requested");
   const [draftAdminNote, setDraftAdminNote] = useState("");
@@ -78,9 +93,13 @@ export function FullReturnsPage() {
 
   const filteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    const openStatuses = new Set(["requested", "under_review", "approved"]);
     return requests.filter((request) => {
-      const matchesStatus = statusFilter === "all" ? true : request.status === statusFilter;
-      if (!matchesStatus) {
+      const matchesQueue =
+        queueFilter !== "open" ? true : openStatuses.has(request.status);
+      const matchesStatus =
+        statusFilter === "all" ? true : request.status === statusFilter;
+      if (!matchesQueue || !matchesStatus) {
         return false;
       }
 
@@ -102,7 +121,7 @@ export function FullReturnsPage() {
 
       return haystack.includes(normalizedQuery);
     });
-  }, [query, requests, statusFilter]);
+  }, [query, queueFilter, requests, statusFilter]);
 
   const summary = useMemo(() => {
     const openCount = requests.filter((request) =>

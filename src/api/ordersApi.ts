@@ -183,6 +183,17 @@ const returnRequestsListApi = createPaginatedAdminApi<
 export const getReturnRequestsPage = returnRequestsListApi.getPage;
 export const getReturnRequests = returnRequestsListApi.getAll;
 
+export async function getReturnRequest(
+  token: string,
+  requestId: string,
+): Promise<AdminReturnRequest> {
+  const request = await requestJson<BackendReturnRequest>(
+    `/admin/returns/${requestId}`,
+    { token },
+  );
+  return mapAdminReturnRequest(request);
+}
+
 export async function updateReturnRequest(
   token: string,
   requestId: string,

@@ -26,6 +26,11 @@ const vendorsListApi = createPaginatedAdminApi<BackendVendor, Vendor>({
 export const getVendorsPage = vendorsListApi.getPage;
 export const getVendors = vendorsListApi.getAll;
 
+export async function getVendor(token: string, vendorId: string): Promise<Vendor> {
+  const vendor = await requestJson<BackendVendor>(`/admin/vendors/${vendorId}`, { token });
+  return mapVendor(vendor);
+}
+
 export async function updateVendorStatus(
   token: string,
   vendorId: string,

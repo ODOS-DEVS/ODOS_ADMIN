@@ -8,6 +8,7 @@ export default {
         panel: "#0F1C2D",
         panelMuted: "#15253A",
         borderSubtle: "#243348",
+        surface: "#122033",
         textStrong: "#F8FAFC",
         textMuted: "#8CA0B9",
         accent: "#F97316",
@@ -16,6 +17,10 @@ export default {
         warning: "#F59E0B",
         danger: "#EF4444",
         info: "#38BDF8"
+      },
+      borderRadius: {
+        card: "1rem",
+        panel: "1.5rem",
       },
       boxShadow: {
         glow: "0 20px 80px rgba(15, 23, 42, 0.45)",

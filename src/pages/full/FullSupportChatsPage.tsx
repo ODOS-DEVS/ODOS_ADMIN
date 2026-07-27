@@ -40,6 +40,7 @@ import {
   useAdminRealtime,
   type AdminRealtimeEventEnvelope,
 } from "@/hooks/useAdminRealtime";
+import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { SupportChatMessage, SupportChatStatus, SupportChatThread } from "@/types";
 import { formatDateTime } from "@/utils/format";
@@ -261,9 +262,15 @@ export function FullSupportChatsPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const {
+    query: search,
+    setQuery: setSearch,
+    statusFilter,
+    setStatusFilter,
+  } = useQueueSearchParams({
+    statusValues: ["waiting_on_admin", "waiting_on_customer", "resolved"],
+  });
   const [composer, setComposer] = useState("");
-  const [statusFilter, setStatusFilter] = useState<SupportChatStatus | "all">("all");
   const messageScrollerRef = useRef<HTMLDivElement | null>(null);
   const selectedThreadIdRef = useRef<string | null>(null);
   const threadsRef = useRef<SupportChatThread[]>([]);

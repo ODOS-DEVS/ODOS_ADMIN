@@ -24,6 +24,7 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
+import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { Category, Product, ProductStatus } from "@/types";
 import { formatCurrency, formatDate } from "@/utils/format";
@@ -56,8 +57,15 @@ export function FullProductsPage() {
     getId: (product) => product.id,
   });
   const [categories, setCategories] = useState<Category[]>([]);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const {
+    query,
+    setQuery,
+    statusFilter,
+    setStatusFilter,
+    stockFilter,
+  } = useQueueSearchParams({
+    statusValues: ["pending", "active", "hidden", "suspended"],
+  });
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [statusProduct, setStatusProduct] = useState<Product | null>(null);
@@ -121,10 +129,14 @@ export function FullProductsPage() {
       const matchesCategory = categoryFilter === "all"
         ? true
         : product.categorySlugs?.includes(categoryFilter) || product.category === categoriesBySlug.get(categoryFilter)?.name;
+      const matchesStock =
+        stockFilter !== "low"
+          ? true
+          : product.stock > 0 && product.stock <= 2 && product.status === "active";
 
-      return matchesQuery && matchesStatus && matchesCategory;
+      return matchesQuery && matchesStatus && matchesCategory && matchesStock;
     });
-  }, [categoriesBySlug, categoryFilter, products, query, statusFilter]);
+  }, [categoriesBySlug, categoryFilter, products, query, statusFilter, stockFilter]);
 
   function closeProductDetail() {
     setSelectedProduct(null);

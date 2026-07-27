@@ -1,7 +1,5 @@
 import { useEffect, useRef } from "react";
 
-import { LoadingState } from "@/components/ui/LoadingState";
-
 export function InfiniteScrollSentinel({
   hasMore,
   isLoadingMore,
@@ -37,15 +35,20 @@ export function InfiniteScrollSentinel({
 
   if (!hasMore && !isLoadingMore) {
     return (
-      <div className="py-4 text-center text-xs text-textMuted">
-        End of list
-      </div>
+      <div className="py-3 text-center text-xs text-textMuted">End of list</div>
     );
   }
 
   return (
-    <div ref={sentinelRef} className="py-4">
-      {isLoadingMore ? <LoadingState label="Loading more..." /> : null}
+    <div ref={sentinelRef} className="flex items-center justify-center gap-2 py-3">
+      {isLoadingMore ? (
+        <>
+          <span className="size-4 animate-spin rounded-full border-2 border-accent/40 border-t-accent" />
+          <p className="text-xs text-textMuted">Loading more…</p>
+        </>
+      ) : (
+        <span className="h-1 w-1" aria-hidden />
+      )}
     </div>
   );
 }
