@@ -3,7 +3,6 @@ import type {
   AdminPaymentTransaction,
   AdminReturnRequest,
   AdminReview,
-  AdminVendorWithdrawalRequest,
   Category,
   FlashSaleEvent,
   Market,
@@ -78,17 +77,6 @@ export function buildFinanceSnapshot(overview: AdminFinanceOverview | null, paym
     gross: overview?.grossCollectedTotal ?? 0,
     commission: overview?.commissionBalance ?? 0,
     payments: payments.length,
-  };
-}
-
-export function buildPayoutSnapshot(payouts: AdminVendorWithdrawalRequest[]) {
-  return {
-    total: payouts.length,
-    pending: payouts.filter((p) => p.status === "pending" || p.status === "approved").length,
-    paid: payouts.filter((p) => p.status === "approved" || p.status === "processing").length,
-    pendingAmount: payouts
-      .filter((p) => p.status === "pending" || p.status === "approved")
-      .reduce((sum, p) => sum + p.amount, 0),
   };
 }
 
