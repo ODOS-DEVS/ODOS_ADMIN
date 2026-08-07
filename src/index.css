@@ -58,6 +58,11 @@ body {
     background-size: 22px 22px;
   }
 
+  .auth-showcase-grid-dark {
+    background-image: radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.14) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+
   .auth-input-muted {
     @apply bg-surfaceMuted/80 focus:bg-surface;
   }

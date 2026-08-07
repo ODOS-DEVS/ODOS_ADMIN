@@ -1,39 +1,12 @@
-import {
-  FolderKanban,
-  Landmark,
-  LayoutDashboard,
-  Package,
-  ShoppingBag,
-  Store,
-  Users,
-} from "lucide-react";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 
-import { LiveIndicator } from "@/components/ui/LiveIndicator";
+import { AuthShowcaseMockups } from "@/components/auth/AuthShowcaseMockups";
 
 type AuthShowcasePanelProps = {
   title: string;
   description: string;
   tagline?: string;
 };
-
-const pillars = [
-  {
-    icon: Store,
-    title: "Vendors & catalog",
-    copy: "Applications, stores, products, and reviews in one flow.",
-  },
-  {
-    icon: ShoppingBag,
-    title: "Orders & fulfillment",
-    copy: "Queues, returns, logistics, and shopper support chats.",
-  },
-  {
-    icon: Landmark,
-    title: "Treasury & roles",
-    copy: "Payouts, finance views, and permission bands per teammate.",
-  },
-];
 
 const activityLines = [
   "New vendor application submitted",
@@ -54,116 +27,79 @@ function ActivityTicker() {
   }, []);
 
   return (
-    <div className="relative z-10 mt-5 flex items-center gap-2.5 rounded-full border border-line/70 bg-surface/80 px-4 py-2 shadow-sm backdrop-blur-sm">
+    <div className="relative z-10 mt-7 flex items-center gap-2.5 rounded-full border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-sm">
       <span className="relative flex size-2 shrink-0">
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-60" />
         <span className="relative inline-flex size-2 rounded-full bg-success" />
       </span>
-      <span key={index} className="animate-fade-in truncate font-mono text-[11px] text-textMuted">
+      <span key={index} className="animate-fade-in truncate font-mono text-[11px] text-white/80">
         {activityLines[index]}
       </span>
     </div>
   );
 }
 
+function HexOutline({ cx, cy, r, opacity }: { cx: number; cy: number; r: number; opacity: number }) {
+  const s = r * 0.866;
+  const points = [
+    [0, -r],
+    [s, -r / 2],
+    [s, r / 2],
+    [0, r],
+    [-s, r / 2],
+    [-s, -r / 2],
+  ]
+    .map(([px, py]) => `${px},${py}`)
+    .join(" ");
+  return (
+    <polygon
+      points={points}
+      fill="none"
+      stroke="#FFFFFF"
+      strokeWidth="1.5"
+      opacity={opacity}
+      transform={`translate(${cx},${cy})`}
+    />
+  );
+}
+
 export function AuthShowcasePanel({ title, description, tagline }: AuthShowcasePanelProps) {
   return (
-    <div className="relative flex h-full flex-col overflow-y-auto overflow-x-hidden bg-[#F7F6FA] px-10 py-7 xl:px-12">
+    <div className="relative flex h-full flex-col overflow-y-auto overflow-x-hidden bg-gradient-to-br from-[#6947E0] via-[#7C5CFC] to-[#5B3FD9] px-10 py-9 text-white xl:px-12">
       <div
-        className="pointer-events-none absolute -right-20 -top-24 size-72 animate-drift rounded-full bg-accent/[0.09] blur-3xl motion-reduce:animate-none"
+        className="pointer-events-none absolute -right-24 -top-24 size-80 animate-drift rounded-full bg-white/10 blur-3xl motion-reduce:animate-none"
         aria-hidden
       />
-      <div
-        className="auth-showcase-grid pointer-events-none absolute inset-0 opacity-[0.45]"
-        aria-hidden
-      />
+      <div className="pointer-events-none absolute -bottom-16 -left-10 size-72 rounded-full bg-white/5 blur-3xl" aria-hidden />
+      <div className="auth-showcase-grid-dark pointer-events-none absolute inset-0 opacity-70" aria-hidden />
 
-      <div className="relative z-10 animate-fade-up opacity-0">
-        {tagline ? (
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-accent">{tagline}</p>
-        ) : null}
-        <h2 className="mt-3 max-w-md font-display text-[1.7rem] font-semibold leading-snug tracking-tight text-textStrong xl:text-[1.9rem]">
-          {title}
-        </h2>
-        <p className="mt-3 max-w-md text-[15px] leading-relaxed text-textMuted">{description}</p>
-      </div>
+      <svg className="pointer-events-none absolute -right-8 -top-8 size-40 overflow-visible" aria-hidden>
+        <HexOutline cx={80} cy={80} r={30} opacity={0.28} />
+        <HexOutline cx={80} cy={80} r={50} opacity={0.16} />
+        <HexOutline cx={80} cy={80} r={70} opacity={0.08} />
+      </svg>
+      <svg className="pointer-events-none absolute -bottom-8 -left-8 size-40 overflow-visible" aria-hidden>
+        <HexOutline cx={80} cy={80} r={30} opacity={0.22} />
+        <HexOutline cx={80} cy={80} r={50} opacity={0.13} />
+      </svg>
 
-      <ActivityTicker />
+      <div className="relative z-10 flex flex-1 flex-col justify-center">
+        <div className="animate-fade-up opacity-0">
+          {tagline ? (
+            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-white/70">{tagline}</p>
+          ) : null}
+          <h2 className="mt-3 max-w-md font-display text-[1.9rem] font-semibold leading-snug tracking-tight text-white xl:text-[2.1rem]">
+            {title}
+          </h2>
+          <p className="mt-3 max-w-md text-[15px] leading-relaxed text-white/75">{description}</p>
+        </div>
 
-      <ul className="relative z-10 mt-5 space-y-2.5">
-        {pillars.map((item, index) => (
-          <li
-            key={item.title}
-            className="flex animate-fade-up gap-3 rounded-2xl border border-line/80 bg-surface/90 px-4 py-3.5 opacity-0 shadow-card backdrop-blur-sm"
-            style={{ animationDelay: `${120 + index * 90}ms` }}
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accentSoft text-accent">
-              <item.icon className="size-[18px]" strokeWidth={2} />
-            </span>
-            <div className="min-w-0 pt-0.5">
-              <p className="text-sm font-semibold text-textStrong">{item.title}</p>
-              <p className="mt-0.5 text-sm leading-relaxed text-textMuted">{item.copy}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+        <div className="mt-8 max-w-[380px] animate-fade-up opacity-0" style={{ animationDelay: "90ms" }}>
+          <AuthShowcaseMockups />
+        </div>
 
-      <div
-        className="relative z-10 mt-auto animate-fade-up pt-6 opacity-0"
-        style={{ animationDelay: "420ms" }}
-      >
-        <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
-          <div className="flex gap-3">
-            <div className="hidden w-[108px] shrink-0 space-y-1.5 rounded-xl border border-line bg-surfaceMuted p-2.5 sm:block">
-              <div className="flex items-center gap-2 px-1 py-1">
-                <div className="flex size-6 items-center justify-center rounded-md bg-accent text-[10px] font-bold text-accentForeground">
-                  O
-                </div>
-                <span className="text-[10px] font-semibold text-textStrong">ODOS</span>
-              </div>
-              {[LayoutDashboard, Users, Package, FolderKanban].map((Icon, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-[10px] ${
-                    index === 0
-                      ? "border border-line bg-surface font-medium text-textStrong shadow-nav-active"
-                      : "text-textMuted"
-                  }`}
-                >
-                  <Icon className="size-3 shrink-0" />
-                  <span className="truncate">
-                    {index === 0 ? "Dashboard" : index === 1 ? "Users" : index === 2 ? "Products" : "Applications"}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="min-w-0 flex-1 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-textStrong">Today on ODOS</p>
-                <LiveIndicator label="Live" tone="success" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-xl border border-line bg-surfaceMuted px-3 py-2.5">
-                  <p className="text-[10px] text-textMuted">Ops queues</p>
-                  <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-textStrong">Live</p>
-                  <p className="text-[10px] text-textSubtle">Badges sync ~60s</p>
-                </div>
-                <div className="rounded-xl border border-line bg-surfaceMuted px-3 py-2.5">
-                  <p className="text-[10px] text-textMuted">Audit trail</p>
-                  <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-textStrong">On</p>
-                  <p className="text-[10px] text-textSubtle">Sensitive actions logged</p>
-                </div>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-line">
-                <div
-                  className="h-full animate-fill-bar rounded-full bg-accent motion-reduce:animate-none motion-reduce:w-[68%]"
-                  style={{ "--fill-to": "68%" } as CSSProperties}
-                />
-              </div>
-              <p className="text-[10px] text-textSubtle">Preview of your signed-in workspace — not sample sales data.</p>
-            </div>
-          </div>
+        <div className="animate-fade-up opacity-0" style={{ animationDelay: "180ms" }}>
+          <ActivityTicker />
         </div>
       </div>
     </div>
