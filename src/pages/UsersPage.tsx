@@ -1,9 +1,10 @@
-import { ArrowRight, RefreshCw, Shield, UserCheck, Users as UsersIcon } from "lucide-react";
+import { ArrowRight, Shield, UserCheck, Users as UsersIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getUsers } from "@/api/usersApi";
 import { MetricBar } from "@/components/analytics/AnalyticsUi";
+import { AdminBriefHeader } from "@/components/admin/AdminShell";
 import { UsersBriefSkeleton } from "@/components/users/UsersUi";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -51,29 +52,15 @@ export function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">Users</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">User base overview</h1>
-          <p className="mt-1 max-w-2xl text-sm text-textMuted">
-            At-a-glance account health across customers, vendors, and admins. Open the full directory to
-            inspect any user in complete detail.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            leftIcon={<RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />}
-            onClick={() => void loadUsers(true)}
-            disabled={isRefreshing}
-          >
-            Refresh
-          </Button>
-          <Button leftIcon={<ArrowRight className="size-4" />} onClick={() => navigate("/users/full")}>
-            Open full user directory
-          </Button>
-        </div>
-      </div>
+      <AdminBriefHeader
+        eyebrow="Users"
+        title="User base overview"
+        description="At-a-glance account health across customers, vendors, and admins. Open the full directory to inspect any user in complete detail."
+        fullRoute="/users/full"
+        fullLabel="Open full user directory"
+        onRefresh={() => void loadUsers(true)}
+        refreshing={isRefreshing}
+      />
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard label="Total users" value={String(snapshot.totalUsers)} icon={UsersIcon} animationDelay={60} />

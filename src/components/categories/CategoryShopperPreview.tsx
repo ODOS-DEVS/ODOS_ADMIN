@@ -27,11 +27,11 @@ export function CategoryShopperPreview({
   const activeChip = previewSubcategories[0];
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-white/10 bg-panel/90 shadow-glow">
-      <div className="border-b border-white/10 px-4 py-3">
+    <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-card">
+      <div className="border-b border-line px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="rounded-xl bg-accent/15 p-2 text-accentSoft">
+            <div className="rounded-xl bg-accent/15 p-2 text-accent">
               <Smartphone className="size-4" />
             </div>
             <div>
@@ -52,7 +52,7 @@ export function CategoryShopperPreview({
             </span>
           </div>
 
-          <div className="space-y-3 rounded-[24px] bg-[#f8fafc] p-3 text-[#0f172a]">
+          <div className="space-y-3 rounded-3xl bg-[#f8fafc] p-3 text-[#0f172a]">
             <div className="rounded-[20px] border border-[#e5e7eb] bg-white p-3">
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
@@ -114,7 +114,7 @@ export function CategoryShopperPreview({
               {previewSubcategories.slice(0, 2).map((subcategory) => (
                 <div
                   key={`tile-${subcategory}`}
-                  className="overflow-hidden rounded-[16px] border border-[#e5e7eb] bg-white"
+                  className="overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white"
                 >
                   <div className="h-16 bg-[#f3f4f6]">
                     {imageUrl ? (
@@ -137,8 +137,8 @@ export function CategoryShopperPreview({
           </div>
         </div>
 
-        <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-accentSoft">Catalog slug</p>
+        <div className="rounded-[18px] border border-line bg-surfaceMuted px-3 py-2.5">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-textSubtle">Catalog slug</p>
           <p className="mt-1 font-mono text-xs text-textStrong">/{slug || "category-slug"}</p>
         </div>
       </div>

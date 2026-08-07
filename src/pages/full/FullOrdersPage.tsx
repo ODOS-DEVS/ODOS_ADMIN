@@ -1,17 +1,27 @@
-import { CreditCard, Edit3, Eye, MapPin, Package2, UserRound } from "lucide-react";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { Bike, Clock3, CreditCard, MapPin, Package2, ShoppingCart, UserRound } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getOrder, getOrdersPage, updateOrderStatus } from "@/api/ordersApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
+import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
+import {
+  OrderAmountCell,
+  OrdersDirectorySkeleton,
+  OrderSummaryCell,
+  OrderTableActions,
+} from "@/components/orders/OrdersDirectoryUi";
+import { DetailField, DetailFields, DetailHero, DetailSection, DetailStack } from "@/components/ui/DetailList";
+import { FilterSelect } from "@/components/ui/FilterSelect";
+import { TABLE_ACTIONS_COLUMN_CLASS_WIDE } from "@/components/ui/IconButton";
+import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { FilterSelect } from "@/components/ui/FilterSelect";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Modal } from "@/components/ui/Modal";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
@@ -19,36 +29,11 @@ import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { AdminOrderDetail, Order, OrderStatus } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
+import { formatPaginationRange } from "@/utils/paginationUi";
 import { resolveAdminMediaUrl } from "@/utils/media";
 
-function OrderDetailRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
-      <p className="mt-2 text-sm text-textStrong">{value}</p>
-    </div>
-  );
-}
-
-function DetailSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-textStrong">{title}</h3>
-        {description ? <p className="mt-1 text-xs text-textMuted">{description}</p> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
+const TOOLBAR_CONTROL_CLASS =
+  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
 
 const orderStatusOptions: Array<{ label: string; value: OrderStatus }> = [
   { label: "Pending", value: "pending" },
@@ -67,10 +52,12 @@ export function FullOrdersPage() {
   const {
     items: orders,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
   } = useInfiniteAdminList({
@@ -113,6 +100,16 @@ export function FullOrdersPage() {
       return matchesQuery && matchesStatus && matchesPayment;
     });
   }, [orders, paymentFilter, query, statusFilter]);
+
+  const snapshot = useMemo(() => {
+    const pending = orders.filter((order) => order.status === "pending").length;
+    const unpaid = orders.filter((order) => order.paymentStatus === "pending").length;
+    return { total: orders.length, pending, unpaid };
+  }, [orders]);
+
+  const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredOrders.length })}${
+    hasMore ? " · more pages available" : ""
+  }`;
 
   const handleViewOrder = useCallback(
     async (order: Order) => {
@@ -163,77 +160,120 @@ export function FullOrdersPage() {
     }
   }
 
+  if (isLoading && orders.length === 0) {
+    return <OrdersDirectorySkeleton />;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminFullHeader
         eyebrow="Orders"
-        title="Complete order directory"
-        description="Search, filter, update status, and open any order for the full dossier."
+        title="Order list"
+        description={`${snapshot.total} loaded · ${snapshot.pending} pending fulfillment · search, filter, and update status.`}
         backRoute="/orders"
         onRefresh={() => void refresh()}
         refreshing={isLoading}
+        actions={
+          <HeaderActionButton
+            variant="secondary"
+            leftIcon={<Bike className="size-4" />}
+            onClick={() => navigate("/orders/delivery-ops")}
+          >
+            Delivery Ops
+          </HeaderActionButton>
+        }
       />
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="On this page" value={String(snapshot.total)} icon={ShoppingCart} animationDelay={40} />
+        <StatCard
+          label="Pending"
+          value={String(snapshot.pending)}
+          hint="Awaiting fulfillment"
+          icon={Clock3}
+          tone="warning"
+          animationDelay={80}
+        />
+        <StatCard
+          label="Unpaid"
+          value={String(snapshot.unpaid)}
+          icon={CreditCard}
+          animationDelay={120}
+        />
+      </div>
+
       <SectionCard
-        title="Orders"
-        description="Search by order number or customer, then filter by operational and payment states."
+        compact
+        title="All orders"
         action={
-          <div className="flex flex-col gap-3 xl:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search order number or customer"
-              className="xl:w-80"
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              options={[{ label: "All statuses", value: "all" }].concat(
-                orderStatusOptions.map((option) => ({ label: option.label, value: option.value })),
-              )}
-            />
-            <FilterSelect
-              value={paymentFilter}
-              onChange={(event) => setPaymentFilter(event.target.value)}
-              options={[
-                { label: "All payments", value: "all" },
-                { label: "Pending", value: "pending" },
-                { label: "Paid", value: "paid" },
-                { label: "Failed", value: "failed" },
-                { label: "Partially refunded", value: "partially_refunded" },
-                { label: "Refunded", value: "refunded" },
-              ]}
-            />
-          </div>
+          <ListToolbar>
+            <ListToolbarField className="sm:min-w-[16rem]">
+              <SearchInput
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Order # or customer"
+                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
+              />
+            </ListToolbarField>
+            <ListToolbarField className="sm:min-w-[11rem]">
+              <FilterSelect
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                options={[{ label: "All statuses", value: "all" }].concat(
+                  orderStatusOptions.map((option) => ({ label: option.label, value: option.value })),
+                )}
+                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
+              />
+            </ListToolbarField>
+            <ListToolbarField className="sm:min-w-[11rem]">
+              <FilterSelect
+                value={paymentFilter}
+                onChange={(event) => setPaymentFilter(event.target.value)}
+                options={[
+                  { label: "All payments", value: "all" },
+                  { label: "Pending", value: "pending" },
+                  { label: "Paid", value: "paid" },
+                  { label: "Failed", value: "failed" },
+                  { label: "Partially refunded", value: "partially_refunded" },
+                  { label: "Refunded", value: "refunded" },
+                ]}
+                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
+              />
+            </ListToolbarField>
+          </ListToolbar>
         }
+        bodyClassName="p-0"
       >
         <AdminInfiniteList
+          compact
+          listSummary={listSummary}
           columns={[
             {
               key: "order",
               header: "Order",
-              render: (order) => (
-                <div>
-                  <p className="font-medium">{order.orderNumber}</p>
-                  <p className="mt-1 text-xs text-textMuted">{order.customerName}</p>
-                </div>
-              ),
+              className: "min-w-[140px]",
+              render: (order) => <OrderSummaryCell order={order} />,
             },
             {
               key: "store",
               header: "Store",
-              render: (order) => order.storeName,
+              className: "min-w-[120px] max-w-[200px]",
+              render: (order) => (
+                <p className="truncate text-sm text-textStrong">{order.storeName}</p>
+              ),
             },
             {
               key: "amount",
               header: "Amount",
-              render: (order) => formatCurrency(order.totalAmount),
+              className: "whitespace-nowrap",
+              render: (order) => <OrderAmountCell order={order} />,
             },
             {
               key: "status",
               header: "Status",
+              className: "w-[8.5rem]",
               render: (order) => (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-1">
                   <StatusBadge status={order.status} />
                   <StatusBadge status={order.paymentStatus} />
                 </div>
@@ -242,49 +282,37 @@ export function FullOrdersPage() {
             {
               key: "created",
               header: "Created",
+              className: "min-w-[9rem] whitespace-nowrap text-sm text-textMuted",
               render: (order) => formatDateTime(order.createdAt),
             },
             {
               key: "actions",
               header: "Actions",
+              className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
               render: (order) => (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="primary"
-                    onClick={() => navigate(`/orders/full/${order.id}`)}
-                  >
-                    Open dossier
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    leftIcon={<Eye className="size-4" />}
-                    onClick={() => void handleViewOrder(order)}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    leftIcon={<Edit3 className="size-4" />}
-                    onClick={() => {
-                      setEditingOrder(order);
-                      setPendingStatus(order.status);
-                    }}
-                  >
-                    Update status
-                  </Button>
-                </div>
+                <OrderTableActions
+                  onQuickView={() => void handleViewOrder(order)}
+                  onOpenDetail={() => navigate(`/orders/full/${order.id}`)}
+                  onUpdateStatus={() => {
+                    setEditingOrder(order);
+                    setPendingStatus(order.status);
+                  }}
+                />
               ),
             },
           ]}
           data={filteredOrders}
           keyExtractor={(order) => order.id}
           isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
+          page={page}
+          pageSize={pageSize}
+          isLoadingPage={isLoadingPage}
           hasMore={hasMore}
           error={error}
-          onLoadMore={() => void loadMore()}
+          onPageChange={goToPage}
           onRetry={() => void refresh()}
           emptyTitle="No orders found"
-          emptyDescription="Clear the filters or search for a different order reference."
+          emptyDescription="Clear filters or try another search."
         />
       </SectionCard>
 
@@ -308,60 +336,46 @@ export function FullOrdersPage() {
             onRetry={() => selectedOrderSummary && void handleViewOrder(selectedOrderSummary)}
           />
         ) : selectedOrder ? (
-          <div className="space-y-6">
-            <div className="rounded-[28px] border border-white/10 bg-slate-950/30 p-6">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-2xl font-semibold text-textStrong">
-                      {selectedOrder.orderNumber}
-                    </h3>
-                    <StatusBadge status={selectedOrder.status} />
-                    <StatusBadge status={selectedOrder.paymentStatus} />
-                  </div>
-                  <p className="mt-3 text-sm text-textMuted">
-                    {selectedOrder.storeName} · placed {formatDateTime(selectedOrder.placedAt)}
-                  </p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <OrderDetailRow
-                    label="Total"
-                    value={formatCurrency(selectedOrder.totalAmount)}
-                  />
-                  <OrderDetailRow
-                    label="Shipping"
-                    value={formatCurrency(selectedOrder.shippingAmount)}
-                  />
-                  <OrderDetailRow
-                    label="Discount"
-                    value={formatCurrency(selectedOrder.discountAmount)}
-                  />
-                </div>
-              </div>
-            </div>
+          <DetailStack>
+            <DetailHero
+              title={selectedOrder.orderNumber}
+              meta={`${selectedOrder.storeName} · ${formatDateTime(selectedOrder.placedAt)}`}
+              badges={
+                <>
+                  <StatusBadge status={selectedOrder.status} />
+                  <StatusBadge status={selectedOrder.paymentStatus} />
+                </>
+              }
+            >
+              <DetailFields columns={3}>
+                <DetailField emphasize label="Total" value={formatCurrency(selectedOrder.totalAmount)} />
+                <DetailField label="Shipping" value={formatCurrency(selectedOrder.shippingAmount)} />
+                <DetailField label="Discount" value={formatCurrency(selectedOrder.discountAmount)} />
+              </DetailFields>
+            </DetailHero>
 
-            <div className="grid gap-6 xl:grid-cols-2">
-              <DetailSection title="Customer" description="The account and delivery contact tied to this order.">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <OrderDetailRow label="Customer name" value={selectedOrder.customerName} />
-                  <OrderDetailRow label="Email" value={selectedOrder.customerEmail} />
-                  <OrderDetailRow
+            <div className="grid gap-8 xl:grid-cols-2">
+              <DetailSection title="Customer">
+                <DetailFields columns={2}>
+                  <DetailField label="Customer name" value={selectedOrder.customerName} />
+                  <DetailField label="Email" value={selectedOrder.customerEmail} />
+                  <DetailField
                     label="Account phone"
                     value={selectedOrder.customerPhoneNumber ?? "Not provided"}
                   />
-                  <OrderDetailRow label="Delivery phone" value={selectedOrder.addressPhone} />
-                </div>
+                  <DetailField label="Delivery phone" value={selectedOrder.addressPhone} />
+                </DetailFields>
               </DetailSection>
 
-              <DetailSection title="Order state" description="Operational status and lifecycle timestamps.">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <OrderDetailRow label="Store-facing status" value={selectedOrder.status} />
-                  <OrderDetailRow label="Internal status" value={selectedOrder.internalStatus} />
-                  <OrderDetailRow label="Vendor status" value={selectedOrder.vendorStatus} />
-                  <OrderDetailRow label="Source" value={selectedOrder.source} />
-                  <OrderDetailRow label="Created" value={formatDateTime(selectedOrder.createdAt)} />
-                  <OrderDetailRow label="Updated" value={formatDateTime(selectedOrder.updatedAt)} />
-                  <OrderDetailRow
+              <DetailSection title="Order state">
+                <DetailFields columns={2}>
+                  <DetailField label="Store-facing status" value={selectedOrder.status} />
+                  <DetailField label="Internal status" value={selectedOrder.internalStatus} />
+                  <DetailField label="Vendor status" value={selectedOrder.vendorStatus} />
+                  <DetailField label="Source" value={selectedOrder.source} />
+                  <DetailField label="Created" value={formatDateTime(selectedOrder.createdAt)} />
+                  <DetailField label="Updated" value={formatDateTime(selectedOrder.updatedAt)} />
+                  <DetailField
                     label="Delivered"
                     value={
                       selectedOrder.deliveredAt
@@ -369,7 +383,7 @@ export function FullOrdersPage() {
                         : "Not delivered"
                     }
                   />
-                  <OrderDetailRow
+                  <DetailField
                     label="Cancelled"
                     value={
                       selectedOrder.cancelledAt
@@ -377,25 +391,21 @@ export function FullOrdersPage() {
                         : "Not cancelled"
                     }
                   />
-                </div>
+                </DetailFields>
               </DetailSection>
             </div>
 
-            <DetailSection title="Delivery address" description="The exact address snapshot saved on the order at checkout.">
-              <div className="grid gap-4 md:grid-cols-2">
-                <OrderDetailRow label="Recipient" value={selectedOrder.addressFullName} />
-                <OrderDetailRow label="Phone" value={selectedOrder.addressPhone} />
-                <div className="md:col-span-2">
-                  <OrderDetailRow
-                    label="Address"
-                    value={`${selectedOrder.addressStreet}, ${selectedOrder.addressCity}, ${selectedOrder.addressRegion}`}
-                  />
-                </div>
-                <OrderDetailRow
-                  label="ETA"
-                  value={selectedOrder.trackingEta ?? "No ETA set"}
+            <DetailSection title="Delivery address">
+              <DetailFields columns={2}>
+                <DetailField label="Recipient" value={selectedOrder.addressFullName} />
+                <DetailField label="Phone" value={selectedOrder.addressPhone} />
+                <DetailField
+                  label="Address"
+                  value={`${selectedOrder.addressStreet}, ${selectedOrder.addressCity}, ${selectedOrder.addressRegion}`}
+                  className="sm:col-span-2"
                 />
-                <OrderDetailRow
+                <DetailField label="ETA" value={selectedOrder.trackingEta ?? "No ETA set"} />
+                <DetailField
                   label="Progress"
                   value={
                     selectedOrder.progress !== null && selectedOrder.progress !== undefined
@@ -403,21 +413,21 @@ export function FullOrdersPage() {
                       : "Not tracked"
                   }
                 />
-              </div>
+              </DetailFields>
             </DetailSection>
 
-            <div className="grid gap-6 xl:grid-cols-2">
-              <DetailSection title="Payment" description="The payment method snapshot used for this order.">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <OrderDetailRow label="Payment status" value={selectedOrder.paymentStatus} />
-                  <OrderDetailRow label="Payment type" value={selectedOrder.paymentType} />
-                  <OrderDetailRow label="Provider" value={selectedOrder.paymentProvider} />
-                  <OrderDetailRow label="Payment label" value={selectedOrder.paymentLabel} />
-                  <OrderDetailRow
+            <div className="grid gap-8 xl:grid-cols-2">
+              <DetailSection title="Payment">
+                <DetailFields columns={2}>
+                  <DetailField label="Payment status" value={selectedOrder.paymentStatus} />
+                  <DetailField label="Payment type" value={selectedOrder.paymentType} />
+                  <DetailField label="Provider" value={selectedOrder.paymentProvider} />
+                  <DetailField label="Payment label" value={selectedOrder.paymentLabel} />
+                  <DetailField
                     label="Reference"
                     value={selectedOrder.paymentReference ?? "Not provided"}
                   />
-                  <OrderDetailRow
+                  <DetailField
                     label="Network / phone"
                     value={
                       [selectedOrder.paymentNetwork, selectedOrder.paymentPhone]
@@ -425,95 +435,72 @@ export function FullOrdersPage() {
                         .join(" · ") || "Not provided"
                     }
                   />
-                  <OrderDetailRow
+                  <DetailField
                     label="Card last 4"
                     value={selectedOrder.paymentLast4 ? `•••• ${selectedOrder.paymentLast4}` : "Not provided"}
                   />
-                </div>
+                </DetailFields>
               </DetailSection>
 
-              <DetailSection title="Voucher" description="Any applied promotion or discount on this order.">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <OrderDetailRow label="Voucher code" value={selectedOrder.voucherCode ?? "No voucher"} />
-                  <OrderDetailRow
+              <DetailSection title="Voucher">
+                <DetailFields columns={2}>
+                  <DetailField label="Voucher code" value={selectedOrder.voucherCode ?? "No voucher"} />
+                  <DetailField
                     label="Voucher title"
                     value={selectedOrder.voucherTitle ?? "No voucher"}
                   />
-                  <OrderDetailRow
-                    label="Subtotal"
-                    value={formatCurrency(selectedOrder.subtotalAmount)}
-                  />
-                  <OrderDetailRow
-                    label="Discount"
-                    value={formatCurrency(selectedOrder.discountAmount)}
-                  />
-                </div>
+                  <DetailField label="Subtotal" value={formatCurrency(selectedOrder.subtotalAmount)} />
+                  <DetailField label="Discount" value={formatCurrency(selectedOrder.discountAmount)} />
+                </DetailFields>
               </DetailSection>
             </div>
 
             {selectedOrder.cancellationReason ? (
               <DetailSection title="Cancellation note">
-                <OrderDetailRow
-                  label="Reason"
-                  value={selectedOrder.cancellationReason}
-                />
+                <DetailFields>
+                  <DetailField label="Reason" value={selectedOrder.cancellationReason} />
+                </DetailFields>
               </DetailSection>
             ) : null}
 
             {selectedOrder.returnRequests.length > 0 ? (
-              <DetailSection
-                title="Return requests"
-                description="Every return, refund, or exchange case that has been opened against this order."
-              >
-                <div className="space-y-4">
+              <DetailSection title="Return requests">
+                <ul className="divide-y divide-line/80">
                   {selectedOrder.returnRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="rounded-3xl border border-white/10 bg-white/[0.02] p-4"
-                    >
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-base font-semibold text-textStrong">
-                              {request.productTitle}
-                            </p>
-                            <StatusBadge status={request.status} />
-                          </div>
-                          <p className="mt-2 text-sm text-textMuted">
-                            {request.requestType} · Qty {request.quantity} · {request.reason}
-                          </p>
+                    <li key={request.id} className="space-y-3 py-5 first:pt-0 last:pb-0">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-textStrong">{request.productTitle}</p>
+                          <StatusBadge status={request.status} />
                         </div>
-                        <div className="text-sm text-textMuted">
-                          {formatDateTime(request.createdAt)}
-                        </div>
+                        <p className="text-xs text-textMuted">{formatDateTime(request.createdAt)}</p>
                       </div>
-
+                      <p className="text-sm text-textMuted">
+                        {request.requestType} · Qty {request.quantity} · {request.reason}
+                      </p>
                       {request.details ? (
-                        <p className="mt-3 text-sm leading-6 text-textMuted">{request.details}</p>
+                        <p className="text-sm text-textMuted">{request.details}</p>
                       ) : null}
-
                       {request.evidenceImageUrls?.length ? (
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="flex flex-wrap gap-2 pt-1">
                           {request.evidenceImageUrls.map((imageUrl, index) => (
                             <a
                               key={`${request.id}-${index}`}
                               href={resolveAdminMediaUrl(imageUrl) ?? "#"}
                               target="_blank"
                               rel="noreferrer"
-                              className="block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]"
                             >
                               <img
                                 src={resolveAdminMediaUrl(imageUrl) ?? undefined}
                                 alt={`Return evidence ${index + 1}`}
-                                className="h-36 w-full object-cover"
+                                className="size-20 rounded-lg object-cover"
                               />
                             </a>
                           ))}
                         </div>
                       ) : null}
-
-                      <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <OrderDetailRow
+                      <DetailFields columns={2}>
+                        <DetailField
                           label="Refund amount"
                           value={
                             request.refundAmount !== null && request.refundAmount !== undefined
@@ -521,68 +508,58 @@ export function FullOrdersPage() {
                               : "Not set"
                           }
                         />
-                        <OrderDetailRow
-                          label="Admin note"
-                          value={request.adminNote || "No admin note yet"}
-                        />
-                      </div>
-                    </div>
+                        <DetailField label="Admin note" value={request.adminNote || "No admin note yet"} />
+                      </DetailFields>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </DetailSection>
             ) : null}
 
-            <DetailSection title="Ordered items" description="Every line item captured when the order was placed.">
-              <div className="space-y-4">
+            <DetailSection title="Ordered items">
+              <ul className="divide-y divide-line/80">
                 {selectedOrder.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-3xl border border-white/10 bg-white/[0.02] p-4"
-                  >
-                    <div className="flex flex-col gap-4 md:flex-row">
-                      <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-textMuted">
-                            <Package2 className="size-5" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div>
-                            <p className="text-base font-semibold text-textStrong">{item.title}</p>
-                            <p className="mt-1 text-sm text-textMuted">
-                              {item.category ?? "Uncategorised"} · Qty {item.quantity}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-base font-semibold text-textStrong">
-                              {formatCurrency(item.lineTotal)}
-                            </p>
-                            <p className="mt-1 text-xs text-textMuted">
-                              {formatCurrency(item.unitPrice)} each
-                            </p>
-                          </div>
+                  <li key={item.id} className="flex gap-4 py-5 first:pt-0 last:pb-0">
+                    <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-surfaceMuted">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.title} className="size-full object-cover" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-textMuted">
+                          <Package2 className="size-5" />
                         </div>
-                        <div className="mt-4 grid gap-3 md:grid-cols-2">
-                          <OrderDetailRow
-                            label="Colour / size"
-                            value={
-                              [item.selectedColor, item.selectedSize].filter(Boolean).join(" · ") ||
-                              "No variant selected"
-                            }
-                          />
-                          <OrderDetailRow label="Product ID" value={item.productId} />
-                        </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-textStrong">{item.title}</p>
+                          <p className="text-sm text-textMuted">
+                            {item.category ?? "Uncategorised"} · Qty {item.quantity}
+                          </p>
+                        </div>
+                        <div className="text-right text-sm">
+                          <p className="font-semibold tabular-nums text-textStrong">
+                            {formatCurrency(item.lineTotal)}
+                          </p>
+                          <p className="text-xs text-textMuted">{formatCurrency(item.unitPrice)} each</p>
+                        </div>
+                      </div>
+                      <DetailFields columns={2} className="mt-3">
+                        <DetailField
+                          label="Variant"
+                          value={
+                            [item.selectedColor, item.selectedSize].filter(Boolean).join(" · ") ||
+                            "—"
+                          }
+                        />
+                        <DetailField label="Product ID" value={item.productId} />
+                      </DetailFields>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </DetailSection>
-          </div>
+          </DetailStack>
         ) : null}
       </Modal>
 

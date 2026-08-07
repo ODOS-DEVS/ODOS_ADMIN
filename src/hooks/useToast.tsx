@@ -35,12 +35,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`rounded-2xl border px-4 py-3 shadow-glow backdrop-blur ${
+            className={`rounded-2xl border px-4 py-3 shadow-card backdrop-blur ${
               toast.tone === "success"
-                ? "border-emerald-400/30 bg-emerald-500/10"
+                ? "border-success/30 bg-success-soft"
                 : toast.tone === "error"
-                  ? "border-red-400/30 bg-red-500/10"
-                  : "border-sky-400/30 bg-sky-500/10"
+                  ? "border-danger/30 bg-danger-soft"
+                  : "border-info/30 bg-info-soft"
             }`}
           >
             <p className="text-sm font-semibold text-textStrong">{toast.title}</p>

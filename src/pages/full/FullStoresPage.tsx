@@ -1,12 +1,13 @@
 import {
-  Eye,
-  MapPin,
+  ArrowLeft,
   Mail,
   PauseCircle,
   Phone,
   PlayCircle,
   Plus,
+  RefreshCw,
   Store as StoreIcon,
+  Warehouse,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -21,22 +22,50 @@ import {
   type CreateStoreInput,
 } from "@/api/storesApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
-import { Button } from "@/components/ui/Button";
+import { AdminHeaderActions, AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
+import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
+import {
+  StoreLocationCell,
+  StoreMark,
+  StoreMarketBadge,
+  StoresDirectorySkeleton,
+  StoreTableActions,
+} from "@/components/stores/StoresDirectoryUi";
+import { TABLE_ACTIONS_COLUMN_CLASS } from "@/components/ui/IconButton";
+import { UserSectionNav } from "@/components/users/UsersUi";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Modal } from "@/components/ui/Modal";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Button } from "@/components/ui/Button";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useToast } from "@/hooks/useToast";
 import type { AdminStoreDetail, Category, Market, Store, StoreStatus } from "@/types";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
+import { formatPaginationRange } from "@/utils/paginationUi";
+import {
+  buildStoreDirectorySnapshot,
+  filterStoresByTab,
+  type StoreDirectoryTab,
+} from "@/utils/storeMetrics";
+
+const STORE_TABS = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "draft", label: "Draft" },
+  { id: "suspended", label: "Suspended" },
+] as const;
+
+const TOOLBAR_CONTROL_CLASS =
+  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
 
 type StoreFormState = {
   name: string;
@@ -68,35 +97,6 @@ const DEFAULT_FORM_STATE: StoreFormState = {
   bannerImageFile: null,
 };
 
-function StoreDetailRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
-      <p className="mt-2 text-sm text-textStrong">{value}</p>
-    </div>
-  );
-}
-
-function DetailSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-textStrong">{title}</h3>
-        {description ? <p className="mt-1 text-xs text-textMuted">{description}</p> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 function AudienceChip({
   label,
   active,
@@ -113,7 +113,7 @@ function AudienceChip({
       className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
         active
           ? "border-accent/40 bg-accent/15 text-textStrong"
-          : "border-white/10 bg-white/[0.03] text-textMuted hover:border-white/20 hover:text-textStrong"
+          : "border-line bg-surfaceMuted text-textMuted hover:border-accent/25 hover:text-textStrong"
       }`}
     >
       {label}
@@ -128,10 +128,12 @@ export function FullStoresPage() {
   const {
     items: stores,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
     setItems,
@@ -143,6 +145,7 @@ export function FullStoresPage() {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<StoreDirectoryTab>("all");
   const [selectedStoreSummary, setSelectedStoreSummary] = useState<Store | null>(null);
   const [selectedStore, setSelectedStore] = useState<AdminStoreDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -184,8 +187,11 @@ export function FullStoresPage() {
     };
   }, [bannerPreview, logoPreview]);
 
+  const snapshot = useMemo(() => buildStoreDirectorySnapshot(stores), [stores]);
+
   const filteredStores = useMemo(() => {
-    return stores.filter((store) => {
+    const tabbed = filterStoresByTab(stores, activeTab);
+    return tabbed.filter((store) => {
       const haystack = [store.name, store.category, store.city, store.region, store.location]
         .join(" ")
         .toLowerCase();
@@ -193,7 +199,18 @@ export function FullStoresPage() {
       const matchesStatus = statusFilter === "all" ? true : store.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
-  }, [query, statusFilter, stores]);
+  }, [activeTab, query, statusFilter, stores]);
+
+  const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredStores.length })}${
+    hasMore ? " · more pages available" : ""
+  }`;
+
+  const activeTabLabel = STORE_TABS.find((tab) => tab.id === activeTab)?.label ?? "All";
+
+  const marketLinkedCount = useMemo(
+    () => stores.filter((store) => Boolean(store.marketId)).length,
+    [stores],
+  );
 
   const handleViewStore = useCallback(
     async (store: Store) => {
@@ -315,142 +332,167 @@ export function FullStoresPage() {
     }
   }
 
+  if (isLoading && stores.length === 0) {
+    return <StoresDirectorySkeleton />;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminFullHeader
         eyebrow="Stores"
-        title="Complete store directory"
-        description="Manage stores, branding, status, and open full store profiles."
+        title="Store directory"
+        description={`${snapshot.total} on this page · ${marketLinkedCount} linked to a market · search, filter, and open a store to edit details or status.`}
         backRoute="/stores"
         onRefresh={() => void refresh()}
         refreshing={isLoading}
         actions={
-          <Button leftIcon={<Plus className="size-4" />} onClick={() => setIsCreateOpen(true)}>
+          <HeaderActionButton leftIcon={<Plus className="size-4" />} onClick={() => setIsCreateOpen(true)}>
             Create store
-          </Button>
+          </HeaderActionButton>
         }
       />
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          label="On this page"
+          value={String(snapshot.total)}
+          hint="Loaded storefronts"
+          icon={StoreIcon}
+          animationDelay={40}
+        />
+        <StatCard
+          label="Live shops"
+          value={String(snapshot.active)}
+          hint={`${snapshot.draft} in draft`}
+          icon={StoreIcon}
+          tone="success"
+          animationDelay={80}
+        />
+        <StatCard
+          label="Draft"
+          value={String(snapshot.draft)}
+          hint="Not customer-visible"
+          icon={Warehouse}
+          animationDelay={120}
+        />
+        <StatCard
+          label="Suspended"
+          value={String(snapshot.suspended)}
+          hint="Needs review"
+          icon={PauseCircle}
+          tone="warning"
+          animationDelay={160}
+        />
+      </div>
+
+      <UserSectionNav
+        sections={STORE_TABS.map((tab) => ({
+          id: tab.id,
+          label: `${tab.label} (${filterStoresByTab(stores, tab.id).length})`,
+        }))}
+        activeId={activeTab}
+        onSelect={(id) => setActiveTab(id as StoreDirectoryTab)}
+      />
+
       <SectionCard
-        title="All stores"
-        description="Use filters to focus on active, suspended, or draft storefronts."
+        compact
+        title={`${activeTabLabel} stores`}
+        description="Search, filter, and open a store dossier for products and vendor context."
         action={
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search store, city, category"
-              className="sm:w-80"
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              options={[
-                { label: "All statuses", value: "all" },
-                { label: "Active", value: "active" },
-                { label: "Draft", value: "draft" },
-                { label: "Suspended", value: "suspended" },
-              ]}
-            />
-          </div>
+          <ListToolbar>
+            <ListToolbarField className="sm:min-w-[16rem]">
+              <SearchInput
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search store, city, category"
+                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
+              />
+            </ListToolbarField>
+            <ListToolbarField className="sm:min-w-[11rem]">
+              <FilterSelect
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                options={[
+                  { label: "All statuses", value: "all" },
+                  { label: "Active", value: "active" },
+                  { label: "Draft", value: "draft" },
+                  { label: "Suspended", value: "suspended" },
+                ]}
+                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
+              />
+            </ListToolbarField>
+          </ListToolbar>
         }
+        bodyClassName="p-0"
       >
         <AdminInfiniteList
-            columns={[
-              {
-                key: "store",
-                header: "Store",
-                render: (store) => (
-                  <div className="flex items-center gap-4">
-                    <div className="size-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-                      {store.logoImage ? (
-                        <img src={store.logoImage} alt={store.name} className="size-full object-cover" />
-                      ) : (
-                        <div className="flex size-full items-center justify-center text-[11px] text-textMuted">
-                          No logo
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium">{store.name}</p>
-                      <p className="mt-1 text-xs text-textMuted">{store.category}</p>
-                    </div>
+          compact
+          listSummary={listSummary}
+          columns={[
+            {
+              key: "store",
+              header: "Store",
+              className: "min-w-[220px]",
+              render: (store) => (
+                <div className="flex items-center gap-3">
+                  <StoreMark name={store.name} logoUrl={store.logoImage} />
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="truncate font-semibold text-textStrong">{store.name}</p>
+                    <p className="truncate text-xs text-textMuted">{store.category}</p>
+                    <p className="text-[11px] text-textSubtle">Created {formatDate(store.createdAt)}</p>
                   </div>
-                ),
+                </div>
+              ),
+            },
+            {
+              key: "location",
+              header: "Location",
+              className: "min-w-[140px]",
+              render: (store) => <StoreLocationCell store={store} />,
+            },
+            {
+              key: "market",
+              header: "Market",
+              className: "min-w-[120px]",
+              render: (store) => {
+                const marketName =
+                  markets.find((market) => market.id === store.marketId)?.name ?? "Unassigned";
+                return <StoreMarketBadge name={marketName} />;
               },
-              {
-                key: "location",
-                header: "Location",
-                render: (store) => (
-                  <div>
-                    <p>{store.location ?? "Not set"}</p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      {store.city}, {store.region}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "market",
-                header: "Market",
-                render: (store) => markets.find((market) => market.id === store.marketId)?.name ?? "Not assigned",
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (store) => <StatusBadge status={store.status} />,
-              },
-              {
-                key: "created",
-                header: "Created",
-                render: (store) => formatDate(store.createdAt),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                render: (store) => (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate(`/stores/full/${store.id}`)}
-                    >
-                      Open dossier
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      leftIcon={<Eye className="size-4" />}
-                      onClick={() => void handleViewStore(store)}
-                    >
-                      View
-                    </Button>
-                    <Button
-                      variant={store.status === "suspended" ? "primary" : "danger"}
-                      leftIcon={
-                        store.status === "suspended" ? (
-                          <PlayCircle className="size-4" />
-                        ) : (
-                          <PauseCircle className="size-4" />
-                        )
-                      }
-                      onClick={() => setStatusTarget(store)}
-                    >
-                      {store.status === "suspended" ? "Activate" : "Suspend"}
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-            data={filteredStores}
-            keyExtractor={(store) => store.id}
-            isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
-            hasMore={hasMore}
-            error={error}
-            onLoadMore={() => void loadMore()}
-            onRetry={() => void refresh()}
-            emptyTitle="No stores found"
-            emptyDescription="Try broadening the search or create the first ODOS-managed store."
-          />
+            },
+            {
+              key: "status",
+              header: "Status",
+              className: "w-[7.5rem]",
+              render: (store) => <StatusBadge status={store.status} />,
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              className: TABLE_ACTIONS_COLUMN_CLASS,
+              render: (store) => (
+                <StoreTableActions
+                  store={store}
+                  onPreview={() => void handleViewStore(store)}
+                  onDossier={() => navigate(`/stores/full/${store.id}`)}
+                  onToggleStatus={() => setStatusTarget(store)}
+                />
+              ),
+            },
+          ]}
+          data={filteredStores}
+          keyExtractor={(store) => store.id}
+          isLoading={isLoading}
+          page={page}
+          pageSize={pageSize}
+          isLoadingPage={isLoadingPage}
+          hasMore={hasMore}
+          error={error}
+          onPageChange={goToPage}
+          onRetry={() => void refresh()}
+          emptyTitle="No stores found"
+          emptyDescription="Try another tab or create a new ODOS storefront."
+        />
       </SectionCard>
 
       <Modal
@@ -464,9 +506,10 @@ export function FullStoresPage() {
         title="Create store"
         description="Set up an ODOS storefront, choose its category, attach a market if needed, and prepare it for product assignment."
         footer={
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button
-              variant="ghost"
+              variant="secondary"
+              className="min-h-10 w-full sm:min-w-[8.5rem] sm:w-auto"
               onClick={() => {
                 setIsCreateOpen(false);
                 resetCreateState();
@@ -475,7 +518,11 @@ export function FullStoresPage() {
             >
               Cancel
             </Button>
-            <Button onClick={() => void handleCreateStore()} isLoading={createLoading}>
+            <Button
+              className="min-h-10 w-full sm:min-w-[10.5rem] sm:w-auto"
+              onClick={() => void handleCreateStore()}
+              isLoading={createLoading}
+            >
               Create store
             </Button>
           </div>
@@ -566,10 +613,10 @@ export function FullStoresPage() {
 
           <div className="space-y-3 md:col-span-2">
             <div className="flex items-center gap-2">
-              <StoreIcon className="size-4 text-accentSoft" />
+              <StoreIcon className="size-4 text-textMuted" />
               <label className="block text-sm font-medium text-textStrong">Audience focus</label>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="rounded-3xl border border-line bg-surfaceMuted p-4">
               <div className="flex flex-wrap gap-3">
                 {AUDIENCES.map((audience) => (
                   <AudienceChip
@@ -613,7 +660,7 @@ export function FullStoresPage() {
                 setLogoPreview(file ? URL.createObjectURL(file) : null);
                 event.target.value = "";
               }}
-              className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-white/15"
+              className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-surfaceMuted file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-line"
             />
           </div>
 
@@ -631,14 +678,14 @@ export function FullStoresPage() {
                 setBannerPreview(file ? URL.createObjectURL(file) : null);
                 event.target.value = "";
               }}
-              className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-white/15"
+              className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-surfaceMuted file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-line"
             />
           </div>
 
-          <div className="md:col-span-2 rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
+          <div className="md:col-span-2 rounded-panel border border-line bg-surfaceMuted p-5">
             <p className="text-sm font-semibold text-textStrong">Storefront preview</p>
-            <div className="mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-[#081220]">
-              <div className="h-40 w-full bg-white/[0.05]">
+            <div className="mt-4 overflow-hidden rounded-3xl border border-line bg-surface shadow-sm">
+              <div className="h-40 w-full bg-surfaceMuted">
                 {bannerPreview ? (
                   <img src={bannerPreview} alt="Banner preview" className="h-full w-full object-cover" />
                 ) : (
@@ -648,7 +695,7 @@ export function FullStoresPage() {
                 )}
               </div>
               <div className="flex items-center gap-4 p-4">
-                <div className="-mt-12 size-20 overflow-hidden rounded-[24px] border-4 border-[#081220] bg-white/[0.08]">
+                <div className="-mt-12 size-20 overflow-hidden rounded-3xl border-4 border-surface bg-surfaceMuted">
                   {logoPreview ? (
                     <img src={logoPreview} alt="Logo preview" className="size-full object-cover" />
                   ) : (
@@ -664,7 +711,7 @@ export function FullStoresPage() {
                   <p className="mt-1 text-sm text-textMuted">
                     {form.category || "Category"} {form.city.trim() ? `· ${form.city.trim()}` : ""}
                   </p>
-                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-accentSoft">
+                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-textSubtle">
                     {(form.audienceSlugs.length ? form.audienceSlugs.join(", ") : "all shoppers").toUpperCase()}
                   </p>
                 </div>
@@ -682,9 +729,33 @@ export function FullStoresPage() {
           setDetailError(null);
           setIsDetailLoading(false);
         }}
-        title={selectedStore?.name ?? selectedStoreSummary?.name ?? "Store details"}
-        description="Store profile, vendor context, merchandising assets, and linked products."
+        title={selectedStore?.name ?? selectedStoreSummary?.name ?? "Store preview"}
+        description="Snapshot before opening the full dossier."
         size="xl"
+        footer={
+          selectedStoreSummary ? (
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button
+                variant="secondary"
+                className="min-h-10 w-full sm:min-w-[8.5rem] sm:w-auto"
+                onClick={() => {
+                  setSelectedStoreSummary(null);
+                  setSelectedStore(null);
+                  setDetailError(null);
+                  setIsDetailLoading(false);
+                }}
+              >
+                Close
+              </Button>
+              <Button
+                className="min-h-10 w-full sm:min-w-[10.5rem] sm:w-auto"
+                onClick={() => navigate(`/stores/full/${selectedStoreSummary.id}`)}
+              >
+                Open dossier
+              </Button>
+            </div>
+          ) : null
+        }
       >
         {isDetailLoading ? (
           <LoadingState label="Loading store details..." />
@@ -694,158 +765,152 @@ export function FullStoresPage() {
             onRetry={() => selectedStoreSummary && void handleViewStore(selectedStoreSummary)}
           />
         ) : selectedStore ? (
-          <div className="space-y-6">
-            <div className="overflow-hidden rounded-[30px] border border-white/10 bg-slate-950/30">
-              <div className="h-64 w-full bg-white/[0.03]">
+          <DetailStack>
+            <div className="space-y-5 border-b border-line/90 pb-8">
+              <div className="h-36 w-full overflow-hidden rounded-lg bg-surfaceMuted">
                 {selectedStore.bannerImage ? (
-                  <img src={selectedStore.bannerImage} alt={selectedStore.name} className="h-full w-full object-cover" />
+                  <img
+                    src={selectedStore.bannerImage}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-textMuted">
                     No banner uploaded
                   </div>
                 )}
               </div>
-              <div className="flex flex-col gap-5 p-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="-mt-16 size-24 overflow-hidden rounded-[28px] border-4 border-slate-950 bg-white/[0.08] shadow-glow">
+                  <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-surfaceMuted ring-1 ring-line/80">
                     {selectedStore.logoImage ? (
-                      <img src={selectedStore.logoImage} alt={selectedStore.name} className="h-full w-full object-cover" />
+                      <img
+                        src={selectedStore.logoImage}
+                        alt=""
+                        className="size-full object-cover"
+                      />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-textMuted">
+                      <div className="flex size-full items-center justify-center text-xs text-textMuted">
                         Logo
                       </div>
                     )}
                   </div>
-                  <div className="pt-2">
+                  <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-2xl font-semibold text-textStrong">{selectedStore.name}</h3>
+                      <h3 className="text-lg font-semibold text-textStrong">{selectedStore.name}</h3>
                       <StatusBadge status={selectedStore.status} />
                     </div>
-                    <p className="mt-2 text-sm text-textMuted">
-                      {selectedStore.category}
+                    <p className="text-sm text-textMuted">{selectedStore.category}</p>
+                    <p className="text-sm text-textMuted">
+                      {selectedStore.marketName ?? "No market"}
+                      {" · "}
+                      {selectedStore.audienceSlugs?.join(", ") ?? "All shoppers"}
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-textMuted">
-                        {selectedStore.marketName ?? "No market"}
-                      </span>
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-textMuted">
-                        {selectedStore.audienceSlugs?.join(", ") ?? "All shoppers"}
-                      </span>
-                    </div>
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <StoreDetailRow label="Products" value={String(selectedStore.stats.totalProducts)} />
-                  <StoreDetailRow label="Orders" value={String(selectedStore.stats.totalOrders)} />
-                  <StoreDetailRow label="Sales" value={formatCurrency(selectedStore.stats.totalSales)} />
-                </div>
+                <DetailFields columns={3} className="lg:max-w-md">
+                  <DetailField emphasize label="Products" value={String(selectedStore.stats.totalProducts)} />
+                  <DetailField label="Orders" value={String(selectedStore.stats.totalOrders)} />
+                  <DetailField emphasize label="Sales" value={formatCurrency(selectedStore.stats.totalSales)} />
+                </DetailFields>
               </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-2">
-              <DetailSection title="Store profile" description="Core storefront information visible to admin.">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <StoreDetailRow label="Status" value={selectedStore.status} />
-                  <StoreDetailRow label="Category" value={selectedStore.category} />
-                  <StoreDetailRow label="Market" value={selectedStore.marketName ?? "Not assigned"} />
-                  <StoreDetailRow label="Location" value={selectedStore.location ?? "Not set"} />
-                  <StoreDetailRow label="City" value={selectedStore.city} />
-                  <StoreDetailRow label="Region" value={selectedStore.region} />
-                  <StoreDetailRow
+            <div className="grid gap-10 xl:grid-cols-2">
+              <DetailSection title="Store profile">
+                <DetailFields columns={2}>
+                  <DetailField label="Status" value={selectedStore.status} />
+                  <DetailField label="Category" value={selectedStore.category} />
+                  <DetailField label="Market" value={selectedStore.marketName ?? "Not assigned"} />
+                  <DetailField label="Location" value={selectedStore.location ?? "Not set"} />
+                  <DetailField label="City" value={selectedStore.city} />
+                  <DetailField label="Region" value={selectedStore.region} />
+                  <DetailField
                     label="Audience"
                     value={selectedStore.audienceSlugs?.join(", ") ?? "All shoppers"}
                   />
-                  <StoreDetailRow label="Created" value={formatDateTime(selectedStore.createdAt)} />
-                  <StoreDetailRow label="Updated" value={formatDateTime(selectedStore.updatedAt)} />
-                  <div className="md:col-span-2">
-                    <StoreDetailRow label="Description" value={selectedStore.description} />
-                  </div>
-                </div>
+                  <DetailField label="Created" value={formatDateTime(selectedStore.createdAt)} />
+                  <DetailField label="Updated" value={formatDateTime(selectedStore.updatedAt)} />
+                  <DetailField
+                    label="Description"
+                    value={selectedStore.description}
+                    className="sm:col-span-2"
+                  />
+                </DetailFields>
               </DetailSection>
 
-              <DetailSection title="Vendor context" description="Who owns or operates this store on ODOS.">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <StoreDetailRow label="Vendor name" value={selectedStore.vendorName ?? "Admin managed"} />
-                  <StoreDetailRow label="Vendor email" value={selectedStore.vendorEmail ?? "Not linked"} />
-                  <StoreDetailRow
+              <DetailSection title="Vendor">
+                <DetailFields columns={2}>
+                  <DetailField label="Vendor name" value={selectedStore.vendorName ?? "Admin managed"} />
+                  <DetailField label="Vendor email" value={selectedStore.vendorEmail ?? "Not linked"} />
+                  <DetailField
                     label="Vendor phone"
                     value={selectedStore.vendorPhoneNumber ?? "Not linked"}
                   />
-                  <StoreDetailRow
+                  <DetailField
                     label="Linked vendor id"
                     value={selectedStore.vendorId ?? "Not linked"}
                   />
-                </div>
+                </DetailFields>
               </DetailSection>
             </div>
 
-            <DetailSection title="Merchandising stats" description="A quick look at how stocked and active the store currently is.">
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <StoreDetailRow label="Total products" value={String(selectedStore.stats.totalProducts)} />
-                <StoreDetailRow label="Active products" value={String(selectedStore.stats.activeProducts)} />
-                <StoreDetailRow label="Pending products" value={String(selectedStore.stats.pendingProducts)} />
-                <StoreDetailRow label="Hidden products" value={String(selectedStore.stats.hiddenProducts)} />
-              </div>
+            <DetailSection title="Product counts">
+              <DetailFields columns={2}>
+                <DetailField label="Total products" value={String(selectedStore.stats.totalProducts)} />
+                <DetailField label="Active products" value={String(selectedStore.stats.activeProducts)} />
+                <DetailField label="Pending products" value={String(selectedStore.stats.pendingProducts)} />
+                <DetailField label="Hidden products" value={String(selectedStore.stats.hiddenProducts)} />
+              </DetailFields>
             </DetailSection>
 
-            <DetailSection title="Products in this store" description="Every product currently linked to this store.">
+            <DetailSection title="Products in this store">
               {selectedStore.products.length === 0 ? (
                 <EmptyState
                   title="No products yet"
                   description="This store has not received any products yet."
                 />
               ) : (
-                <div className="space-y-4">
+                <ul className="divide-y divide-line/80">
                   {selectedStore.products.map((product) => (
-                    <div
-                      key={product.id}
-                      className="rounded-3xl border border-white/10 bg-white/[0.02] p-4"
-                    >
-                      <div className="flex flex-col gap-4 md:flex-row">
-                        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-                          {product.images[0] ? (
-                            <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-sm text-textMuted">
-                              No image
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div>
-                              <p className="text-base font-semibold text-textStrong">{product.name}</p>
-                              <p className="mt-1 text-sm text-textMuted">
-                                {product.category}
-                                {product.subcategory ? ` · ${product.subcategory}` : ""}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <StatusBadge status={product.status} />
-                              <span className="text-sm font-semibold text-textStrong">
-                                {formatCurrency(product.price)}
-                              </span>
-                            </div>
+                    <li key={product.id} className="flex gap-4 py-5 first:pt-0 last:pb-0">
+                      <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-surfaceMuted">
+                        {product.images[0] ? (
+                          <img src={product.images[0]} alt={product.name} className="size-full object-cover" />
+                        ) : (
+                          <div className="flex size-full items-center justify-center text-xs text-textMuted">
+                            No image
                           </div>
-                          <div className="mt-4 grid gap-3 md:grid-cols-3">
-                            <StoreDetailRow label="Stock" value={String(product.stock)} />
-                            <StoreDetailRow
-                              label="Discount"
-                              value={product.discount ?? "No discount"}
-                            />
-                            <StoreDetailRow
-                              label="Updated"
-                              value={formatDate(product.updatedAt)}
-                            />
-                          </div>
-                        </div>
+                        )}
                       </div>
-                    </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium text-textStrong">{product.name}</p>
+                            <p className="text-sm text-textMuted">
+                              {product.category}
+                              {product.subcategory ? ` · ${product.subcategory}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={product.status} />
+                            <span className="text-sm font-semibold tabular-nums text-textStrong">
+                              {formatCurrency(product.price)}
+                            </span>
+                          </div>
+                        </div>
+                        <DetailFields columns={3} className="mt-2">
+                          <DetailField label="Stock" value={String(product.stock)} />
+                          <DetailField label="Discount" value={product.discount ?? "—"} />
+                          <DetailField label="Updated" value={formatDate(product.updatedAt)} />
+                        </DetailFields>
+                      </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </DetailSection>
-          </div>
+          </DetailStack>
         ) : null}
       </Modal>
 

@@ -25,10 +25,15 @@ React admin dashboard for operating the ODOS marketplace — catalog, users, ven
 **Merchandising**
 
 - Promo banners with placement, destination, and live mobile preview (home carousel, deals, etc.)
-- Flash sale events and voucher / promotion management
-- **Merchandising campaigns** (opt-in targeting for seller participation)
+- Flash sale events and voucher / promotion management, plus a **vendor nomination review queue** (approve into an event with a flash price and optional stock cap, or reject with a note)
+- **Merchandising campaigns** (opt-in targeting for seller participation) with a **vendor opt-in review queue** showing units sold since approval
 - Full analytics reports and section-level metrics
 - Review moderation with **seller reply** visibility on admin review detail
+- **Delivery ops** dashboard — live view of every active delivery with SLA breach flags
+
+**Operational alerts**
+
+- Feature-scoped email alerts fire automatically for vendor applications, withdrawal requests, and voucher submissions — only admins whose permission band covers that area are notified
 
 **UX patterns**
 
@@ -103,8 +108,10 @@ After deploy, add the admin site origin to backend `CORS_ORIGINS` and redeploy t
 - `/full/*` — expanded list views for each section above
 - `/full/promo-banners/studio/:id` — promo banner studio
 - `/full/categories/studio/:id` — category studio
-- `/full/users/:id` · `/full/orders/:id` — record detail pages
+- `/full/users/:id` · `/full/orders/:id` · `/full/vendors/:id` — record detail pages
 - `/full/analytics` — full analytics report
+- `/full/delivery-ops` — live delivery operations dashboard
+- `/full/flash-sale-events` and `/full/merchandising-campaigns` — each include a review-queue tab for vendor nominations / opt-ins
 
 ## Project structure
 

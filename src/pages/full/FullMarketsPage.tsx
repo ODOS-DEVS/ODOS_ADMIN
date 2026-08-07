@@ -1,21 +1,43 @@
-import { Edit3, ImagePlus, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ImagePlus,
+  Plus,
+  RefreshCw,
+  Store,
+  Warehouse,
+} from "lucide-react";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { createMarket, deleteMarket, getMarketsPage, updateMarket } from "@/api/marketsApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
-import { Button } from "@/components/ui/Button";
+import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
+import {
+  MarketNameCell,
+  MarketsDirectorySkeleton,
+  MarketTableActions,
+} from "@/components/markets/MarketsDirectoryUi";
+import { UserSectionNav } from "@/components/users/UsersUi";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Modal } from "@/components/ui/Modal";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Button } from "@/components/ui/Button";
+import { TABLE_ACTIONS_COLUMN_CLASS_NARROW } from "@/components/ui/IconButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useToast } from "@/hooks/useToast";
 import type { Market } from "@/types";
-import { formatDate } from "@/utils/format";
+import {
+  buildMarketDirectorySnapshot,
+  filterMarketsByTab,
+  type MarketDirectoryTab,
+} from "@/utils/marketMetrics";
+import { formatPaginationRange } from "@/utils/paginationUi";
 
 type MarketFormValues = {
   name: string;
@@ -29,19 +51,30 @@ const initialMarketForm: MarketFormValues = {
   status: "active",
 };
 
+const MARKET_TABS = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "disabled", label: "Disabled" },
+] as const;
+
+const TOOLBAR_CONTROL_CLASS =
+  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
+
 export function FullMarketsPage() {
   const { token } = useAdminAuth();
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const {
     items: markets,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
-    removeItem,
     setItems,
   } = useInfiniteAdminList({
     loadPage: getMarketsPage,
@@ -49,6 +82,7 @@ export function FullMarketsPage() {
   });
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<MarketDirectoryTab>("all");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingMarket, setEditingMarket] = useState<Market | null>(null);
   const [marketForm, setMarketForm] = useState<MarketFormValues>(initialMarketForm);
@@ -64,14 +98,23 @@ export function FullMarketsPage() {
     };
   }, [previewUrl]);
 
+  const snapshot = useMemo(() => buildMarketDirectorySnapshot(markets), [markets]);
+
   const filteredMarkets = useMemo(() => {
-    return markets.filter((market) => {
-      const haystack = [market.name].join(" ").toLowerCase();
+    const tabbed = filterMarketsByTab(markets, activeTab);
+    return tabbed.filter((market) => {
+      const haystack = market.name.toLowerCase();
       const matchesQuery = haystack.includes(query.trim().toLowerCase());
       const matchesStatus = statusFilter === "all" ? true : market.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
-  }, [markets, query, statusFilter]);
+  }, [activeTab, markets, query, statusFilter]);
+
+  const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredMarkets.length })}${
+    hasMore ? " · more pages available" : ""
+  }`;
+
+  const activeTabLabel = MARKET_TABS.find((tab) => tab.id === activeTab)?.label ?? "All";
 
   function resetEditorState() {
     setMarketForm(initialMarketForm);
@@ -94,7 +137,7 @@ export function FullMarketsPage() {
       imageFile: null,
       status: market.status,
     });
-    setPreviewUrl(market.imageUrl ?? null);
+    setPreviewUrl(market.imageUrl ?? market.image ?? null);
     setIsEditorOpen(true);
   }
 
@@ -104,7 +147,7 @@ export function FullMarketsPage() {
     if (previewUrl?.startsWith("blob:")) {
       URL.revokeObjectURL(previewUrl);
     }
-    setPreviewUrl(file ? URL.createObjectURL(file) : editingMarket?.imageUrl ?? null);
+    setPreviewUrl(file ? URL.createObjectURL(file) : editingMarket?.imageUrl ?? editingMarket?.image ?? null);
     event.target.value = "";
   }
 
@@ -165,114 +208,133 @@ export function FullMarketsPage() {
     }
   }
 
+  if (isLoading && markets.length === 0) {
+    return <MarketsDirectorySkeleton />;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminFullHeader
         eyebrow="Markets"
-        title="Complete markets registry"
-        description="Manage marketplace locations and assignments."
+        title="Market directory"
+        description={`${snapshot.total} on this page · ${snapshot.active} active · create or edit markets and tie stores to them.`}
         backRoute="/markets"
         onRefresh={() => void refresh()}
         refreshing={isLoading}
         actions={
-          <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
+          <HeaderActionButton leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
             Create market
-          </Button>
+          </HeaderActionButton>
         }
       />
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatCard
+          label="Markets"
+          value={String(snapshot.total)}
+          hint="On this page"
+          icon={Store}
+          animationDelay={40}
+        />
+        <StatCard
+          label="Active"
+          value={String(snapshot.active)}
+          hint="Discoverable"
+          icon={Store}
+          tone="success"
+          animationDelay={80}
+        />
+        <StatCard
+          label="Disabled"
+          value={String(snapshot.disabled)}
+          hint="Hidden from browse"
+          icon={Warehouse}
+          tone="warning"
+          animationDelay={120}
+        />
+      </div>
+
+      <UserSectionNav
+        sections={MARKET_TABS.map((tab) => ({
+          id: tab.id,
+          label: `${tab.label} (${filterMarketsByTab(markets, tab.id).length})`,
+        }))}
+        activeId={activeTab}
+        onSelect={(id) => setActiveTab(id as MarketDirectoryTab)}
+      />
+
       <SectionCard
-        title="Markets"
-        description="Search by name and manage the markets shoppers can browse across ODOS."
+        compact
+        title={`${activeTabLabel} markets`}
+        description="Search, filter, and manage shopper-facing market artwork."
         action={
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search markets"
-              className="sm:w-80"
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              options={[
-                { label: "All statuses", value: "all" },
-                { label: "Active", value: "active" },
-                { label: "Disabled", value: "disabled" },
-              ]}
-            />
-          </div>
+          <ListToolbar>
+            <ListToolbarField className="sm:min-w-[16rem]">
+              <SearchInput
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search markets"
+                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
+              />
+            </ListToolbarField>
+            <ListToolbarField className="sm:min-w-[11rem]">
+              <FilterSelect
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                options={[
+                  { label: "All statuses", value: "all" },
+                  { label: "Active", value: "active" },
+                  { label: "Disabled", value: "disabled" },
+                ]}
+                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
+              />
+            </ListToolbarField>
+          </ListToolbar>
         }
+        bodyClassName="p-0"
       >
         <AdminInfiniteList
-            columns={[
-              {
-                key: "market",
-                header: "Market",
-                render: (market) => (
-                  <div className="flex items-center gap-4">
-                    <div className="size-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-                      {market.imageUrl ? (
-                        <img src={market.imageUrl} alt={market.name} className="size-full object-cover" />
-                      ) : (
-                        <div className="flex size-full items-center justify-center text-[11px] text-textMuted">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium">{market.name}</p>
-                      <p className="mt-1 text-xs text-textMuted">
-                        Added {formatDate(market.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (market) => <StatusBadge status={market.status} />,
-              },
-              {
-                key: "created",
-                header: "Created",
-                render: (market) => formatDate(market.createdAt),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                render: (market) => (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="secondary"
-                      leftIcon={<Edit3 className="size-4" />}
-                      onClick={() => openEditModal(market)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      leftIcon={<Trash2 className="size-4" />}
-                      onClick={() => setDeleteTarget(market)}
-                    >
-                      Disable
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-            data={filteredMarkets}
-            keyExtractor={(market) => market.id}
-            isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
-            hasMore={hasMore}
-            error={error}
-            onLoadMore={() => void loadMore()}
-            onRetry={() => void refresh()}
-            emptyTitle="No markets found"
-            emptyDescription="Try broadening the search or create a new market."
-          />
+          compact
+          listSummary={listSummary}
+          columns={[
+            {
+              key: "market",
+              header: "Market",
+              className: "min-w-[220px]",
+              render: (market) => <MarketNameCell market={market} />,
+            },
+            {
+              key: "status",
+              header: "Status",
+              className: "w-[7.5rem]",
+              render: (market) => <StatusBadge status={market.status} />,
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              className: TABLE_ACTIONS_COLUMN_CLASS_NARROW,
+              render: (market) => (
+                <MarketTableActions
+                  market={market}
+                  onEdit={() => openEditModal(market)}
+                  onDisable={() => setDeleteTarget(market)}
+                />
+              ),
+            },
+          ]}
+          data={filteredMarkets}
+          keyExtractor={(market) => market.id}
+          isLoading={isLoading}
+          page={page}
+          pageSize={pageSize}
+          isLoadingPage={isLoadingPage}
+          hasMore={hasMore}
+          error={error}
+          onPageChange={goToPage}
+          onRetry={() => void refresh()}
+          emptyTitle="No markets found"
+          emptyDescription="Try another tab or create a new ODOS market."
+        />
       </SectionCard>
 
       <Modal
@@ -284,11 +346,12 @@ export function FullMarketsPage() {
           }
         }}
         title={editingMarket ? `Edit ${editingMarket.name}` : "Create market"}
-        description="Create a live market with its shopper-facing name, status, and optional uploaded artwork."
+        description="Shopper-facing name, status, and optional market artwork."
         footer={
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button
-              variant="ghost"
+              variant="secondary"
+              className="min-h-10 w-full sm:min-w-[8.5rem] sm:w-auto"
               onClick={() => {
                 setIsEditorOpen(false);
                 resetEditorState();
@@ -298,6 +361,7 @@ export function FullMarketsPage() {
               Cancel
             </Button>
             <Button
+              className="min-h-10 w-full sm:min-w-[10.5rem] sm:w-auto"
               onClick={() => void handleSave()}
               isLoading={actionLoading}
               disabled={!marketForm.name.trim()}
@@ -309,7 +373,7 @@ export function FullMarketsPage() {
       >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label className="mb-2 block text-sm font-medium text-textStrong">Market name</label>
+            <label className="block text-sm font-medium text-textStrong">Market name</label>
             <input
               className="app-input"
               value={marketForm.name}
@@ -323,7 +387,7 @@ export function FullMarketsPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="mb-2 block text-sm font-medium text-textStrong">Status</label>
+            <label className="block text-sm font-medium text-textStrong">Status</label>
             <select
               className="app-select"
               value={marketForm.status}
@@ -334,22 +398,24 @@ export function FullMarketsPage() {
                 }))
               }
             >
-              <option value="active" className="bg-panel">Active</option>
-              <option value="disabled" className="bg-panel">Disabled</option>
+              <option value="active" className="bg-panel">
+                Active
+              </option>
+              <option value="disabled" className="bg-panel">
+                Disabled
+              </option>
             </select>
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-textStrong">Market artwork</label>
-            <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-4">
+            <label className="block text-sm font-medium text-textStrong">Market artwork</label>
+            <div className="rounded-2xl border border-dashed border-line bg-surfaceMuted p-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                <div className="flex h-32 w-44 items-center justify-center overflow-hidden rounded-[28px] border border-white/10 bg-[#07111f]">
+                <div className="flex h-32 w-44 items-center justify-center overflow-hidden rounded-2xl border border-line bg-surface">
                   {previewUrl ? (
                     <img src={previewUrl} alt="Market preview" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="px-4 text-center text-xs text-textMuted">
-                      Uploaded market image preview
-                    </div>
+                    <div className="px-4 text-center text-xs text-textMuted">Image preview</div>
                   )}
                 </div>
                 <div className="flex-1">
@@ -357,28 +423,28 @@ export function FullMarketsPage() {
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
                     onChange={handleImageChange}
-                    className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-white/15"
+                    className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-accentSoft file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent hover:file:bg-accent/15"
                   />
                   <p className="mt-3 text-xs text-textMuted">
-                    Upload the image you want shoppers to see for this market.
+                    Upload the image shoppers see when browsing this market.
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="md:col-span-2 rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-2xl border border-line bg-surfaceMuted p-5 md:col-span-2">
             <div className="mb-3 flex items-center gap-2">
-              <ImagePlus className="size-4 text-accentSoft" />
+              <ImagePlus className="size-4 text-accent" />
               <p className="text-sm font-semibold text-textStrong">Market preview</p>
             </div>
-            <div className="flex items-center gap-4 rounded-[24px] bg-[#081220] p-4">
-              <div className="h-28 w-36 overflow-hidden rounded-[22px] bg-white/[0.06]">
+            <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+              <div className="h-28 w-36 overflow-hidden rounded-xl bg-surfaceMuted">
                 {previewUrl ? (
                   <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-[11px] text-textMuted">
-                    No uploaded image yet
+                    No image yet
                   </div>
                 )}
               </div>
@@ -386,10 +452,8 @@ export function FullMarketsPage() {
                 <p className="text-lg font-semibold text-textStrong">
                   {marketForm.name.trim() || "Market name"}
                 </p>
-                <p className="mt-2 text-sm text-textMuted">
-                  This preview reflects the live artwork shoppers will see.
-                </p>
-                <p className="mt-3 text-xs uppercase tracking-[0.18em] text-accentSoft">
+                <p className="mt-2 text-sm text-textMuted">Live artwork on the ODOS browse experience.</p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-accent">
                   Status: {marketForm.status}
                 </p>
               </div>

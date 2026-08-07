@@ -1,14 +1,13 @@
 import {
+  ArrowLeft,
+  Check,
   Clock3,
-  Headset,
-  MessageSquareMore,
   RefreshCw,
+  RotateCcw,
   Send,
   ShieldCheck,
   Store,
   UserRound,
-  Wifi,
-  WifiOff,
 } from "lucide-react";
 import {
   useCallback,
@@ -32,8 +31,8 @@ import {
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { LiveIndicator } from "@/components/ui/LiveIndicator";
 import { LoadingState } from "@/components/ui/LoadingState";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import {
@@ -94,6 +93,8 @@ type SupportMessagesReadRealtimePayload = {
   read_at: string;
 };
 
+type StatusTone = "success" | "warning" | "info";
+
 const roleCopy = {
   customer: "Customer",
   vendor: "Vendor",
@@ -112,6 +113,18 @@ const statusFilterLabels: Record<SupportChatStatus | "all", string> = {
   waiting_on_admin: "Waiting on admin",
   waiting_on_customer: "Waiting on user",
   resolved: "Resolved",
+};
+
+const statusRailClass: Record<StatusTone, string> = {
+  success: "bg-success",
+  warning: "bg-warning",
+  info: "bg-info",
+};
+
+const statusPillClass: Record<StatusTone, string> = {
+  success: "border-success/25 bg-success-soft text-success",
+  warning: "border-warning/25 bg-warning-soft text-warning",
+  info: "border-info/25 bg-info-soft text-info",
 };
 
 function sortThreads(threads: SupportChatThread[]) {
@@ -201,51 +214,26 @@ function formatThreadTime(value?: string | null) {
 function getSupportStatusMeta(
   status: SupportChatStatus | null | undefined,
   role: SupportChatThread["counterpart"]["role"],
-) {
+): { label: string; tone: StatusTone } {
   if (status === "resolved") {
-    return {
-      label: "Resolved",
-      tone: "border-emerald-400/25 bg-emerald-500/10 text-emerald-100",
-    };
+    return { label: "Resolved", tone: "success" };
   }
 
   if (status === "waiting_on_customer") {
-    return {
-      label: role === "vendor" ? "Waiting on vendor" : "Waiting on customer",
-      tone: "border-sky-400/25 bg-sky-500/10 text-sky-100",
-    };
+    return { label: role === "vendor" ? "Waiting on vendor" : "Waiting on customer", tone: "info" };
   }
 
-  return {
-    label: "Waiting on admin",
-    tone: "border-amber-400/25 bg-amber-500/10 text-amber-100",
-  };
+  return { label: "Waiting on admin", tone: "warning" };
 }
 
-function getConnectionMeta(
-  state: "disconnected" | "connecting" | "connected",
-) {
+function getConnectionMeta(state: "disconnected" | "connecting" | "connected") {
   if (state === "connected") {
-    return {
-      label: "Live",
-      tone: "border-emerald-400/30 bg-emerald-500/10 text-emerald-100",
-      Icon: Wifi,
-    };
+    return { label: "Live", tone: "success" as const };
   }
-
   if (state === "connecting") {
-    return {
-      label: "Reconnecting",
-      tone: "border-amber-400/30 bg-amber-500/10 text-amber-100",
-      Icon: RefreshCw,
-    };
+    return { label: "Reconnecting", tone: "warning" as const };
   }
-
-  return {
-    label: "Offline",
-    tone: "border-red-400/30 bg-red-500/10 text-red-100",
-    Icon: WifiOff,
-  };
+  return { label: "Offline", tone: "danger" as const };
 }
 
 export function FullSupportChatsPage() {
@@ -601,69 +589,68 @@ export function FullSupportChatsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <AdminFullHeader
-        eyebrow="Support chats"
-        title="Complete support inbox"
-        description="All customer support threads and conversations."
-        backRoute="/support-chats"
-        onRefresh={() => void loadThreads()}
-        refreshing={isLoadingThreads}
-        actions={
-          <div className="flex flex-wrap items-center gap-3">
-            <div
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium ${connectionMeta.tone}`}
-            >
-              <connectionMeta.Icon
-                className={`size-4 ${connectionState === "connecting" ? "animate-spin" : ""}`}
-              />
-              <span>{connectionMeta.label}</span>
-            </div>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-medium text-textMuted">Support</p>
+          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-textStrong">
+            Support inbox
+          </h1>
+          <p className="mt-1 max-w-xl text-sm text-textMuted">
+            Every shopper and vendor conversation ODOS support is handling, live.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="rounded-full border border-line bg-surface px-3.5 py-2 shadow-sm">
+            <LiveIndicator
+              label={connectionMeta.label}
+              tone={connectionMeta.tone}
+              pulse={connectionState !== "disconnected"}
+            />
           </div>
-        }
-      />
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3.5">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-accentSoft">Open threads</p>
-          <p className="mt-2 text-2xl font-semibold text-textStrong">{threadCounts.all}</p>
-        </div>
-        <div className="rounded-[22px] border border-amber-400/20 bg-amber-500/10 px-4 py-3.5">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-amber-100/80">Waiting on admin</p>
-          <p className="mt-2 text-2xl font-semibold text-textStrong">{threadCounts.waiting_on_admin}</p>
-        </div>
-        <div className="rounded-[22px] border border-sky-400/20 bg-sky-500/10 px-4 py-3.5">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-sky-100/80">Waiting on user</p>
-          <p className="mt-2 text-2xl font-semibold text-textStrong">{threadCounts.waiting_on_customer}</p>
-        </div>
-        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3.5">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-accentSoft">Unread messages</p>
-          <p className="mt-2 text-2xl font-semibold text-textStrong">{unreadTotal}</p>
+          <Button variant="secondary" leftIcon={<ArrowLeft className="size-4" />} onClick={() => navigate("/support-chats")}>
+            Brief overview
+          </Button>
+          <Button
+            variant="secondary"
+            leftIcon={<RefreshCw className={`size-4 ${isLoadingThreads ? "animate-spin" : ""}`} />}
+            onClick={() => void loadThreads()}
+          >
+            Refresh
+          </Button>
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[320px,minmax(0,1fr)] xl:items-stretch">
-        <section className="flex min-h-[640px] flex-col overflow-hidden rounded-[24px] border border-white/10 bg-panel/90 shadow-glow">
-          <div className="border-b border-white/10 px-4 py-3.5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-textStrong">Open conversations</h2>
-                <p className="mt-1 text-[13px] text-textMuted">
-                  Compact queue for live support threads.
-                </p>
-              </div>
-              <div className="rounded-full bg-white/[0.05] px-3 py-1 text-xs text-textMuted">
-                {filteredThreads.length} threads
-              </div>
-            </div>
-            <div className="mt-4">
-              <SearchInput
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by person, topic, or message"
-              />
-            </div>
-            <div className="mt-3.5 flex flex-wrap gap-2">
+      {/* Signature: the wire — a live ticker of queue counts */}
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-panel border border-line bg-surface px-6 py-4 shadow-card">
+        {[
+          { label: "Open threads", value: threadCounts.all, className: "text-textStrong" },
+          { label: "Waiting on admin", value: threadCounts.waiting_on_admin, className: "text-warning" },
+          { label: "Waiting on user", value: threadCounts.waiting_on_customer, className: "text-info" },
+          { label: "Unread", value: unreadTotal, className: "text-accent" },
+        ].map((stat, index) => (
+          <div key={stat.label} className={`flex items-baseline gap-3 ${index > 0 ? "border-l border-line pl-8" : ""}`}>
+            <span className={`font-display text-2xl font-semibold tabular-nums ${stat.className}`}>
+              {stat.value}
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-textSubtle">
+              {stat.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Console: thread rail + conversation */}
+      <div className="grid gap-5 xl:grid-cols-[340px,minmax(0,1fr)] xl:items-stretch">
+        <section className="flex min-h-[640px] flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-card">
+          <div className="border-b border-line px-4 py-3.5">
+            <SearchInput
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search by person, topic, or message"
+            />
+            <div className="mt-3 flex flex-wrap gap-1.5">
               {statusFilters.map((filter) => {
                 const isActive = statusFilter === filter;
                 return (
@@ -671,10 +658,10 @@ export function FullSupportChatsPage() {
                     key={filter}
                     type="button"
                     onClick={() => setStatusFilter(filter)}
-                    className={`rounded-full border px-2.5 py-1.5 text-[11px] font-medium transition ${
+                    className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.06em] transition ${
                       isActive
-                        ? "border-accent/40 bg-accent/15 text-textStrong"
-                        : "border-white/10 bg-white/[0.03] text-textMuted hover:bg-white/[0.06]"
+                        ? "border-accent/40 bg-accent/15 text-accent"
+                        : "border-line bg-surfaceMuted text-textMuted hover:bg-line/60"
                     }`}
                   >
                     {statusFilterLabels[filter]} · {threadCounts[filter]}
@@ -684,14 +671,14 @@ export function FullSupportChatsPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-2.5 py-2.5">
+          <div className="flex-1 overflow-y-auto p-2">
             {filteredThreads.length === 0 ? (
               <EmptyState
                 title="No support chats yet"
                 description="When a shopper or vendor reaches ODOS support from the mobile app, the conversation will appear here."
               />
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {filteredThreads.map((thread) => {
                   const isSelected = thread.id === selectedThreadId;
                   const isVendor = thread.counterpart.role === "vendor";
@@ -708,62 +695,44 @@ export function FullSupportChatsPage() {
                         setSelectedThreadId(thread.id);
                         void loadMessages(thread.id);
                       }}
-                      className={`w-full rounded-[18px] border px-3 py-2.5 text-left transition ${
+                      className={`relative block w-full overflow-hidden rounded-2xl border pl-4 text-left transition ${
                         isSelected
-                          ? "border-accent/50 bg-accent/10 shadow-glow"
-                          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
+                          ? "border-accent/40 bg-accent/[0.06] shadow-sm"
+                          : "border-transparent hover:bg-surfaceMuted"
                       }`}
                     >
-                      <div className="flex items-start gap-3">
+                      <span className={`absolute inset-y-2 left-1.5 w-[3px] rounded-full ${statusRailClass[statusMeta.tone]}`} />
+                      <div className="flex items-start gap-3 py-2.5 pr-3">
                         <div
-                          className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-[16px] ${
-                            isVendor ? "bg-sky-500/12 text-sky-200" : "bg-emerald-500/12 text-emerald-200"
+                          className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl ${
+                            isVendor ? "bg-accent/10 text-accent" : "bg-info/10 text-info"
                           }`}
                         >
-                          {isVendor ? <Store className="size-[15px]" /> : <UserRound className="size-[15px]" />}
+                          {isVendor ? <Store className="size-[14px]" /> : <UserRound className="size-[14px]" />}
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="truncate text-[13px] font-semibold text-textStrong">
-                                  {thread.counterpart.name}
-                                </p>
-                                <span
-                                  className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-semibold ${statusMeta.tone}`}
-                                >
-                                  {statusMeta.label}
-                                </span>
-                              </div>
-                              <p className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-accentSoft">
-                                {roleCopy[thread.counterpart.role]} · {thread.store.title}
-                              </p>
-                              {thread.assignedAdminName ? (
-                                <p className="mt-1 truncate text-[10px] text-textMuted">
-                                  Owned by {thread.assignedAdminName}
-                                </p>
-                              ) : null}
-                            </div>
-
-                            <div className="shrink-0 text-right">
-                              <p className="text-[10px] text-textMuted">
-                                {formatThreadTime(thread.lastMessageAt ?? thread.updatedAt)}
-                              </p>
-                              {thread.unreadCount > 0 ? (
-                                <span className="mt-1 inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-slate-950">
-                                  {thread.unreadCount}
-                                </span>
-                              ) : null}
-                            </div>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="truncate text-[13px] font-semibold text-textStrong">
+                              {thread.counterpart.name}
+                            </p>
+                            <span className="shrink-0 font-mono text-[10px] text-textSubtle">
+                              {formatThreadTime(thread.lastMessageAt ?? thread.updatedAt)}
+                            </span>
                           </div>
-
-                          <p className="mt-1.5 truncate text-[11px] font-medium text-textStrong/90">
-                            {thread.subject || "General support conversation"}
+                          <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.1em] text-textSubtle">
+                            {roleCopy[thread.counterpart.role]} · {thread.store.title}
                           </p>
-                          <p className="mt-1 truncate text-[11px] text-textMuted">
-                            {thread.lastMessageText || "No messages yet. Open the thread to reply."}
-                          </p>
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <p className="truncate text-[12px] text-textMuted">
+                              {thread.lastMessageText || thread.subject || "No messages yet"}
+                            </p>
+                            {thread.unreadCount > 0 ? (
+                              <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-[9px] font-semibold text-accentForeground">
+                                {thread.unreadCount}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </button>
@@ -774,7 +743,7 @@ export function FullSupportChatsPage() {
           </div>
         </section>
 
-        <section className="flex min-h-[640px] flex-col overflow-hidden rounded-[24px] border border-white/10 bg-panel/90 shadow-glow">
+        <section className="flex min-h-[640px] flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-card">
           {!selectedThread ? (
             <div className="flex flex-1 items-center justify-center p-6">
               <EmptyState
@@ -784,49 +753,27 @@ export function FullSupportChatsPage() {
             </div>
           ) : (
             <>
-              <div className="border-b border-white/10 px-4 py-3.5">
-                <div className="flex flex-col gap-3.5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="border-b border-line px-5 py-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-[18px] bg-accent/12 text-accentSoft">
-                        <Headset className="size-4.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <h2 className="truncate text-[17px] font-semibold text-textStrong">
-                          {selectedThread.counterpart.name}
-                        </h2>
-                        <p className="mt-0.5 truncate text-[13px] text-textMuted">
-                          {selectedThread.subject || "General support conversation"}
-                        </p>
-                      </div>
-                    </div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-textSubtle">
+                      {roleCopy[selectedThread.counterpart.role]} · {selectedThread.store.title}
+                    </p>
+                    <h2 className="mt-1 truncate font-display text-xl font-semibold text-textStrong">
+                      {selectedThread.counterpart.name}
+                    </h2>
+                    <p className="mt-1 truncate text-sm text-textMuted">
+                      {selectedThread.subject || "General support conversation"}
+                    </p>
                   </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     {selectedStatusMeta ? (
-                      <div
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold ${selectedStatusMeta.tone}`}
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusPillClass[selectedStatusMeta.tone]}`}
                       >
-                        <span>{selectedStatusMeta.label}</span>
-                      </div>
-                    ) : null}
-                    <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[11px] text-textMuted">
-                      {selectedThread.counterpart.role === "vendor" ? (
-                        <Store className="size-[14px]" />
-                      ) : (
-                        <UserRound className="size-[14px]" />
-                      )}
-                      <span>{roleCopy[selectedThread.counterpart.role]} account</span>
-                    </div>
-                    <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[11px] text-textMuted">
-                      <Clock3 className="size-[14px]" />
-                      <span>{formatDateTime(selectedThread.lastMessageAt ?? selectedThread.updatedAt)}</span>
-                    </div>
-                    {selectedThread.assignedAdminName ? (
-                      <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[11px] text-textMuted">
-                        <ShieldCheck className="size-[14px]" />
-                        <span>{selectedThread.assignedAdminName}</span>
-                      </div>
+                        {selectedStatusMeta.label}
+                      </span>
                     ) : null}
                     <Button
                       variant="secondary"
@@ -837,50 +784,35 @@ export function FullSupportChatsPage() {
                   </div>
                 </div>
 
-                <div className="mt-3.5 grid gap-2.5 md:grid-cols-3">
-                  <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3.5 py-2.5">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-accentSoft">
-                      <ShieldCheck className="size-[14px]" />
-                      Role
-                    </div>
-                    <p className="mt-1.5 text-[13px] font-semibold text-textStrong">
-                      {roleCopy[selectedThread.counterpart.role]}
-                    </p>
-                  </div>
-                  <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3.5 py-2.5">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-accentSoft">
-                      <Headset className="size-[14px]" />
-                      Topic
-                    </div>
-                    <p className="mt-1.5 truncate text-[13px] font-semibold text-textStrong">
-                      {selectedThread.subject || "General support"}
-                    </p>
-                  </div>
-                  <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3.5 py-2.5">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-accentSoft">
-                      <MessageSquareMore className="size-[14px]" />
-                      Messages
-                    </div>
-                    <p className="mt-1.5 text-[13px] font-semibold text-textStrong">
-                      {selectedMessages.length} in this thread
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3.5 flex flex-wrap gap-2.5">
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-textMuted">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock3 className="size-[13px]" />
+                    {formatDateTime(selectedThread.lastMessageAt ?? selectedThread.updatedAt)}
+                  </span>
+                  {selectedThread.assignedAdminName ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <ShieldCheck className="size-[13px]" />
+                      {selectedThread.assignedAdminName}
+                    </span>
+                  ) : null}
                   {selectedThread.supportStatus === "resolved" ? (
-                    <Button
-                      variant="secondary"
+                    <button
+                      type="button"
                       onClick={() => void handleStatusChange("waiting_on_admin")}
+                      className="inline-flex items-center gap-1.5 text-accent hover:underline"
                     >
+                      <RotateCcw className="size-[13px]" />
                       Reopen thread
-                    </Button>
+                    </button>
                   ) : (
-                    <Button
-                      variant="secondary"
+                    <button
+                      type="button"
                       onClick={() => void handleStatusChange("resolved")}
+                      className="inline-flex items-center gap-1.5 text-accent hover:underline"
                     >
+                      <Check className="size-[13px]" />
                       Mark resolved
-                    </Button>
+                    </button>
                   )}
                 </div>
               </div>
@@ -906,27 +838,29 @@ export function FullSupportChatsPage() {
                     return (
                       <div key={message.id}>
                         {showDay ? (
-                          <div className="flex justify-center py-2">
-                            <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-medium text-textMuted">
+                          <div className="flex items-center gap-3 py-2">
+                            <div className="h-px flex-1 bg-line" />
+                            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-textSubtle">
                               {formatMessageDayLabel(message.time)}
                             </span>
+                            <div className="h-px flex-1 bg-line" />
                           </div>
                         ) : null}
                         <div className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                           <div
                             className={`max-w-[72%] rounded-[20px] px-3.5 py-2.5 shadow-sm ${
                               isAdmin
-                                ? "bg-accent text-slate-950"
-                                : "border border-white/10 bg-white/[0.06] text-textStrong"
+                                ? "rounded-br-md bg-accent text-accentForeground"
+                                : "rounded-bl-md border border-line bg-surfaceMuted text-textStrong"
                             }`}
                           >
                             <p className="text-[13px] leading-5">{message.text}</p>
                             <p
-                              className={`mt-1.5 text-[10px] ${
-                                isAdmin ? "text-slate-950/70" : "text-textMuted"
+                              className={`mt-1.5 font-mono text-[10px] ${
+                                isAdmin ? "text-accentForeground/70" : "text-textSubtle"
                               }`}
                             >
-                              {roleCopy[message.senderRole]} · {formatDateTime(message.time)}
+                              {formatDateTime(message.time)}
                               {isAdmin && message.isRead ? " · Seen" : ""}
                             </p>
                           </div>
@@ -937,29 +871,29 @@ export function FullSupportChatsPage() {
                 )}
               </div>
 
-              <div className="border-t border-white/10 bg-white/[0.03] px-4 py-3.5">
-                <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3.5">
+              <div className="border-t border-line bg-surface px-4 py-3.5">
+                <div className="flex items-end gap-2 rounded-[24px] border border-line bg-surfaceMuted p-2 pl-4">
                   <textarea
                     value={composer}
                     onChange={(event) => setComposer(event.target.value)}
                     onKeyDown={handleComposerKeyDown}
-                    placeholder="Write a clear, warm reply. Press Enter to send, Shift+Enter for a new line."
-                    className="min-h-[78px] w-full resize-none bg-transparent text-[13px] leading-5 text-textStrong outline-none placeholder:text-textMuted"
+                    placeholder="Write a reply..."
+                    rows={1}
+                    className="min-h-[40px] max-h-32 flex-1 resize-none bg-transparent py-1.5 text-[13px] leading-5 text-textStrong outline-none placeholder:text-textMuted"
                   />
-                  <div className="mt-3 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-[11px] text-textMuted">
-                      Keep replies practical and easy to continue if another admin picks this up later.
-                    </p>
-                    <Button
-                      leftIcon={<Send className="size-4" />}
-                      onClick={() => void handleSend()}
-                      isLoading={isSending}
-                      disabled={!composer.trim()}
-                    >
-                      Send reply
-                    </Button>
-                  </div>
+                  <Button
+                    className="!size-10 shrink-0 !rounded-full !p-0"
+                    onClick={() => void handleSend()}
+                    isLoading={isSending}
+                    disabled={!composer.trim()}
+                    aria-label="Send reply"
+                  >
+                    <Send className="size-4" />
+                  </Button>
                 </div>
+                <p className="mt-2 px-1 text-[11px] text-textMuted">
+                  Enter to send · Shift+Enter for a new line
+                </p>
               </div>
             </>
           )}

@@ -6,6 +6,7 @@ import { getReturnRequestsPage, updateReturnRequest } from "@/api/ordersApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
 import { Modal } from "@/components/ui/Modal";
 import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -37,21 +38,6 @@ const statusOptions: Array<{ label: string; value: AdminReturnRequest["status"] 
   { label: "Exchanged", value: "exchanged" },
 ];
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
-      <p className="mt-2 text-sm text-textStrong">{value}</p>
-    </div>
-  );
-}
-
 export function FullReturnsPage() {
   const { token } = useAdminAuth();
   const navigate = useNavigate();
@@ -59,10 +45,12 @@ export function FullReturnsPage() {
   const {
     items: requests,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
   } = useInfiniteAdminList({
@@ -207,19 +195,19 @@ export function FullReturnsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Total requests</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.total}</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Open requests</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.openCount}</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Resolved</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.resolvedCount}</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Refunded total</p>
           <p className="mt-3 flex items-center gap-2 text-3xl font-semibold text-textStrong">
             <Wallet className="size-5 text-accent" />
@@ -314,10 +302,12 @@ export function FullReturnsPage() {
             data={filteredRequests}
             keyExtractor={(request) => request.id}
             isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
+            page={page}
+            pageSize={pageSize}
+            isLoadingPage={isLoadingPage}
             hasMore={hasMore}
             error={error}
-            onLoadMore={() => void loadMore()}
+            onPageChange={goToPage}
             onRetry={() => void refresh()}
             emptyTitle="No return requests yet"
             emptyDescription="Once customers submit return, refund, or exchange requests, they will show up here for review."
@@ -354,43 +344,39 @@ export function FullReturnsPage() {
         }
       >
         {selectedRequest ? (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <DetailRow label="Product" value={selectedRequest.productTitle} />
-              <DetailRow label="Store" value={selectedRequest.storeName} />
-              <DetailRow label="Customer" value={selectedRequest.customerName} />
-              <DetailRow label="Email" value={selectedRequest.customerEmail} />
-              <DetailRow label="Current status" value={selectedRequest.status.replace(/_/g, " ")} />
-              <DetailRow label="Reason" value={selectedRequest.reason} />
-              <DetailRow label="Requested on" value={formatDateTime(selectedRequest.createdAt)} />
-              <DetailRow
-                label="Resolved on"
-                value={selectedRequest.resolvedAt ? formatDateTime(selectedRequest.resolvedAt) : "Still open"}
-              />
-            </div>
+          <DetailStack>
+            <DetailSection title="Request summary">
+              <DetailFields columns={2}>
+                <DetailField label="Product" value={selectedRequest.productTitle} />
+                <DetailField label="Store" value={selectedRequest.storeName} />
+                <DetailField label="Customer" value={selectedRequest.customerName} />
+                <DetailField label="Email" value={selectedRequest.customerEmail} />
+                <DetailField label="Current status" value={selectedRequest.status.replace(/_/g, " ")} />
+                <DetailField label="Reason" value={selectedRequest.reason} />
+                <DetailField label="Requested on" value={formatDateTime(selectedRequest.createdAt)} />
+                <DetailField
+                  label="Resolved on"
+                  value={selectedRequest.resolvedAt ? formatDateTime(selectedRequest.resolvedAt) : "Still open"}
+                />
+              </DetailFields>
+            </DetailSection>
 
             {selectedRequest.productImageUrl || selectedRequest.evidenceImageUrls?.length ? (
-              <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-                <h3 className="text-sm font-semibold text-textStrong">Visual evidence</h3>
-
+              <DetailSection title="Visual evidence">
                 {selectedRequest.productImageUrl ? (
-                  <div className="mt-4">
-                    <p className="mb-2 text-xs uppercase tracking-[0.2em] text-textMuted">
-                      Ordered item
-                    </p>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-textMuted">Ordered item</p>
                     <img
                       src={resolveAdminMediaUrl(selectedRequest.productImageUrl) ?? undefined}
                       alt={selectedRequest.productTitle}
-                      className="h-32 w-32 rounded-2xl border border-white/10 object-cover"
+                      className="size-28 rounded-lg object-cover ring-1 ring-line/80"
                     />
                   </div>
                 ) : null}
 
                 {selectedRequest.evidenceImageUrls?.length ? (
-                  <div className="mt-5">
-                    <p className="mb-2 text-xs uppercase tracking-[0.2em] text-textMuted">
-                      Customer uploads
-                    </p>
+                  <div className={selectedRequest.productImageUrl ? "mt-6 space-y-2" : "space-y-2"}>
+                    <p className="text-xs font-medium text-textMuted">Customer uploads</p>
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       {selectedRequest.evidenceImageUrls.map((imageUrl, index) => (
                         <a
@@ -398,71 +384,74 @@ export function FullReturnsPage() {
                           href={resolveAdminMediaUrl(imageUrl) ?? "#"}
                           target="_blank"
                           rel="noreferrer"
-                          className="block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]"
+                          className="block overflow-hidden rounded-lg ring-1 ring-line/80"
                         >
                           <img
                             src={resolveAdminMediaUrl(imageUrl) ?? undefined}
                             alt={`Evidence ${index + 1}`}
-                            className="h-40 w-full object-cover"
+                            className="aspect-[4/3] w-full object-cover"
                           />
                         </a>
                       ))}
                     </div>
                   </div>
                 ) : null}
-              </section>
+              </DetailSection>
             ) : null}
 
-            <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-              <h3 className="text-sm font-semibold text-textStrong">Customer context</h3>
-              <p className="mt-3 text-sm leading-6 text-textMuted">
+            <DetailSection title="Customer context">
+              <p className="text-sm leading-relaxed text-textStrong">
                 {selectedRequest.details?.trim() || "No extra details were provided with this request."}
               </p>
-            </section>
+            </DetailSection>
 
-            <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-                <label className="block text-sm font-medium text-textStrong">Admin note</label>
-                <textarea
-                  className="app-textarea mt-3 min-h-[140px]"
-                  value={draftAdminNote}
-                  onChange={(event) => setDraftAdminNote(event.target.value)}
-                  placeholder="Capture the decision, any conditions, or the next step for the shopper and support team."
-                />
+            <DetailSection title="Admin update" description="Notes, status, and refund amount for this case.">
+              <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-textStrong">Admin note</label>
+                  <textarea
+                    className="app-textarea min-h-[140px]"
+                    value={draftAdminNote}
+                    onChange={(event) => setDraftAdminNote(event.target.value)}
+                    placeholder="Capture the decision, any conditions, or the next step for the shopper and support team."
+                  />
+                </div>
+
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-textStrong">Next status</label>
+                    <select
+                      className="app-select"
+                      value={draftStatus}
+                      onChange={(event) => setDraftStatus(event.target.value as AdminReturnRequest["status"])}
+                    >
+                      {statusOptions.map((option) => (
+                        <option key={option.value} value={option.value} className="bg-panel">
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-textStrong">Refund amount</label>
+                    <input
+                      className="app-input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={draftRefundAmount}
+                      onChange={(event) => setDraftRefundAmount(event.target.value)}
+                      placeholder="0.00"
+                    />
+                    <p className="text-xs leading-relaxed text-textMuted">
+                      Set this when the case is being refunded. Leave it blank for exchange-only handling.
+                    </p>
+                  </div>
+                </div>
               </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-                <label className="block text-sm font-medium text-textStrong">Next status</label>
-                <select
-                  className="app-select mt-3"
-                  value={draftStatus}
-                  onChange={(event) => setDraftStatus(event.target.value as AdminReturnRequest["status"])}
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-panel">
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-
-                <label className="mt-4 block text-sm font-medium text-textStrong">
-                  Refund amount
-                </label>
-                <input
-                  className="app-input mt-3"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={draftRefundAmount}
-                  onChange={(event) => setDraftRefundAmount(event.target.value)}
-                  placeholder="0.00"
-                />
-                <p className="mt-2 text-xs leading-5 text-textMuted">
-                  Set this when the case is being refunded. Leave it blank for exchange-only handling.
-                </p>
-              </div>
-            </section>
-          </div>
+            </DetailSection>
+          </DetailStack>
         ) : null}
       </Modal>
     </div>

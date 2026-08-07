@@ -34,14 +34,14 @@ export function PromoBannerShopperPreview({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-textMuted">
-        <span className="rounded-full border border-white/10 px-3 py-1">{placementLabel}</span>
-        <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-accentSoft">
+        <span className="rounded-full border border-line px-3 py-1">{placementLabel}</span>
+        <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-accent">
           Tap opens · {destinationLabel}
         </span>
       </div>
 
       <div
-        className={`overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br ${gradientClass(accent)} p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)]`}
+        className={`overflow-hidden rounded-panel border border-line bg-gradient-to-br ${gradientClass(accent)} p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)]`}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
@@ -60,7 +60,7 @@ export function PromoBannerShopperPreview({
             </div>
           </div>
 
-          <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-white/10">
+          <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-line bg-white/10">
             {imageUrl ? (
               <img src={imageUrl} alt="" className="size-full object-cover" />
             ) : (

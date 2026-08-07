@@ -1,4 +1,4 @@
-import { Copy, Edit3, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Copy, Edit3, Plus, Trash2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -10,6 +10,7 @@ import {
   type MerchandisingCampaign,
   type MerchandisingCampaignUpsert,
 } from "@/api/merchandisingCampaignsApi";
+import { getCampaignOptInsPage, reviewCampaignOptIn } from "@/api/campaignOptInsApi";
 import { getProducts } from "@/api/productsApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { AdminFullHeader } from "@/components/admin/AdminShell";
@@ -77,16 +78,21 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+type PageView = "campaigns" | "opt-ins";
+
 export function FullMerchandisingCampaignsPage() {
   const { token } = useAdminAuth();
   const { showToast } = useToast();
+  const [view, setView] = useState<PageView>("campaigns");
   const {
     items: campaigns,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
     removeItem,
@@ -94,7 +100,26 @@ export function FullMerchandisingCampaignsPage() {
   } = useInfiniteAdminList({
     loadPage: getMerchandisingCampaignsPage,
     getId: (campaign) => campaign.id,
+    enabled: view === "campaigns",
   });
+  const {
+    items: optIns,
+    isLoading: isLoadingOptIns,
+    page: optInsPage,
+    pageSize: optInsPageSize,
+    isLoadingPage: isLoadingOptInsPage,
+    hasMore: optInsHasMore,
+    error: optInsError,
+    goToPage: goToOptInsPage,
+    refresh: refreshOptIns,
+    replaceItem: replaceOptIn,
+  } = useInfiniteAdminList({
+    loadPage: getCampaignOptInsPage,
+    getId: (optIn) => optIn.id,
+    enabled: view === "opt-ins",
+  });
+  const [optInStatusFilter, setOptInStatusFilter] = useState("pending");
+  const [optInActionLoading, setOptInActionLoading] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
@@ -122,6 +147,55 @@ export function FullMerchandisingCampaignsPage() {
       );
     });
   }, [campaigns, query, statusFilter]);
+
+  const filteredOptIns = useMemo(() => {
+    if (optInStatusFilter === "all") return optIns;
+    return optIns.filter((optIn) => optIn.status === optInStatusFilter);
+  }, [optInStatusFilter, optIns]);
+
+  const pendingOptInCount = useMemo(
+    () => optIns.filter((optIn) => optIn.status === "pending").length,
+    [optIns],
+  );
+
+  async function handleReviewOptIn(
+    optIn: (typeof optIns)[number],
+    status: "approved" | "rejected",
+  ) {
+    if (!token) return;
+
+    let reviewNotes: string | null = null;
+    if (status === "rejected") {
+      const entered = window.prompt(
+        `Optional rejection note for ${optIn.productTitle}`,
+        optIn.reviewNotes ?? "",
+      );
+      if (entered === null) return;
+      reviewNotes = entered.trim() || null;
+    }
+
+    setOptInActionLoading(true);
+    try {
+      const updated = await reviewCampaignOptIn(token, optIn.id, { status, reviewNotes });
+      replaceOptIn(updated);
+      showToast({
+        title: status === "approved" ? "Opt-in approved" : "Opt-in rejected",
+        description:
+          status === "approved"
+            ? `${optIn.productTitle} is now featured in ${optIn.campaignTitle}.`
+            : `${optIn.productTitle} was not selected for ${optIn.campaignTitle}.`,
+        tone: "success",
+      });
+    } catch (reviewError) {
+      showToast({
+        title: "Unable to review opt-in",
+        description: reviewError instanceof Error ? reviewError.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setOptInActionLoading(false);
+    }
+  }
 
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
@@ -308,15 +382,129 @@ export function FullMerchandisingCampaignsPage() {
         title="Marketplace campaign studio"
         description="Create seasonal and featured campaigns with product, category, and store targeting."
         backRoute="/merchandising-campaigns"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
+        onRefresh={() => void (view === "campaigns" ? refresh() : refreshOptIns())}
+        refreshing={view === "campaigns" ? isLoading : isLoadingOptIns}
         actions={
-          <Button leftIcon={<Plus className="size-4" />} onClick={() => void openCreateModal()}>
-            Create campaign
-          </Button>
+          view === "campaigns" ? (
+            <Button leftIcon={<Plus className="size-4" />} onClick={() => void openCreateModal()}>
+              Create campaign
+            </Button>
+          ) : undefined
         }
       />
 
+      <div className="flex gap-2">
+        <Button
+          variant={view === "campaigns" ? "primary" : "secondary"}
+          onClick={() => setView("campaigns")}
+        >
+          Campaigns
+        </Button>
+        <Button
+          variant={view === "opt-ins" ? "primary" : "secondary"}
+          onClick={() => setView("opt-ins")}
+        >
+          Vendor opt-in requests
+          {pendingOptInCount > 0 ? ` (${pendingOptInCount})` : ""}
+        </Button>
+      </div>
+
+      {view === "opt-ins" ? (
+        <SectionCard
+          title="Vendor campaign opt-in requests"
+          description="Approve to add the vendor's product into the campaign's product set, or reject with an optional note."
+          action={
+            <FilterSelect
+              value={optInStatusFilter}
+              onChange={(event) => setOptInStatusFilter(event.target.value)}
+              options={[
+                { label: "Pending", value: "pending" },
+                { label: "Approved", value: "approved" },
+                { label: "Rejected", value: "rejected" },
+                { label: "All", value: "all" },
+              ]}
+            />
+          }
+        >
+          <AdminInfiniteList
+            columns={[
+              {
+                key: "product",
+                header: "Product",
+                render: (optIn) => (
+                  <div>
+                    <p className="font-medium">{optIn.productTitle}</p>
+                    <p className="mt-1 text-xs text-textMuted">
+                      {optIn.vendorName ?? optIn.vendorUserId}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                key: "campaign",
+                header: "Campaign",
+                render: (optIn) => optIn.campaignTitle,
+              },
+              {
+                key: "performance",
+                header: "Units sold since approval",
+                render: (optIn) =>
+                  optIn.unitsSoldSinceApproval != null ? (
+                    optIn.unitsSoldSinceApproval
+                  ) : (
+                    <span className="text-textMuted">—</span>
+                  ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (optIn) => <StatusBadge status={optIn.status} />,
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (optIn) =>
+                  optIn.status === "pending" ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        leftIcon={<CheckCircle2 className="size-4" />}
+                        isLoading={optInActionLoading}
+                        onClick={() => void handleReviewOptIn(optIn, "approved")}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="danger"
+                        leftIcon={<XCircle className="size-4" />}
+                        isLoading={optInActionLoading}
+                        onClick={() => void handleReviewOptIn(optIn, "rejected")}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-textMuted">{optIn.reviewNotes || "Reviewed"}</span>
+                  ),
+              },
+            ]}
+            data={filteredOptIns}
+            keyExtractor={(optIn) => optIn.id}
+            isLoading={isLoadingOptIns}
+            page={optInsPage}
+            pageSize={optInsPageSize}
+            isLoadingPage={isLoadingOptInsPage}
+            hasMore={optInsHasMore}
+            error={optInsError}
+            onPageChange={goToOptInsPage}
+            onRetry={() => void refreshOptIns()}
+            emptyTitle="No opt-in requests found"
+            emptyDescription="Vendor campaign opt-in submissions will appear here for review."
+          />
+        </SectionCard>
+      ) : null}
+
+      {view === "campaigns" ? (
       <SectionCard
         title="Campaign library"
         description="Lower display priority appears first. Only active, scheduled, public campaigns surface in the app."
@@ -415,15 +603,18 @@ export function FullMerchandisingCampaignsPage() {
           data={filteredCampaigns}
           keyExtractor={(campaign) => campaign.id}
           isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
+          page={page}
+          pageSize={pageSize}
+          isLoadingPage={isLoadingPage}
           hasMore={hasMore}
           error={error}
-          onLoadMore={() => void loadMore()}
+          onPageChange={goToPage}
           onRetry={() => void refresh()}
           emptyTitle="No campaigns found"
           emptyDescription="Create a campaign or adjust the filters."
         />
       </SectionCard>
+      ) : null}
 
       <Modal
         open={isEditorOpen}
@@ -455,7 +646,7 @@ export function FullMerchandisingCampaignsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Title</span>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={form.title}
               onChange={(event) =>
                 setForm((current) => ({
@@ -470,7 +661,7 @@ export function FullMerchandisingCampaignsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Slug</span>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={form.slug}
               onChange={(event) =>
                 setForm((current) => ({ ...current, slug: slugify(event.target.value) }))
@@ -481,7 +672,7 @@ export function FullMerchandisingCampaignsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Subtitle</span>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={form.subtitle ?? ""}
               onChange={(event) =>
                 setForm((current) => ({ ...current, subtitle: event.target.value }))
@@ -492,7 +683,7 @@ export function FullMerchandisingCampaignsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Description</span>
             <textarea
-              className="min-h-24 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="min-h-24 w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={form.description ?? ""}
               onChange={(event) =>
                 setForm((current) => ({ ...current, description: event.target.value }))
@@ -504,7 +695,7 @@ export function FullMerchandisingCampaignsPage() {
             <label className="block space-y-2">
               <span className="text-sm text-textMuted">Banner image URL</span>
               <input
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={form.bannerImageUrl ?? ""}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, bannerImageUrl: event.target.value }))
@@ -514,7 +705,7 @@ export function FullMerchandisingCampaignsPage() {
             <label className="block space-y-2">
               <span className="text-sm text-textMuted">Thumbnail image URL</span>
               <input
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={form.thumbnailImageUrl ?? ""}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, thumbnailImageUrl: event.target.value }))
@@ -527,7 +718,7 @@ export function FullMerchandisingCampaignsPage() {
             <label className="block space-y-2">
               <span className="text-sm text-textMuted">Status</span>
               <select
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={form.status}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, status: event.target.value }))
@@ -544,7 +735,7 @@ export function FullMerchandisingCampaignsPage() {
               <span className="text-sm text-textMuted">Priority</span>
               <input
                 type="number"
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={form.displayPriority}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -557,7 +748,7 @@ export function FullMerchandisingCampaignsPage() {
             <label className="block space-y-2">
               <span className="text-sm text-textMuted">Product sort</span>
               <select
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={form.productSort}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, productSort: event.target.value }))
@@ -578,7 +769,7 @@ export function FullMerchandisingCampaignsPage() {
               <span className="text-sm text-textMuted">Starts at</span>
               <input
                 type="datetime-local"
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={startsAtLocal}
                 onChange={(event) => setStartsAtLocal(event.target.value)}
               />
@@ -587,7 +778,7 @@ export function FullMerchandisingCampaignsPage() {
               <span className="text-sm text-textMuted">Ends at</span>
               <input
                 type="datetime-local"
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={endsAtLocal}
                 onChange={(event) => setEndsAtLocal(event.target.value)}
               />
@@ -620,7 +811,7 @@ export function FullMerchandisingCampaignsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Category slugs (comma-separated)</span>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={categorySlugsText}
               onChange={(event) => setCategorySlugsText(event.target.value)}
               placeholder="electronics, fashion"
@@ -630,7 +821,7 @@ export function FullMerchandisingCampaignsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Store IDs (comma-separated)</span>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={storeIdsText}
               onChange={(event) => setStoreIdsText(event.target.value)}
             />
@@ -646,7 +837,7 @@ export function FullMerchandisingCampaignsPage() {
                 className="w-56"
               />
             </div>
-            <div className="max-h-56 space-y-2 overflow-y-auto rounded-2xl border border-white/10 p-3">
+            <div className="max-h-56 space-y-2 overflow-y-auto rounded-2xl border border-line p-3">
               {filteredProducts.map((product) => {
                 const checked = form.productIds.includes(product.id);
                 const pinned = form.pinnedProductIds.includes(product.id);

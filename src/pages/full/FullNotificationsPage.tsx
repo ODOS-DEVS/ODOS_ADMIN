@@ -20,10 +20,12 @@ export function FullNotificationsPage() {
   const {
     items: notifications,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
   } = useInfiniteAdminList({
@@ -138,10 +140,12 @@ export function FullNotificationsPage() {
             data={filteredNotifications}
             keyExtractor={(notification) => notification.id}
             isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
+            page={page}
+            pageSize={pageSize}
+            isLoadingPage={isLoadingPage}
             hasMore={hasMore}
             error={error}
-            onLoadMore={() => void loadMore()}
+            onPageChange={goToPage}
             onRetry={() => void refresh()}
             emptyTitle="No notifications found"
             emptyDescription="There are no activity items for the selected type right now."

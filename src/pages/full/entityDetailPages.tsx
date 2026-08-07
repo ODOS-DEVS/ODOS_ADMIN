@@ -1,4 +1,15 @@
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  CheckCircle2,
+  Inbox,
+  PauseCircle,
+  PlayCircle,
+  ShoppingBag,
+  Sparkles,
+  Store,
+  UserRound,
+  XCircle,
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -8,6 +19,7 @@ import {
   AdminPageSkeleton,
   AdminTabNav,
   AdminTabPanel,
+  HeaderActionButton,
 } from "@/components/admin/AdminShell";
 import { EntityTimeline, RelatedRecordsCard } from "@/components/admin/EntityOps";
 import { getSupportChatMessages, getSupportChatThreads } from "@/api/chatApi";
@@ -22,11 +34,11 @@ import {
   getVendorApplications,
   rejectVendorApplication,
 } from "@/api/vendorApplicationsApi";
-import { getVendor, updateVendorStatus } from "@/api/vendorsApi";
 import { getVouchers, pauseVoucher, resumeVoucher } from "@/api/vouchersApi";
 import { VendorApplicationDetails } from "@/components/vendor/VendorApplicationDetails";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DetailFields } from "@/components/ui/DetailList";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { SectionCard } from "@/components/ui/SectionCard";
@@ -35,7 +47,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useRecordDetail } from "@/hooks/useRecordDetail";
 import { useTabSection } from "@/hooks/useTabSection";
 import { useToast } from "@/hooks/useToast";
-import type { AdminReturnRequest, ProductStatus, Vendor } from "@/types";
+import type { AdminReturnRequest, ProductStatus } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 import { resolveAdminMediaUrl } from "@/utils/media";
 
@@ -110,159 +122,6 @@ const STANDARD_OPS_TABS = {
   timeline: { id: "timeline", label: "Timeline" },
   relationships: { id: "relationships", label: "Relationships" },
 } as const;
-
-export function VendorDetailPage() {
-  const navigate = useNavigate();
-  const { vendorId = "" } = useParams();
-  const { token } = useAdminAuth();
-  const { showToast } = useToast();
-  const { record, isLoading, isRefreshing, error, reload, setRecord } = useRecordDetail({
-    id: vendorId,
-    loadDetail: getVendor,
-  });
-  const [confirmSuspend, setConfirmSuspend] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  async function handleStatusToggle() {
-    if (!token || !record) return;
-    const nextStatus: Vendor["status"] = record.status === "suspended" ? "active" : "suspended";
-    setActionLoading(true);
-    try {
-      const updated = await updateVendorStatus(token, record.id, nextStatus);
-      setRecord(updated);
-      showToast({
-        title: nextStatus === "suspended" ? "Vendor suspended" : "Vendor reactivated",
-        description: `${updated.businessName} is now ${nextStatus}.`,
-        tone: "success",
-      });
-      setConfirmSuspend(false);
-    } catch (updateError) {
-      showToast({
-        title: "Unable to update vendor",
-        description: updateError instanceof Error ? updateError.message : "Please try again.",
-        tone: "error",
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  return (
-    <>
-      <DetailPageGate
-        isLoading={isLoading}
-        error={error}
-        record={record}
-        notFoundLabel="Vendor not found."
-        onRetry={() => void reload()}
-      >
-        {(vendor) => (
-          <DetailShell
-            eyebrow="Vendor dossier"
-            title={vendor.businessName}
-            description={`${vendor.email} · ${vendor.status}`}
-            backRoute="/vendors/full"
-            tabs={[
-              { id: "overview", label: "Overview" },
-              { id: "performance", label: "Performance" },
-              STANDARD_OPS_TABS.relationships,
-              STANDARD_OPS_TABS.timeline,
-            ]}
-            defaultTab="overview"
-            onRefresh={() => void reload(true)}
-            refreshing={isRefreshing}
-            actions={
-              <>
-                <Button variant="secondary" onClick={() => navigate(`/users/full/${vendor.userId}`)}>
-                  Open user
-                </Button>
-                <Button
-                  variant={vendor.status === "suspended" ? "primary" : "danger"}
-                  onClick={() => setConfirmSuspend(true)}
-                >
-                  {vendor.status === "suspended" ? "Reactivate" : "Suspend"}
-                </Button>
-              </>
-            }
-          >
-            {(tab) =>
-              tab === "overview" ? (
-                <SectionCard compact title="Vendor profile" description="Marketplace seller identity">
-                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                    <AdminDetailTile label="Category" value={vendor.businessCategory} />
-                    <AdminDetailTile label="Status" value={<StatusBadge status={vendor.status} />} />
-                    <AdminDetailTile label="Phone" value={vendor.phoneNumber ?? "—"} />
-                    <AdminDetailTile label="Joined" value={formatDateTime(vendor.joinedAt)} />
-                    <AdminDetailTile label="Vendor ID" value={vendor.id} />
-                    <AdminDetailTile label="User ID" value={vendor.userId} />
-                  </div>
-                </SectionCard>
-              ) : tab === "performance" ? (
-                <SectionCard compact title="Performance" description="Catalog and commerce footprint">
-                  <AdminKpiGrid
-                    items={[
-                      { label: "Stores", value: String(vendor.totalStores) },
-                      { label: "Products", value: String(vendor.totalProducts) },
-                      { label: "Orders", value: String(vendor.totalOrders) },
-                      { label: "Sales", value: formatCurrency(vendor.totalSales) },
-                    ]}
-                  />
-                </SectionCard>
-              ) : tab === "relationships" ? (
-                <RelatedRecordsCard
-                  title="Related records"
-                  description="Jump to linked marketplace entities"
-                  records={[
-                    {
-                      id: vendor.userId,
-                      label: "Owner account",
-                      meta: vendor.email,
-                      href: `/users/full/${vendor.userId}`,
-                    },
-                    {
-                      id: "stores",
-                      label: "Stores directory",
-                      meta: `${vendor.totalStores} store(s)`,
-                      href: `/stores/full?q=${encodeURIComponent(vendor.businessName)}`,
-                    },
-                    {
-                      id: "products",
-                      label: "Products directory",
-                      meta: `${vendor.totalProducts} product(s)`,
-                      href: `/products/full?q=${encodeURIComponent(vendor.businessName)}`,
-                    },
-                    {
-                      id: "payouts",
-                      label: "Payout queue",
-                      meta: "Vendor withdrawals",
-                      href: `/payouts?status=pending`,
-                    },
-                  ]}
-                />
-              ) : (
-                <EntityTimeline entityType="vendor" entityId={vendor.id} actorId={vendor.userId} />
-              )
-            }
-          </DetailShell>
-        )}
-      </DetailPageGate>
-      <ConfirmDialog
-        open={confirmSuspend}
-        onClose={() => setConfirmSuspend(false)}
-        onConfirm={() => void handleStatusToggle()}
-        title={record?.status === "suspended" ? "Reactivate vendor" : "Suspend vendor"}
-        description={
-          record?.status === "suspended"
-            ? `Restore ${record.businessName} to active selling status.`
-            : `Suspend ${record?.businessName ?? "this vendor"} from selling on ODOS.`
-        }
-        confirmLabel={record?.status === "suspended" ? "Reactivate" : "Suspend"}
-        confirmVariant={record?.status === "suspended" ? "primary" : "danger"}
-        isLoading={actionLoading}
-      />
-    </>
-  );
-}
 
 export function VendorApplicationDetailPage() {
   const navigate = useNavigate();
@@ -345,15 +204,28 @@ export function VendorApplicationDetailPage() {
             refreshing={isRefreshing}
             actions={
               <>
-                <Button variant="secondary" onClick={() => navigate(`/users/full/${app.userId}`)}>
-                  Open applicant
-                </Button>
+                <HeaderActionButton
+                  variant="secondary"
+                  leftIcon={<UserRound className="size-4" />}
+                  onClick={() => navigate(`/users/full/${app.userId}`)}
+                >
+                  Applicant
+                </HeaderActionButton>
                 {canDecide ? (
                   <>
-                    <Button onClick={() => setConfirmApprove(true)}>Approve</Button>
-                    <Button variant="danger" onClick={() => setConfirmReject(true)}>
+                    <HeaderActionButton
+                      leftIcon={<CheckCircle2 className="size-4" />}
+                      onClick={() => setConfirmApprove(true)}
+                    >
+                      Approve
+                    </HeaderActionButton>
+                    <HeaderActionButton
+                      variant="danger"
+                      leftIcon={<XCircle className="size-4" />}
+                      onClick={() => setConfirmReject(true)}
+                    >
                       Reject
-                    </Button>
+                    </HeaderActionButton>
                   </>
                 ) : null}
               </>
@@ -466,16 +338,20 @@ export function StoreDetailPage() {
           refreshing={isRefreshing}
           actions={
             store.vendorId ? (
-              <Button variant="secondary" onClick={() => navigate(`/vendors/full/${store.vendorId}`)}>
-                Open vendor
-              </Button>
+              <HeaderActionButton
+                variant="secondary"
+                leftIcon={<Store className="size-4" />}
+                onClick={() => navigate(`/vendors/full/${store.vendorId}`)}
+              >
+                Vendor
+              </HeaderActionButton>
             ) : null
           }
         >
           {(tab) =>
             tab === "overview" ? (
               <SectionCard compact title="Store profile">
-                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                <DetailFields columns={3}>
                   <AdminDetailTile label="Status" value={<StatusBadge status={store.status} />} />
                   <AdminDetailTile label="Category" value={store.category} />
                   <AdminDetailTile label="Vendor" value={store.vendorName ?? "—"} />
@@ -486,8 +362,10 @@ export function StoreDetailPage() {
                     label="Location"
                     value={[store.location, store.city, store.region].filter(Boolean).join(", ") || "—"}
                   />
-                </div>
-                <p className="mt-4 text-sm text-textMuted">{store.description}</p>
+                </DetailFields>
+                <p className="mt-6 border-t border-line/80 pt-6 text-sm leading-relaxed text-textMuted">
+                  {store.description}
+                </p>
               </SectionCard>
             ) : tab === "products" ? (
               <SectionCard compact title="Catalog">
@@ -499,7 +377,7 @@ export function StoreDetailPage() {
                       key={product.id}
                       type="button"
                       onClick={() => navigate(`/products/full/${product.id}`)}
-                      className="mb-2 flex w-full items-center justify-between rounded-xl border border-white/10 px-3 py-3 text-left transition hover:border-accent/30"
+                      className="mb-2 flex w-full items-center justify-between rounded-xl border border-line px-3 py-3 text-left transition hover:border-accent/30"
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{product.name}</span>
@@ -621,12 +499,13 @@ export function ProductDetailPage() {
           onRefresh={() => void reload(true)}
           refreshing={isRefreshing}
           actions={
-            <Button
+            <HeaderActionButton
               variant="secondary"
+              leftIcon={<Sparkles className="size-4" />}
               onClick={() => navigate(`/products/full/${product.id}/studio`)}
             >
-              Open studio
-            </Button>
+              Studio
+            </HeaderActionButton>
           }
         >
           {(tab) =>
@@ -659,14 +538,14 @@ export function ProductDetailPage() {
                           key={`${image}-${index}`}
                           src={resolveAdminMediaUrl(image) ?? undefined}
                           alt=""
-                          className="aspect-square rounded-xl border border-white/10 object-cover"
+                          className="aspect-square rounded-xl border border-line object-cover"
                         />
                       ))}
                     </div>
                   )}
                 </SectionCard>
                 <SectionCard compact title="Variants & specs">
-                  <div className="grid gap-2 md:grid-cols-2">
+                  <DetailFields columns={2}>
                     <AdminDetailTile
                       label="Colors"
                       value={product.colorOptions?.join(", ") || "—"}
@@ -683,12 +562,12 @@ export function ProductDetailPage() {
                       label="Placement tags"
                       value={product.placementTags?.join(", ") || "—"}
                     />
-                  </div>
+                  </DetailFields>
                 </SectionCard>
               </div>
             ) : tab === "catalog" ? (
               <SectionCard compact title="Taxonomy & ownership">
-                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                <DetailFields columns={3}>
                   <AdminDetailTile label="Category" value={product.category} />
                   <AdminDetailTile label="Subcategory" value={product.subcategory ?? "—"} />
                   <AdminDetailTile label="Audience" value={product.audienceSlug ?? "—"} />
@@ -698,7 +577,7 @@ export function ProductDetailPage() {
                   <AdminDetailTile label="Vendor email" value={product.vendorEmail ?? "—"} />
                   <AdminDetailTile label="Created" value={formatDateTime(product.createdAt)} />
                   <AdminDetailTile label="Updated" value={formatDateTime(product.updatedAt)} />
-                </div>
+                </DetailFields>
               </SectionCard>
             ) : tab === "actions" ? (
               <SectionCard compact title="Moderation actions" description="Change listing visibility without leaving this dossier">
@@ -794,12 +673,13 @@ export function PayoutDetailPage() {
           onRefresh={() => void reload(true)}
           refreshing={isRefreshing}
           actions={
-            <Button
+            <HeaderActionButton
               variant="secondary"
+              leftIcon={<Store className="size-4" />}
               onClick={() => navigate(`/vendors/full/${payout.vendorUserId}`)}
             >
-              Open vendor
-            </Button>
+              Vendor
+            </HeaderActionButton>
           }
         >
           {(tab) =>
@@ -836,7 +716,7 @@ export function PayoutDetailPage() {
               </SectionCard>
             ) : tab === "account" ? (
               <SectionCard compact title="Payout destination">
-                <div className="grid gap-2 md:grid-cols-2">
+                <DetailFields columns={2}>
                   <AdminDetailTile label="Method" value={payout.payoutMethodType} />
                   <AdminDetailTile label="Account name" value={payout.payoutAccountName} />
                   <AdminDetailTile label="Account" value={payout.payoutAccountNumberMasked} />
@@ -857,7 +737,7 @@ export function PayoutDetailPage() {
                     label="Reviewed at"
                     value={payout.reviewedAt ? formatDateTime(payout.reviewedAt) : "—"}
                   />
-                </div>
+                </DetailFields>
               </SectionCard>
             ) : tab === "ops" ? (
               <VendorWithdrawalApprovalPanel
@@ -960,9 +840,13 @@ export function ReturnDetailPage() {
           onRefresh={() => void reload(true)}
           refreshing={isRefreshing}
           actions={
-            <Button variant="secondary" onClick={() => navigate(`/orders/full/${item.orderId}`)}>
-              Open order
-            </Button>
+            <HeaderActionButton
+              variant="secondary"
+              leftIcon={<ShoppingBag className="size-4" />}
+              onClick={() => navigate(`/orders/full/${item.orderId}`)}
+            >
+              Order
+            </HeaderActionButton>
           }
         >
           {(tab) =>
@@ -992,7 +876,7 @@ export function ReturnDetailPage() {
                         key={`${url}-${index}`}
                         src={resolveAdminMediaUrl(url) ?? undefined}
                         alt=""
-                        className="aspect-square rounded-xl border border-white/10 object-cover"
+                        className="aspect-square rounded-xl border border-line object-cover"
                       />
                     ))}
                   </div>
@@ -1033,7 +917,7 @@ export function ReturnDetailPage() {
                     Save resolution
                   </Button>
                 </div>
-                <div className="mt-4 grid gap-2 md:grid-cols-2">
+                <DetailFields columns={2} className="mt-6 border-t border-line/80 pt-6">
                   <AdminDetailTile label="Reviewed by" value={item.reviewedByName ?? "—"} />
                   <AdminDetailTile
                     label="Reviewed at"
@@ -1043,7 +927,7 @@ export function ReturnDetailPage() {
                     label="Resolved at"
                     value={item.resolvedAt ? formatDateTime(item.resolvedAt) : "—"}
                   />
-                </div>
+                </DetailFields>
               </SectionCard>
             ) : tab === "relationships" ? (
               <RelatedRecordsCard
@@ -1140,27 +1024,31 @@ export function ReviewDetailPage() {
           onRefresh={() => void reload(true)}
           refreshing={isRefreshing}
           actions={
-            <Button variant="secondary" onClick={() => navigate(`/orders/full/${review.orderId}`)}>
-              Open order
-            </Button>
+            <HeaderActionButton
+              variant="secondary"
+              leftIcon={<ShoppingBag className="size-4" />}
+              onClick={() => navigate(`/orders/full/${review.orderId}`)}
+            >
+              Order
+            </HeaderActionButton>
           }
         >
           {(tab) =>
             tab === "overview" ? (
               <SectionCard compact title="Review">
-                <p className="text-sm leading-6">{review.comment}</p>
+                <p className="text-sm leading-relaxed">{review.comment}</p>
                 {review.vendorReply ? (
-                  <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                    <p className="text-xs uppercase tracking-[0.14em] text-textMuted">Vendor reply</p>
-                    <p className="mt-1 text-sm">{review.vendorReply}</p>
+                  <div className="mt-6 border-t border-line/80 pt-6">
+                    <p className="text-xs font-medium text-textMuted">Vendor reply</p>
+                    <p className="mt-2 text-sm leading-relaxed">{review.vendorReply}</p>
                   </div>
                 ) : null}
-                <div className="mt-4 grid gap-2 md:grid-cols-2">
+                <DetailFields columns={2} className="mt-6 border-t border-line/80 pt-6">
                   <AdminDetailTile label="Order" value={review.orderNumber} />
                   <AdminDetailTile label="Store" value={review.storeName ?? "—"} />
                   <AdminDetailTile label="User email" value={review.userEmail} />
                   <AdminDetailTile label="Created" value={formatDateTime(review.createdAt)} />
-                </div>
+                </DetailFields>
               </SectionCard>
             ) : tab === "moderation" ? (
               <SectionCard compact title="Moderation actions">
@@ -1289,13 +1177,20 @@ export function VoucherDetailPage() {
           onRefresh={() => void reload(true)}
           refreshing={isRefreshing}
             actions={
-              <Button
+              <HeaderActionButton
                 variant="secondary"
                 isLoading={actionLoading}
+                leftIcon={
+                  !voucher.isActive || voucher.status === "disabled" ? (
+                    <PlayCircle className="size-4" />
+                  ) : (
+                    <PauseCircle className="size-4" />
+                  )
+                }
                 onClick={() => void handlePauseResume()}
               >
                 {!voucher.isActive || voucher.status === "disabled" ? "Resume" : "Pause"}
-              </Button>
+              </HeaderActionButton>
             }
         >
           {(tab) =>
@@ -1317,7 +1212,7 @@ export function VoucherDetailPage() {
               </SectionCard>
             ) : tab === "rules" ? (
               <SectionCard compact title="Eligibility & schedule">
-                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                <DetailFields columns={3}>
                   <AdminDetailTile label="Availability" value={voucher.availability} />
                   <AdminDetailTile label="Store" value={voucher.storeName ?? "—"} />
                   <AdminDetailTile
@@ -1345,7 +1240,7 @@ export function VoucherDetailPage() {
                     }
                   />
                   <AdminDetailTile label="Review notes" value={voucher.reviewNotes ?? "—"} />
-                </div>
+                </DetailFields>
               </SectionCard>
             ) : tab === "usage" ? (
               <SectionCard compact title="Usage analytics">
@@ -1437,12 +1332,13 @@ export function SupportThreadDetailPage() {
           onRefresh={() => void reload(true)}
           refreshing={isRefreshing}
           actions={
-            <Button
+            <HeaderActionButton
               variant="secondary"
+              leftIcon={<Inbox className="size-4" />}
               onClick={() => navigate(`/support-chats/full?status=${resolvedThread.supportStatus ?? "all"}`)}
             >
-              Open inbox
-            </Button>
+              Inbox
+            </HeaderActionButton>
           }
         >
           {(tab) =>
@@ -1453,7 +1349,7 @@ export function SupportThreadDetailPage() {
                     <p className="text-sm text-textMuted">No messages in this thread yet.</p>
                   ) : (
                     messages.map((message) => (
-                      <div key={message.id} className="rounded-xl border border-white/10 p-3">
+                      <div key={message.id} className="rounded-xl border border-line p-3">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-xs text-textMuted">{message.senderRole}</p>
                           <p className="text-[11px] text-textMuted">

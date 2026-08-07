@@ -25,7 +25,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   if (!canAccessRoute(location.pathname)) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accentSoft">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-textSubtle">
           Access restricted
         </p>
         <h1 className="text-2xl font-semibold text-textStrong">
@@ -37,7 +37,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
         </p>
         <a
           href="/dashboard"
-          className="mt-2 rounded-2xl border border-accent/30 bg-accent/15 px-4 py-2 text-sm font-semibold text-accentSoft"
+          className="mt-2 rounded-xl border border-accent/25 bg-accentSoft px-4 py-2 text-sm font-semibold text-accent"
         >
           Back to dashboard
         </a>

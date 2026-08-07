@@ -1,6 +1,6 @@
 import type { AdminListParams, AdminPage } from "@/types/pagination";
 
-export const ADMIN_PAGE_SIZE = 30;
+export const ADMIN_PAGE_SIZE = 15;
 
 /** Accepts paginated `{ items, has_more }` or legacy bare arrays from older backends. */
 export function normalizeAdminPageResponse<T>(

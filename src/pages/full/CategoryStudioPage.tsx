@@ -6,7 +6,6 @@ import {
   Plus,
   Save,
   Tag,
-  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -30,6 +29,7 @@ import { AdminPageSkeleton } from "@/components/admin/AdminShell";
 import { CategoryShopperPreview } from "@/components/categories";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { FormField } from "@/components/ui/FormField";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useRecordDetail } from "@/hooks/useRecordDetail";
 import { useTabSection } from "@/hooks/useTabSection";
@@ -48,10 +48,10 @@ type CategoryFormState = {
 };
 
 const SECTIONS: Array<{ id: StudioSection; label: string; hint: string }> = [
-  { id: "identity", label: "Identity", hint: "Name, slug, and story" },
-  { id: "visual", label: "Visual", hint: "Shopper-facing artwork" },
-  { id: "taxonomy", label: "Taxonomy", hint: "Subcategory chips" },
-  { id: "publish", label: "Publish", hint: "Status and checklist" },
+  { id: "identity", label: "Identity", hint: "Name, slug, description" },
+  { id: "visual", label: "Image", hint: "Category artwork" },
+  { id: "taxonomy", label: "Subcategories", hint: "List for filters and browse" },
+  { id: "publish", label: "Status", hint: "Active or disabled" },
 ];
 
 function slugify(value: string) {
@@ -260,27 +260,19 @@ export function CategoryStudioPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
-            Category studio
-          </p>
+          <p className="text-xs font-medium text-textMuted">Categories</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">
-            {isCreate
-              ? "Design a new category"
-              : `Edit ${form.name || "category"}`}
+            {isCreate ? "New category" : form.name || "Edit category"}
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-textMuted">
-            Shape how shoppers discover this aisle — with live mobile previews,
-            structured subcategories, and a publish checklist.
+            Set the name, image, subcategories, and whether it is active in the app.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/categories/full")}
-          >
-            Cancel
+          <Button variant="secondary" onClick={() => navigate("/categories/full")}>
+            Back to list
           </Button>
           <Button
             leftIcon={<Save className="size-4" />}
@@ -288,7 +280,7 @@ export function CategoryStudioPage() {
             isLoading={isSaving}
             disabled={!canSave}
           >
-            {isCreate ? "Publish category" : "Save changes"}
+            {isCreate ? "Create category" : "Save"}
           </Button>
         </div>
       </div>
@@ -304,7 +296,7 @@ export function CategoryStudioPage() {
             slug={form.slug || slugify(form.name)}
           />
 
-          <div className="rounded-[24px] border border-white/10 bg-panel/80 p-4">
+          <div className="rounded-3xl border border-line bg-surface p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-textStrong">
@@ -314,13 +306,13 @@ export function CategoryStudioPage() {
                   {readiness.score} of {readiness.total} checks complete
                 </p>
               </div>
-              <div className="text-2xl font-semibold text-accentSoft">
+              <div className="text-2xl font-semibold text-accent">
                 {Math.round((readiness.score / readiness.total) * 100)}%
               </div>
             </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-surfaceMuted">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-accent to-sky-400 transition-all"
+                className="h-full rounded-full bg-accent transition-all"
                 style={{
                   width: `${(readiness.score / readiness.total) * 100}%`,
                 }}
@@ -333,9 +325,9 @@ export function CategoryStudioPage() {
                   className="flex items-center gap-2 text-xs text-textMuted"
                 >
                   {check.done ? (
-                    <CheckCircle2 className="size-4 text-emerald-400" />
+                    <CheckCircle2 className="size-4 text-success" />
                   ) : (
-                    <Circle className="size-4 text-white/20" />
+                    <Circle className="size-4 text-textSubtle" />
                   )}
                   <span className={check.done ? "text-textStrong" : undefined}>
                     {check.label}
@@ -355,10 +347,10 @@ export function CategoryStudioPage() {
                   key={section.id}
                   type="button"
                   onClick={() => setActiveSection(section.id)}
-                  className={`rounded-[22px] border px-4 py-3 text-left transition ${
+                  className={`rounded-card border px-4 py-3 text-left transition ${
                     active
-                      ? "border-accent/40 bg-accent/10 shadow-glow"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                      ? "border-accent/40 bg-accent/10 shadow-card"
+                      : "border-line bg-surfaceMuted hover:border-accent/30"
                   }`}
                 >
                   <p className="text-sm font-semibold text-textStrong">
@@ -371,9 +363,9 @@ export function CategoryStudioPage() {
           </div>
 
           {activeSection === "identity" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-accent/15 p-2.5 text-accentSoft">
+                <div className="rounded-2xl bg-accent/10 p-2.5 text-accent">
                   <Tag className="size-4" />
                 </div>
                 <div>
@@ -387,22 +379,16 @@ export function CategoryStudioPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-textStrong">
-                    Category name
-                  </label>
+                <FormField label="Category name" className="md:col-span-2">
                   <input
                     className="app-input"
                     value={form.name}
                     onChange={(event) => handleNameChange(event.target.value)}
                     placeholder="e.g. Fashion & Apparel"
                   />
-                </div>
+                </FormField>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">
-                    URL slug
-                  </label>
+                <FormField label="URL slug">
                   <input
                     className="app-input font-mono text-sm"
                     value={form.slug}
@@ -415,12 +401,9 @@ export function CategoryStudioPage() {
                     }}
                     placeholder="fashion-apparel"
                   />
-                </div>
+                </FormField>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">
-                    Status
-                  </label>
+                <FormField label="Status">
                   <select
                     className="app-select"
                     value={form.status}
@@ -438,12 +421,13 @@ export function CategoryStudioPage() {
                       Disabled — hidden from browse
                     </option>
                   </select>
-                </div>
+                </FormField>
 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-textStrong">
-                    Shopper description
-                  </label>
+                <FormField
+                  label="Shopper description"
+                  helper="Aim for at least 12 characters. This copy appears on category cards and detail screens."
+                  className="md:col-span-2"
+                >
                   <textarea
                     className="app-textarea min-h-32"
                     value={form.description}
@@ -455,19 +439,15 @@ export function CategoryStudioPage() {
                     }
                     placeholder="Tell shoppers what they'll find in this category..."
                   />
-                  <p className="text-xs text-textMuted">
-                    Aim for at least 12 characters. This copy appears on
-                    category cards and detail screens.
-                  </p>
-                </div>
+                </FormField>
               </div>
             </section>
           ) : null}
 
           {activeSection === "visual" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-sky-500/15 p-2.5 text-sky-200">
+                <div className="rounded-2xl bg-accent/10 p-2.5 text-accent">
                   <ImagePlus className="size-4" />
                 </div>
                 <div>
@@ -490,7 +470,7 @@ export function CategoryStudioPage() {
               />
 
               <div
-                className="rounded-[28px] border border-dashed border-white/15 bg-white/[0.03] p-6"
+                className="rounded-panel border border-dashed border-line bg-surfaceMuted p-6"
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
@@ -500,7 +480,7 @@ export function CategoryStudioPage() {
                 }}
               >
                 <div className="flex flex-col items-center gap-5 lg:flex-row">
-                  <div className="size-44 overflow-hidden rounded-[28px] border border-white/10 bg-[#07111f]">
+                  <div className="size-44 overflow-hidden rounded-panel border border-line bg-surface">
                     {previewUrl ? (
                       <img
                         src={previewUrl}
@@ -509,7 +489,7 @@ export function CategoryStudioPage() {
                       />
                     ) : (
                       <div className="flex size-full flex-col items-center justify-center gap-2 px-4 text-center text-xs text-textMuted">
-                        <Upload className="size-6 text-accentSoft" />
+                        <Upload className="size-6 text-textSubtle" />
                         Drop an image or choose a file
                       </div>
                     )}
@@ -548,9 +528,9 @@ export function CategoryStudioPage() {
           ) : null}
 
           {activeSection === "taxonomy" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-violet-500/15 p-2.5 text-violet-200">
+                <div className="rounded-2xl bg-accent/10 p-2.5 text-accent">
                   <Layers3 className="size-4" />
                 </div>
                 <div>
@@ -581,7 +561,7 @@ export function CategoryStudioPage() {
               </div>
 
               {form.subcategories.length === 0 ? (
-                <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-textMuted">
+                <div className="mt-5 rounded-card border border-line bg-surfaceMuted px-4 py-8 text-center text-sm text-textMuted">
                   No subcategories yet. Add at least two to help shoppers filter
                   products quickly.
                 </div>
@@ -590,12 +570,12 @@ export function CategoryStudioPage() {
                   {form.subcategories.map((subcategory, index) => (
                     <span
                       key={`${subcategory}-${index}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-textStrong"
+                      className="inline-flex items-center gap-2 rounded-full border border-line bg-surfaceMuted px-3 py-2 text-sm text-textStrong"
                     >
                       {subcategory}
                       <button
                         type="button"
-                        className="rounded-full p-0.5 text-textMuted hover:bg-white/10 hover:text-textStrong"
+                        className="rounded-full p-0.5 text-textMuted hover:bg-line hover:text-textStrong"
                         onClick={() => removeSubcategory(index)}
                         aria-label={`Remove ${subcategory}`}
                       >
@@ -613,7 +593,7 @@ export function CategoryStudioPage() {
                       key={suggestion}
                       type="button"
                       onClick={() => addSubcategory(suggestion)}
-                      className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-sm text-textMuted transition hover:border-accent/30 hover:text-textStrong"
+                      className="rounded-[18px] border border-line bg-surfaceMuted px-4 py-3 text-left text-sm text-textMuted transition hover:border-accent/30 hover:text-textStrong"
                     >
                       + {suggestion}
                     </button>
@@ -624,9 +604,9 @@ export function CategoryStudioPage() {
           ) : null}
 
           {activeSection === "publish" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-emerald-500/15 p-2.5 text-emerald-200">
+                <div className="rounded-2xl bg-success/10 p-2.5 text-success">
                   <CheckCircle2 className="size-4" />
                 </div>
                 <div>
@@ -640,8 +620,8 @@ export function CategoryStudioPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-accentSoft">
+                <div className="rounded-card border border-line bg-surfaceMuted p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-textSubtle">
                     Summary
                   </p>
                   <p className="mt-2 text-lg font-semibold text-textStrong">
@@ -658,8 +638,8 @@ export function CategoryStudioPage() {
                   </p>
                 </div>
 
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-accentSoft">
+                <div className="rounded-card border border-line bg-surfaceMuted p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-textSubtle">
                     Before you publish
                   </p>
                   <ul className="mt-3 space-y-2 text-sm text-textMuted">
@@ -689,8 +669,7 @@ export function CategoryStudioPage() {
                 </Button>
                 {!isCreate ? (
                   <Button
-                    variant="danger"
-                    leftIcon={<Trash2 className="size-4" />}
+                    variant="secondary"
                     onClick={() => navigate("/categories/full")}
                   >
                     Back to directory

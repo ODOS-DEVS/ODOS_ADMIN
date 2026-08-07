@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import App from "@/App";
 import { warmBackendIfNeeded } from "@/api/client";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AdminAuthProvider } from "@/hooks/useAdminAuth";
 import { AdminRealtimeProvider } from "@/hooks/useAdminRealtime";
 import { ToastProvider } from "@/hooks/useToast";
@@ -15,14 +16,16 @@ void warmBackendIfNeeded().catch(() => {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ToastProvider>
-        <AdminAuthProvider>
-          <AdminRealtimeProvider>
-            <App />
-          </AdminRealtimeProvider>
-        </AdminAuthProvider>
-      </ToastProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ToastProvider>
+          <AdminAuthProvider>
+            <AdminRealtimeProvider>
+              <App />
+            </AdminRealtimeProvider>
+          </AdminAuthProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

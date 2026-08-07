@@ -31,20 +31,7 @@ const statusOptions: Array<{ label: string; value: VendorWithdrawalStatus }> = [
   { label: "Paid", value: "paid" },
 ];
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
-      <p className="mt-2 text-sm text-textStrong">{value}</p>
-    </div>
-  );
-}
+import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
 
 function nextStatusOptions(
   request: AdminVendorWithdrawalRequest,
@@ -77,10 +64,12 @@ export function FullPayoutsPage() {
   const {
     items: requests,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
   } = useInfiniteAdminList({
@@ -255,25 +244,25 @@ export function FullPayoutsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Total requests</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">
             {summary.total}
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Pending review</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">
             {summary.pendingCount}
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Awaiting payout</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">
             {formatCurrency(summary.pendingTotal)}
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Paid out</p>
           <p className="mt-3 flex items-center gap-2 text-3xl font-semibold text-textStrong">
             <Wallet className="size-5 text-accent" />
@@ -282,8 +271,8 @@ export function FullPayoutsPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 px-5 py-4 text-sm text-textStrong">
-        <p className="font-medium text-amber-100">How vendor payouts work</p>
+      <div className="rounded-3xl border border-info/20 bg-info-soft px-5 py-4 text-sm text-textStrong">
+        <p className="font-medium text-info">How vendor payouts work</p>
         <p className="mt-2 text-textMuted">
           Approve first, then pay the vendor. Use{" "}
           <span className="text-textStrong">Send via Paystack</span> only if your
@@ -419,10 +408,12 @@ export function FullPayoutsPage() {
             data={filteredRequests}
             keyExtractor={(request) => request.id}
             isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
+            page={page}
+            pageSize={pageSize}
+            isLoadingPage={isLoadingPage}
             hasMore={hasMore}
             error={error}
-            onLoadMore={() => void loadMore()}
+            onPageChange={goToPage}
             onRetry={() => void refresh()}
             emptyTitle="No payout requests yet"
             emptyDescription="Vendor withdrawal requests will appear here as soon as vendors start moving money out of their ODOS wallet."
@@ -469,45 +460,50 @@ export function FullPayoutsPage() {
         }
       >
         {selectedRequest ? (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <DetailRow label="Vendor" value={selectedRequest.vendorName} />
-              <DetailRow label="Store" value={selectedRequest.storeName ?? "Store not linked"} />
-              <DetailRow label="Requested amount" value={`${selectedRequest.currency} ${selectedRequest.amount.toFixed(2)}`} />
-              <DetailRow label="Current status" value={selectedRequest.status.replace(/_/g, " ")} />
-              <DetailRow label="Available balance" value={`${selectedRequest.currency} ${selectedRequest.walletAvailableBalance.toFixed(2)}`} />
-              <DetailRow label="Held for withdrawals" value={`${selectedRequest.currency} ${selectedRequest.walletPendingWithdrawalBalance.toFixed(2)}`} />
-              <DetailRow label="Payout method" value={selectedRequest.payoutMethodType.replace(/_/g, " ")} />
-              <DetailRow label="Requested on" value={formatDateTime(selectedRequest.createdAt)} />
-            </div>
+          <DetailStack>
+            <DetailSection title="Withdrawal">
+              <DetailFields columns={2}>
+              <DetailField label="Vendor" value={selectedRequest.vendorName} />
+              <DetailField label="Store" value={selectedRequest.storeName ?? "Store not linked"} />
+              <DetailField label="Requested amount" value={`${selectedRequest.currency} ${selectedRequest.amount.toFixed(2)}`} />
+              <DetailField label="Current status" value={selectedRequest.status.replace(/_/g, " ")} />
+              <DetailField label="Available balance" value={`${selectedRequest.currency} ${selectedRequest.walletAvailableBalance.toFixed(2)}`} />
+              <DetailField label="Held for withdrawals" value={`${selectedRequest.currency} ${selectedRequest.walletPendingWithdrawalBalance.toFixed(2)}`} />
+              <DetailField label="Payout method" value={selectedRequest.payoutMethodType.replace(/_/g, " ")} />
+              <DetailField label="Requested on" value={formatDateTime(selectedRequest.createdAt)} />
+              </DetailFields>
+            </DetailSection>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <DetailRow label="Account name" value={selectedRequest.payoutAccountName} />
-              <DetailRow
+            <DetailSection title="Bank details">
+              <DetailFields columns={2}>
+              <DetailField label="Account name" value={selectedRequest.payoutAccountName} />
+              <DetailField
                 label="Account number"
                 value={selectedRequest.payoutAccountNumberMasked}
               />
-              <DetailRow
+              <DetailField
                 label="Provider"
                 value={selectedRequest.payoutProvider ?? "Not specified"}
               />
-              <DetailRow
+              <DetailField
                 label="Transfer reference"
                 value={selectedRequest.paystackTransferReference ?? "Not started yet"}
               />
-              <DetailRow
+              <DetailField
                 label="Reviewed by"
                 value={selectedRequest.reviewedByName ?? "Not reviewed yet"}
               />
-            </div>
+              </DetailFields>
+            </DetailSection>
 
             {selectedRequest.paystackTransferCode ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                <DetailRow
+              <DetailSection title="Paystack transfer">
+              <DetailFields columns={2}>
+                <DetailField
                   label="Transfer code"
                   value={selectedRequest.paystackTransferCode}
                 />
-                <DetailRow
+                <DetailField
                   label="Transfer started"
                   value={
                     selectedRequest.transferInitiatedAt
@@ -515,29 +511,20 @@ export function FullPayoutsPage() {
                       : "Not started yet"
                   }
                 />
-              </div>
+              </DetailFields>
+              </DetailSection>
             ) : null}
 
             {selectedRequest.note ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-textMuted">
-                  Vendor note
-                </p>
-                <p className="mt-2 text-sm leading-6 text-textStrong">
-                  {selectedRequest.note}
-                </p>
-              </div>
+              <DetailSection title="Vendor note">
+                <p className="text-sm leading-relaxed text-textStrong">{selectedRequest.note}</p>
+              </DetailSection>
             ) : null}
 
             {selectedRequest.transferFailureReason ? (
-              <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-amber-200">
-                  Transfer failure reason
-                </p>
-                <p className="mt-2 text-sm leading-6 text-amber-50">
-                  {selectedRequest.transferFailureReason}
-                </p>
-              </div>
+              <DetailSection title="Transfer failure">
+                <p className="text-sm leading-relaxed text-danger">{selectedRequest.transferFailureReason}</p>
+              </DetailSection>
             ) : null}
 
             <div className="grid gap-4 md:grid-cols-[220px,1fr]">
@@ -576,7 +563,7 @@ export function FullPayoutsPage() {
                 />
               </div>
             </div>
-          </div>
+          </DetailStack>
         ) : null}
       </Modal>
     </div>

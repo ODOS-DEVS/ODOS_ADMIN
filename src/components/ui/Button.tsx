@@ -11,13 +11,13 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "border border-accent/60 bg-accent text-slate-950 hover:brightness-110 focus-visible:ring-accent/60",
+    "border border-accent bg-accent text-accentForeground hover:bg-accent/90 focus-visible:ring-accent/30 shadow-sm",
   secondary:
-    "border border-white/10 bg-white/5 text-textStrong hover:bg-white/10 focus-visible:ring-white/20",
+    "border border-line bg-surface text-textStrong hover:bg-surfaceMuted focus-visible:ring-accent/20 shadow-sm",
   ghost:
-    "border border-transparent bg-transparent text-textMuted hover:bg-white/5 hover:text-textStrong focus-visible:ring-white/20",
+    "border border-transparent bg-transparent text-textMuted hover:bg-surfaceMuted hover:text-textStrong focus-visible:ring-accent/15",
   danger:
-    "border border-danger/40 bg-danger/10 text-danger hover:bg-danger/20 focus-visible:ring-danger/40",
+    "border border-danger/30 bg-danger-soft text-danger hover:bg-danger/10 focus-visible:ring-danger/25",
 };
 
 export function Button({

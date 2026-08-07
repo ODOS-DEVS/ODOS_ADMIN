@@ -1,13 +1,17 @@
 import { useEffect, useRef } from "react";
 
+import { Button } from "@/components/ui/Button";
+
 export function InfiniteScrollSentinel({
   hasMore,
   isLoadingMore,
   onLoadMore,
+  summary,
 }: {
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
+  summary?: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const onLoadMoreRef = useRef(onLoadMore);
@@ -33,22 +37,25 @@ export function InfiniteScrollSentinel({
     return () => observer.disconnect();
   }, [hasMore]);
 
-  if (!hasMore && !isLoadingMore) {
-    return (
-      <div className="py-3 text-center text-xs text-textMuted">End of list</div>
-    );
-  }
-
   return (
-    <div ref={sentinelRef} className="flex items-center justify-center gap-2 py-3">
-      {isLoadingMore ? (
-        <>
-          <span className="size-4 animate-spin rounded-full border-2 border-accent/40 border-t-accent" />
-          <p className="text-xs text-textMuted">Loading more…</p>
-        </>
-      ) : (
-        <span className="h-1 w-1" aria-hidden />
-      )}
+    <div className="flex flex-col gap-3 border-t border-line px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <p className="text-sm text-textMuted">
+        {summary ?? (hasMore ? "Scroll or load more to see additional records." : "End of list")}
+      </p>
+      <div ref={sentinelRef} className="flex items-center justify-end gap-2">
+        {hasMore ? (
+          <Button
+            variant="secondary"
+            isLoading={isLoadingMore}
+            onClick={() => onLoadMore()}
+            className="min-w-[7rem]"
+          >
+            {isLoadingMore ? "Loading…" : "Load more"}
+          </Button>
+        ) : (
+          <span className="text-xs text-textSubtle">All records loaded</span>
+        )}
+      </div>
     </div>
   );
 }

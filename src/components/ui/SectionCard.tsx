@@ -27,15 +27,15 @@ export function SectionCard({
       style={{ animationDelay: `${animationDelay}ms` }}
       className={clsx(
         "animate-fade-up opacity-0",
-        "rounded-2xl border border-white/10 bg-panel/80 shadow-glow",
+        "rounded-2xl border border-line bg-surface shadow-card",
         className,
       )}
     >
       {title || description || action ? (
         <div
           className={clsx(
-            "flex flex-col gap-2 border-b border-white/10 sm:flex-row sm:items-center sm:justify-between",
-            compact ? "px-4 py-3" : "px-5 py-4",
+            "flex flex-col gap-3 border-b border-line sm:flex-row sm:items-center sm:justify-between",
+            compact ? "px-4 py-3.5" : "px-5 py-4",
           )}
         >
           <div className="min-w-0">
@@ -50,7 +50,7 @@ export function SectionCard({
               </p>
             ) : null}
           </div>
-          {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
+          {action ? <div className="flex w-full shrink-0 items-stretch gap-3 sm:w-auto">{action}</div> : null}
         </div>
       ) : null}
       <div className={clsx(compact ? "p-4" : "p-5", bodyClassName)}>{children}</div>

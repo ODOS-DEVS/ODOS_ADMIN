@@ -8,6 +8,7 @@ import { FullFinancePage } from "@/pages/full/FullFinancePage";
 import { FullFlashSaleEventsPage } from "@/pages/full/FullFlashSaleEventsPage";
 import { FullMerchandisingCampaignsPage } from "@/pages/full/FullMerchandisingCampaignsPage";
 import { FullMarketsPage } from "@/pages/full/FullMarketsPage";
+import { FullDeliveryOpsPage } from "@/pages/full/FullDeliveryOpsPage";
 import { FullNotificationsPage } from "@/pages/full/FullNotificationsPage";
 import { FullOrdersPage } from "@/pages/full/FullOrdersPage";
 import { FullPayoutsPage } from "@/pages/full/FullPayoutsPage";
@@ -23,6 +24,7 @@ import { FullVendorApplicationsPage } from "@/pages/full/FullVendorApplicationsP
 import { FullVendorsPage } from "@/pages/full/FullVendorsPage";
 import { FullVouchersPage } from "@/pages/full/FullVouchersPage";
 import { OrderDetailPage } from "@/pages/full/OrderDetailPage";
+import { VendorDetailPage } from "@/pages/full/VendorDetailPage";
 import {
   PayoutDetailPage,
   ProductDetailPage,
@@ -31,7 +33,6 @@ import {
   StoreDetailPage,
   SupportThreadDetailPage,
   VendorApplicationDetailPage,
-  VendorDetailPage,
   VoucherDetailPage,
 } from "@/pages/full/entityDetailPages";
 import { UserDetailPage } from "@/pages/UserDetailPage";
@@ -43,6 +44,7 @@ export function AdminFullRoutes() {
       <Route path="/users/full" element={<FullUsersPage />} />
       <Route path="/users/full/:userId" element={<UserDetailPage />} />
       <Route path="/orders/full" element={<FullOrdersPage />} />
+      <Route path="/orders/delivery-ops" element={<FullDeliveryOpsPage />} />
       <Route path="/orders/full/:orderId" element={<OrderDetailPage />} />
       <Route path="/vendors/full" element={<FullVendorsPage />} />
       <Route path="/vendors/full/:vendorId" element={<VendorDetailPage />} />

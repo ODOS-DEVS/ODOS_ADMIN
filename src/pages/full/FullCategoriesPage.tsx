@@ -1,21 +1,32 @@
-import { Edit3, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { CheckCircle2, PauseCircle, Plus, Tags } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { deleteCategory, getCategoriesPage, updateCategory } from "@/api/categoriesApi";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
-import { Button } from "@/components/ui/Button";
+import {
+  CategoryNameCell,
+  CategoryTableActions,
+  CategoriesDirectorySkeleton,
+} from "@/components/categories/CategoriesDirectoryUi";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { TABLE_ACTIONS_COLUMN_CLASS_WIDE } from "@/components/ui/IconButton";
+import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useToast } from "@/hooks/useToast";
 import type { Category } from "@/types";
 import { formatDate } from "@/utils/format";
+import { formatPaginationRange } from "@/utils/paginationUi";
+
+const TOOLBAR_CONTROL_CLASS =
+  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
 
 type CategoryDeleteIntent = {
   category: Category;
@@ -29,10 +40,12 @@ export function FullCategoriesPage() {
   const {
     items: categories,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
     removeItem,
@@ -48,7 +61,7 @@ export function FullCategoriesPage() {
 
   const filteredCategories = useMemo(() => {
     return categories.filter((category) => {
-      const haystack = [category.name, category.description, ...(category.subcategories ?? [])]
+      const haystack = [category.name, category.slug, category.description, ...(category.subcategories ?? [])]
         .join(" ")
         .toLowerCase();
       const matchesQuery = haystack.includes(query.trim().toLowerCase());
@@ -56,6 +69,16 @@ export function FullCategoriesPage() {
       return matchesQuery && matchesStatus;
     });
   }, [categories, query, statusFilter]);
+
+  const snapshot = useMemo(() => {
+    const active = categories.filter((category) => category.status === "active").length;
+    const disabled = categories.filter((category) => category.status === "disabled").length;
+    return { total: categories.length, active, disabled };
+  }, [categories]);
+
+  const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredCategories.length })}${
+    hasMore ? " · more pages available" : ""
+  }`;
 
   async function handleDelete() {
     if (!token || !deleteIntent) return;
@@ -73,8 +96,8 @@ export function FullCategoriesPage() {
         title: deleteIntent.mode === "permanent" ? "Category deleted" : "Category disabled",
         description:
           deleteIntent.mode === "permanent"
-            ? `${deleteIntent.category.name} has been removed from admin categories.`
-            : `${deleteIntent.category.name} has been disabled.`,
+            ? `${deleteIntent.category.name} has been removed.`
+            : `${deleteIntent.category.name} is disabled.`,
         tone: "success",
       });
       setDeleteIntent(null);
@@ -107,7 +130,7 @@ export function FullCategoriesPage() {
       replaceItem(updated);
       showToast({
         title: "Category enabled",
-        description: `${updated.name} is live again.`,
+        description: `${updated.name} is active again.`,
         tone: "success",
       });
     } catch (restoreError) {
@@ -121,169 +144,152 @@ export function FullCategoriesPage() {
     }
   }
 
+  if (isLoading && categories.length === 0) {
+    return <CategoriesDirectorySkeleton />;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminFullHeader
         eyebrow="Categories"
-        title="Complete category taxonomy"
-        description="Manage catalog categories and jump into a full studio screen to craft each category."
+        title="Category list"
+        description={`${snapshot.total} loaded · ${snapshot.active} active · edit name, image, subcategories, and status.`}
         backRoute="/categories"
         onRefresh={() => void refresh()}
         refreshing={isLoading}
         actions={
-          <Button
-            leftIcon={<Sparkles className="size-4" />}
+          <HeaderActionButton
+            leftIcon={<Plus className="size-4" />}
             onClick={() => navigate("/categories/full/new")}
           >
-            Create in studio
-          </Button>
+            Add category
+          </HeaderActionButton>
         }
       />
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatCard label="On this page" value={String(snapshot.total)} icon={Tags} animationDelay={40} />
+        <StatCard
+          label="Active"
+          value={String(snapshot.active)}
+          hint={`${snapshot.disabled} disabled`}
+          icon={CheckCircle2}
+          tone="success"
+          animationDelay={80}
+        />
+        <StatCard
+          label="Disabled"
+          value={String(snapshot.disabled)}
+          icon={PauseCircle}
+          animationDelay={120}
+        />
+      </div>
+
       <SectionCard
-        title="Categories"
-        description="Search existing categories, tune status, and open the full studio experience for richer edits."
+        compact
+        title="All categories"
         action={
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search category or subcategory"
-              className="sm:w-80"
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              options={[
-                { label: "All statuses", value: "all" },
-                { label: "Active", value: "active" },
-                { label: "Disabled", value: "disabled" },
-              ]}
-            />
-          </div>
+          <ListToolbar>
+            <ListToolbarField className="sm:min-w-[16rem]">
+              <SearchInput
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Name, slug, or subcategory"
+                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
+              />
+            </ListToolbarField>
+            <ListToolbarField className="sm:min-w-[11rem]">
+              <FilterSelect
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                options={[
+                  { label: "All statuses", value: "all" },
+                  { label: "Active", value: "active" },
+                  { label: "Disabled", value: "disabled" },
+                ]}
+                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
+              />
+            </ListToolbarField>
+          </ListToolbar>
         }
+        bodyClassName="p-0"
       >
         <AdminInfiniteList
-            columns={[
-              {
-                key: "category",
-                header: "Category",
-                render: (category) => (
-                  <div className="flex items-center gap-4">
-                    <div className="size-16 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]">
-                      {category.imageUrl ? (
-                        <img src={category.imageUrl} alt={category.name} className="size-full object-cover" />
-                      ) : (
-                        <div className="flex size-full items-center justify-center text-[11px] text-textMuted">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium">{category.name}</p>
-                      <p className="mt-1 text-xs text-textMuted">{category.description}</p>
-                      <p className="mt-2 text-xs text-textMuted">
-                        {(category.subcategories ?? []).length} subcategories
-                      </p>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: "subcategories",
-                header: "Subcategories",
-                render: (category) => (
-                  <div className="max-w-[320px] text-sm text-textMuted">
-                    {(category.subcategories ?? []).slice(0, 4).join(", ") || "Not set"}
-                    {(category.subcategories?.length ?? 0) > 4 ? " ..." : ""}
-                  </div>
-                ),
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (category) => <StatusBadge status={category.status} />,
-              },
-              {
-                key: "created",
-                header: "Created",
-                render: (category) => formatDate(category.createdAt),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                render: (category) => {
-                  const isStatusUpdating = statusTargetId === category.id;
-                  return (
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="primary"
-                        leftIcon={<Edit3 className="size-4" />}
-                        onClick={() => navigate(`/categories/full/${category.id}/studio`)}
-                        disabled={isStatusUpdating}
-                      >
-                        Open studio
-                      </Button>
-                      {category.status === "disabled" ? (
-                        <>
-                          <Button
-                            variant="secondary"
-                            leftIcon={<RotateCcw className="size-4" />}
-                            onClick={() => void handleRestore(category)}
-                            isLoading={isStatusUpdating}
-                          >
-                            Enable
-                          </Button>
-                          <Button
-                            variant="danger"
-                            leftIcon={<Trash2 className="size-4" />}
-                            onClick={() => setDeleteIntent({ category, mode: "permanent" })}
-                            disabled={isStatusUpdating}
-                          >
-                            Delete permanently
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant="danger"
-                          leftIcon={<Trash2 className="size-4" />}
-                          onClick={() => setDeleteIntent({ category, mode: "disable" })}
-                          disabled={isStatusUpdating}
-                        >
-                          Disable
-                        </Button>
-                      )}
-                    </div>
-                  );
-                },
-              },
-            ]}
-            data={filteredCategories}
-            keyExtractor={(category) => category.id}
-            isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
-            hasMore={hasMore}
-            error={error}
-            onLoadMore={() => void loadMore()}
-            onRetry={() => void refresh()}
-            emptyTitle="No categories found"
-            emptyDescription="Try a broader search or create a new category in studio."
-          />
+          compact
+          listSummary={listSummary}
+          columns={[
+            {
+              key: "category",
+              header: "Category",
+              className: "min-w-[220px]",
+              render: (category) => <CategoryNameCell category={category} />,
+            },
+            {
+              key: "subcategories",
+              header: "Subcategories",
+              className: "min-w-[180px] max-w-[320px]",
+              render: (category) => (
+                <p className="line-clamp-2 text-sm text-textMuted">
+                  {(category.subcategories ?? []).join(", ") || "—"}
+                </p>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              className: "w-[7.5rem]",
+              render: (category) => <StatusBadge status={category.status} />,
+            },
+            {
+              key: "created",
+              header: "Created",
+              className: "w-[7.5rem] whitespace-nowrap text-sm text-textMuted",
+              render: (category) => formatDate(category.createdAt),
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
+              render: (category) => (
+                <CategoryTableActions
+                  category={category}
+                  isBusy={statusTargetId === category.id}
+                  onEdit={() => navigate(`/categories/full/${category.id}/studio`)}
+                  onDisable={() => setDeleteIntent({ category, mode: "disable" })}
+                  onEnable={() => void handleRestore(category)}
+                  onDeletePermanently={() => setDeleteIntent({ category, mode: "permanent" })}
+                />
+              ),
+            },
+          ]}
+          data={filteredCategories}
+          keyExtractor={(category) => category.id}
+          isLoading={isLoading}
+          page={page}
+          pageSize={pageSize}
+          isLoadingPage={isLoadingPage}
+          hasMore={hasMore}
+          error={error}
+          onPageChange={goToPage}
+          onRetry={() => void refresh()}
+          emptyTitle="No categories found"
+          emptyDescription="Clear filters or add a category."
+        />
       </SectionCard>
 
       <ConfirmDialog
         open={Boolean(deleteIntent)}
         onClose={() => setDeleteIntent(null)}
         onConfirm={() => void handleDelete()}
-        title={deleteIntent?.mode === "permanent" ? "Delete category permanently?" : "Disable category"}
+        title={deleteIntent?.mode === "permanent" ? "Delete category permanently?" : "Disable category?"}
         description={
           deleteIntent
             ? deleteIntent.mode === "permanent"
-              ? `Delete ${deleteIntent.category.name} from admin categories entirely. Existing products stay untouched, but you would need to recreate this category later if you want it back.`
-              : `Disable ${deleteIntent.category.name}. Existing products can be reassigned later if needed.`
+              ? `Remove ${deleteIntent.category.name} from the admin list. Products keep their data; you would need to recreate the category to use it again.`
+              : `Disable ${deleteIntent.category.name}. You can turn it back on later.`
             : ""
         }
-        confirmLabel={deleteIntent?.mode === "permanent" ? "Delete permanently" : "Disable category"}
+        confirmLabel={deleteIntent?.mode === "permanent" ? "Delete permanently" : "Disable"}
         confirmVariant="danger"
         isLoading={actionLoading}
       />

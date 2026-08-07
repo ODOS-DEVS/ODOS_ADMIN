@@ -69,9 +69,7 @@ export function AuditLogPage() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
-          Security & compliance
-        </p>
+        <p className="text-xs font-medium text-textMuted">Security & compliance</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">Audit log</h1>
         <p className="mt-1 text-sm text-textMuted">
           Searchable trace of user, admin, and system events across Odos.
@@ -105,12 +103,12 @@ export function AuditLogPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search action, entity, event type"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-textStrong outline-none focus:border-accent/40"
+            className="rounded-xl border border-line bg-surfaceMuted px-3 py-2 text-sm text-textStrong outline-none focus:border-accent/40"
           />
           <select
             value={actorType}
             onChange={(event) => setActorType(event.target.value)}
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-textStrong outline-none focus:border-accent/40"
+            className="rounded-xl border border-line bg-surfaceMuted px-3 py-2 text-sm text-textStrong outline-none focus:border-accent/40"
           >
             <option value="">All actors</option>
             <option value="user">User</option>
@@ -121,7 +119,7 @@ export function AuditLogPage() {
           <select
             value={eventType}
             onChange={(event) => setEventType(event.target.value)}
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-textStrong outline-none focus:border-accent/40"
+            className="rounded-xl border border-line bg-surfaceMuted px-3 py-2 text-sm text-textStrong outline-none focus:border-accent/40"
           >
             <option value="">All event types</option>
             <option value="user.login">User login</option>

@@ -283,9 +283,7 @@ export function PromoBannerStudioPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
-            Promo banner studio
-          </p>
+          <p className="text-xs font-medium text-textMuted">Promo banner studio</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">
             {isCreate ? "Create a shopper banner" : `Edit ${record?.title ?? "banner"}`}
           </h1>
@@ -305,7 +303,7 @@ export function PromoBannerStudioPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
-        <aside className="space-y-2 rounded-3xl border border-white/10 bg-white/[0.03] p-3">
+        <aside className="space-y-2 rounded-3xl border border-line bg-surfaceMuted p-3">
           {SECTIONS.map((section) => (
             <button
               key={section.id}
@@ -314,7 +312,7 @@ export function PromoBannerStudioPage() {
               className={`w-full rounded-2xl px-4 py-3 text-left transition ${
                 activeSection === section.id
                   ? "bg-accent/15 text-textStrong"
-                  : "text-textMuted hover:bg-white/[0.04] hover:text-textStrong"
+                  : "text-textMuted hover:bg-surfaceMuted hover:text-textStrong"
               }`}
             >
               <p className="text-sm font-medium">{section.label}</p>
@@ -323,7 +321,7 @@ export function PromoBannerStudioPage() {
           ))}
         </aside>
 
-        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+        <section className="rounded-3xl border border-line bg-surfaceMuted p-6">
           {activeSection === "creative" ? (
             <div className="space-y-5">
               <div>
@@ -336,7 +334,7 @@ export function PromoBannerStudioPage() {
               <label className="block space-y-2">
                 <span className="text-sm text-textMuted">Headline</span>
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                  className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                   placeholder="E.g. Payday deals up to 40% off"
                   value={form.title}
                   onChange={(event) => updateForm("title", event.target.value)}
@@ -346,7 +344,7 @@ export function PromoBannerStudioPage() {
               <label className="block space-y-2">
                 <span className="text-sm text-textMuted">Supporting line</span>
                 <textarea
-                  className="min-h-24 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                  className="min-h-24 w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                   placeholder="Tell shoppers why they should tap."
                   value={form.subtitle}
                   onChange={(event) => updateForm("subtitle", event.target.value)}
@@ -357,7 +355,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Button label</span>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.ctaLabel}
                     onChange={(event) => updateForm("ctaLabel", event.target.value)}
                   />
@@ -365,7 +363,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Color mood</span>
                   <select
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.accent}
                     onChange={(event) =>
                       updateForm("accent", event.target.value as PromoBannerFormState["accent"])
@@ -381,7 +379,7 @@ export function PromoBannerStudioPage() {
               <label className="block space-y-2">
                 <span className="text-sm text-textMuted">Banner artwork</span>
                 <div className="flex flex-wrap items-center gap-4">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-white/15 px-4 py-3 text-sm text-textMuted">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-line px-4 py-3 text-sm text-textMuted">
                     <ImagePlus className="size-4" />
                     Upload image
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
@@ -412,11 +410,11 @@ export function PromoBannerStudioPage() {
                     className={`rounded-2xl border px-4 py-4 text-left transition ${
                       form.placement === option.value
                         ? "border-accent/30 bg-accent/10"
-                        : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                        : "border-line bg-surfaceMuted hover:border-accent/30"
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <MapPin className="mt-0.5 size-4 text-accentSoft" />
+                      <MapPin className="mt-0.5 size-4 text-accent" />
                       <div>
                         <p className="font-medium text-textStrong">{option.label}</p>
                         <p className="mt-1 text-sm text-textMuted">{option.description}</p>
@@ -432,7 +430,7 @@ export function PromoBannerStudioPage() {
                   <input
                     type="number"
                     min={1}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.sortOrder}
                     onChange={(event) => updateForm("sortOrder", Number(event.target.value) || 1)}
                   />
@@ -441,7 +439,7 @@ export function PromoBannerStudioPage() {
                   <span className="text-sm text-textMuted">Starts</span>
                   <input
                     type="datetime-local"
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.startsAt}
                     onChange={(event) => updateForm("startsAt", event.target.value)}
                   />
@@ -450,7 +448,7 @@ export function PromoBannerStudioPage() {
                   <span className="text-sm text-textMuted">Ends</span>
                   <input
                     type="datetime-local"
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.endsAt}
                     onChange={(event) => updateForm("endsAt", event.target.value)}
                   />
@@ -477,11 +475,11 @@ export function PromoBannerStudioPage() {
                     className={`rounded-2xl border px-4 py-4 text-left transition ${
                       form.linkType === option.value
                         ? "border-accent/30 bg-accent/10"
-                        : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                        : "border-line bg-surfaceMuted hover:border-accent/30"
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <MousePointerClick className="mt-0.5 size-4 text-accentSoft" />
+                      <MousePointerClick className="mt-0.5 size-4 text-accent" />
                       <div>
                         <p className="font-medium text-textStrong">{option.label}</p>
                         <p className="mt-1 text-sm text-textMuted">{option.description}</p>
@@ -495,7 +493,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Category</span>
                   <select
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.destinationTarget}
                     onChange={(event) => updateForm("destinationTarget", event.target.value)}
                   >
@@ -513,7 +511,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Store</span>
                   <select
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.destinationTarget}
                     onChange={(event) => updateForm("destinationTarget", event.target.value)}
                   >
@@ -531,7 +529,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Product</span>
                   <select
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.destinationTarget}
                     onChange={(event) => updateForm("destinationTarget", event.target.value)}
                   >
@@ -549,7 +547,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Search keyword (optional)</span>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     placeholder="E.g. sneakers, rice cooker, perfume"
                     value={form.destinationTarget}
                     onChange={(event) => updateForm("destinationTarget", event.target.value)}
@@ -561,7 +559,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Campaign theme</span>
                   <select
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     value={form.campaignTag}
                     onChange={(event) => {
                       updateForm("campaignTag", event.target.value);
@@ -582,7 +580,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Minimum vendor discount (%)</span>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     inputMode="numeric"
                     placeholder="e.g. 20"
                     value={form.destinationTarget}
@@ -599,7 +597,7 @@ export function PromoBannerStudioPage() {
                 <label className="block space-y-2">
                   <span className="text-sm text-textMuted">Website URL</span>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                     placeholder="https://example.com/offer"
                     value={form.destinationTarget}
                     onChange={(event) => updateForm("destinationTarget", event.target.value)}
@@ -619,7 +617,7 @@ export function PromoBannerStudioPage() {
               <label className="block space-y-2">
                 <span className="text-sm text-textMuted">Status</span>
                 <select
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                  className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                   value={form.status}
                   onChange={(event) =>
                     updateForm("status", event.target.value as PromoBannerFormState["status"])
@@ -630,11 +628,11 @@ export function PromoBannerStudioPage() {
                 </select>
               </label>
 
-              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="space-y-3 rounded-2xl border border-line bg-surfaceMuted p-4">
                 {readiness.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 text-sm">
                     {item.done ? (
-                      <CheckCircle2 className="size-4 text-emerald-400" />
+                      <CheckCircle2 className="size-4 text-success" />
                     ) : (
                       <Circle className="size-4 text-textMuted" />
                     )}
@@ -656,9 +654,9 @@ export function PromoBannerStudioPage() {
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
             <div className="mb-4 flex items-center gap-2 text-sm font-medium text-textStrong">
-              <Sparkles className="size-4 text-accentSoft" />
+              <Sparkles className="size-4 text-accent" />
               Shopper preview
             </div>
             <PromoBannerShopperPreview

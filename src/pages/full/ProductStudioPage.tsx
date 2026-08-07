@@ -27,6 +27,7 @@ import { AdminPageSkeleton } from "@/components/admin/AdminShell";
 import { ProductShopperPreview } from "@/components/products";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { FormField } from "@/components/ui/FormField";
 import { ImageCropModal } from "@/components/ui/ImageCropModal";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useRecordDetail } from "@/hooks/useRecordDetail";
@@ -73,7 +74,7 @@ function TaxonomyChip({
       className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
         active
           ? "border-accent/40 bg-accent/15 text-textStrong"
-          : "border-white/10 bg-white/[0.03] text-textMuted hover:border-white/20 hover:text-textStrong"
+          : "border-line bg-surfaceMuted text-textMuted hover:border-accent/30 hover:text-textStrong"
       }`}
     >
       {label}
@@ -331,29 +332,26 @@ export function ProductStudioPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
-            Product studio
-          </p>
+          <p className="text-xs font-medium text-textMuted">Products</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">
-            {isCreate ? "Craft a new listing" : `Edit ${form.name || "product"}`}
+            {isCreate ? "New product" : form.name || "Edit product"}
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-textMuted">
-            Build a premium ODOS product with live shopper previews, structured taxonomy, and a
-            publish checklist.
+            Photos, price, categories, variants, and status for this listing.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => navigate("/products/full")}>
-            Cancel
+            Back to list
           </Button>
           <Button
             leftIcon={<Save className="size-4" />}
             onClick={() => void handleSave()}
             isLoading={isSaving}
           >
-            {isCreate ? "Publish product" : "Save changes"}
+            {isCreate ? "Create product" : "Save"}
           </Button>
         </div>
       </div>
@@ -375,7 +373,7 @@ export function ProductStudioPage() {
             status={form.status}
           />
 
-          <div className="rounded-[24px] border border-white/10 bg-panel/80 p-4">
+          <div className="rounded-3xl border border-line bg-surface p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-textStrong">Launch readiness</p>
@@ -383,13 +381,13 @@ export function ProductStudioPage() {
                   {readiness.score} of {readiness.total} checks complete
                 </p>
               </div>
-              <div className="text-2xl font-semibold text-accentSoft">
+              <div className="text-2xl font-semibold text-accent">
                 {Math.round((readiness.score / readiness.total) * 100)}%
               </div>
             </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-surfaceMuted">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-accent to-sky-400 transition-all"
+                className="h-full rounded-full bg-accent transition-all"
                 style={{ width: `${(readiness.score / readiness.total) * 100}%` }}
               />
             </div>
@@ -397,9 +395,9 @@ export function ProductStudioPage() {
               {readiness.checks.map((check) => (
                 <div key={check.id} className="flex items-center gap-2 text-xs text-textMuted">
                   {check.done ? (
-                    <CheckCircle2 className="size-4 text-emerald-400" />
+                    <CheckCircle2 className="size-4 text-success" />
                   ) : (
-                    <Circle className="size-4 text-white/20" />
+                    <Circle className="size-4 text-textSubtle" />
                   )}
                   <span className={check.done ? "text-textStrong" : undefined}>{check.label}</span>
                 </div>
@@ -417,10 +415,10 @@ export function ProductStudioPage() {
                   key={section.id}
                   type="button"
                   onClick={() => setActiveSection(section.id)}
-                  className={`rounded-[22px] border px-4 py-3 text-left transition ${
+                  className={`rounded-card border px-4 py-3 text-left transition ${
                     active
-                      ? "border-accent/40 bg-accent/10 shadow-glow"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                      ? "border-accent/40 bg-accent/10 shadow-card"
+                      : "border-line bg-surfaceMuted hover:border-accent/30"
                   }`}
                 >
                   <p className="text-sm font-semibold text-textStrong">{section.label}</p>
@@ -431,9 +429,9 @@ export function ProductStudioPage() {
           </div>
 
           {activeSection === "identity" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-accent/15 p-2.5 text-accentSoft">
+                <div className="rounded-2xl bg-accent/10 p-2.5 text-accent">
                   <Package className="size-4" />
                 </div>
                 <div>
@@ -442,18 +440,15 @@ export function ProductStudioPage() {
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-textStrong">Product name</label>
+                <FormField label="Product name" error={formErrors.name} className="md:col-span-2">
                   <input
                     className="app-input"
                     value={form.name}
                     onChange={(event) => updateForm("name", event.target.value)}
                     placeholder="Women's Ribbed Lounge Set"
                   />
-                  {formErrors.name ? <p className="text-xs text-red-300">{formErrors.name}</p> : null}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Store</label>
+                </FormField>
+                <FormField label="Store">
                   <select
                     className="app-select"
                     value={form.storeId}
@@ -468,9 +463,8 @@ export function ProductStudioPage() {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Status</label>
+                </FormField>
+                <FormField label="Status">
                   <select
                     className="app-select"
                     value={form.status}
@@ -481,27 +475,23 @@ export function ProductStudioPage() {
                     <option value="hidden" className="bg-panel">Hidden</option>
                     <option value="suspended" className="bg-panel">Suspended</option>
                   </select>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-textStrong">Description</label>
+                </FormField>
+                <FormField label="Description" error={formErrors.description} className="md:col-span-2">
                   <textarea
                     className="app-textarea min-h-32"
                     value={form.description}
                     onChange={(event) => updateForm("description", event.target.value)}
                     placeholder="Soft two-piece outfit designed for everyday comfort..."
                   />
-                  {formErrors.description ? (
-                    <p className="text-xs text-red-300">{formErrors.description}</p>
-                  ) : null}
-                </div>
+                </FormField>
               </div>
             </section>
           ) : null}
 
           {activeSection === "gallery" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-sky-500/15 p-2.5 text-sky-200">
+                <div className="rounded-2xl bg-accent/10 p-2.5 text-accent">
                   <ImagePlus className="size-4" />
                 </div>
                 <div>
@@ -509,14 +499,14 @@ export function ProductStudioPage() {
                   <p className="text-sm text-textMuted">Upload up to 6 cropped images. First image is the hero.</p>
                 </div>
               </div>
-              <div className="rounded-[28px] border border-dashed border-white/15 bg-white/[0.03] p-6">
+              <div className="rounded-panel border border-dashed border-line bg-surfaceMuted p-6">
                 <div className="flex flex-col gap-5 lg:flex-row">
-                  <div className="size-44 overflow-hidden rounded-[28px] border border-white/10 bg-[#07111f]">
+                  <div className="size-44 overflow-hidden rounded-panel border border-line bg-surface">
                     {heroPreviewUrl ? (
                       <img src={heroPreviewUrl} alt="Hero" className="size-full object-cover" />
                     ) : (
                       <div className="flex size-full flex-col items-center justify-center gap-2 px-4 text-center text-xs text-textMuted">
-                        <Upload className="size-6 text-accentSoft" />
+                        <Upload className="size-6 text-textSubtle" />
                         Add product photos
                       </div>
                     )}
@@ -527,20 +517,20 @@ export function ProductStudioPage() {
                       accept="image/png,image/jpeg,image/webp"
                       multiple
                       onChange={handleImageChange}
-                      className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-white/15"
+                      className="block w-full text-sm text-textMuted file:mr-4 file:rounded-xl file:border-0 file:bg-surfaceMuted file:px-4 file:py-2 file:text-sm file:font-medium file:text-textStrong hover:file:bg-line"
                     />
                     {formErrors.imageFiles ? (
-                      <p className="text-xs text-red-300">{formErrors.imageFiles}</p>
+                      <p className="text-xs text-danger">{formErrors.imageFiles}</p>
                     ) : null}
                     {queuedImagePreviewUrls.length > 0 ? (
                       <div className="grid grid-cols-3 gap-2">
                         {queuedImagePreviewUrls.map((url, index) => (
-                          <div key={url} className="relative aspect-square overflow-hidden rounded-xl border border-white/10">
+                          <div key={url} className="relative aspect-square overflow-hidden rounded-xl border border-line">
                             <img src={url} alt="" className="size-full object-cover" />
                             <button
                               type="button"
                               onClick={() => removeQueuedImage(index)}
-                              className="absolute right-1 top-1 rounded-full bg-slate-950/80 p-1 text-red-200"
+                              className="absolute right-1 top-1 rounded-full bg-slate-950/80 p-1 text-white"
                               aria-label="Remove image"
                             >
                               <Trash2 className="size-3" />
@@ -552,7 +542,7 @@ export function ProductStudioPage() {
                     {!isCreate && existingProductImages.length > 0 ? (
                       <div className="grid grid-cols-3 gap-2">
                         {existingProductImages.map((url, index) => (
-                          <div key={url} className="aspect-square overflow-hidden rounded-xl border border-white/10">
+                          <div key={url} className="aspect-square overflow-hidden rounded-xl border border-line">
                             <img src={url} alt="" className="size-full object-cover" />
                             {index === 0 && !queuedImagePreviewUrls.length ? (
                               <p className="mt-1 text-center text-[10px] text-textMuted">Current hero</p>
@@ -568,9 +558,9 @@ export function ProductStudioPage() {
           ) : null}
 
           {activeSection === "taxonomy" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-violet-500/15 p-2.5 text-violet-200">
+                <div className="rounded-2xl bg-accent/10 p-2.5 text-accent">
                   <Layers3 className="size-4" />
                 </div>
                 <div>
@@ -592,7 +582,7 @@ export function ProductStudioPage() {
                     ))}
                   </div>
                   {formErrors.selectedCategorySlugs ? (
-                    <p className="mt-2 text-xs text-red-300">{formErrors.selectedCategorySlugs}</p>
+                    <p className="mt-2 text-xs text-danger">{formErrors.selectedCategorySlugs}</p>
                   ) : null}
                 </div>
                 <div>
@@ -617,9 +607,9 @@ export function ProductStudioPage() {
           ) : null}
 
           {activeSection === "merchandising" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-amber-500/15 p-2.5 text-amber-200">
+                <div className="rounded-2xl bg-accent/10 p-2.5 text-accent">
                   <Sparkles className="size-4" />
                 </div>
                 <div>
@@ -628,8 +618,7 @@ export function ProductStudioPage() {
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Audience</label>
+                <FormField label="Audience">
                   <select
                     className="app-select"
                     value={form.audienceSlug}
@@ -641,9 +630,8 @@ export function ProductStudioPage() {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Home section</label>
+                </FormField>
+                <FormField label="Home section">
                   <select
                     className="app-select"
                     value={form.section}
@@ -655,24 +643,23 @@ export function ProductStudioPage() {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-textStrong">Placement tags</label>
+                </FormField>
+                <FormField label="Placement tags" className="md:col-span-2">
                   <input
                     className="app-input"
                     value={form.placementTags}
                     onChange={(event) => updateForm("placementTags", event.target.value)}
                     placeholder="flash-sale, popular, featured"
                   />
-                </div>
+                </FormField>
               </div>
             </section>
           ) : null}
 
           {activeSection === "pricing" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-emerald-500/15 p-2.5 text-emerald-200">
+                <div className="rounded-2xl bg-accent/10 p-2.5 text-accent">
                   <Tag className="size-4" />
                 </div>
                 <div>
@@ -681,49 +668,38 @@ export function ProductStudioPage() {
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Selling price (GHS)</label>
+                <FormField label="Selling price (GHS)" error={formErrors.price}>
                   <input className="app-input" type="number" min="0" value={form.price} onChange={(e) => updateForm("price", e.target.value)} />
-                  {formErrors.price ? <p className="text-xs text-red-300">{formErrors.price}</p> : null}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Compare-at price</label>
+                </FormField>
+                <FormField label="Compare-at price" error={formErrors.oldPrice}>
                   <input className="app-input" type="number" min="0" value={form.oldPrice} onChange={(e) => updateForm("oldPrice", e.target.value)} />
-                  {formErrors.oldPrice ? <p className="text-xs text-red-300">{formErrors.oldPrice}</p> : null}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Stock</label>
+                </FormField>
+                <FormField label="Stock" error={formErrors.stock}>
                   <input className="app-input" type="number" min="0" value={form.stock} onChange={(e) => updateForm("stock", e.target.value)} />
-                  {formErrors.stock ? <p className="text-xs text-red-300">{formErrors.stock}</p> : null}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Rating</label>
+                </FormField>
+                <FormField label="Rating">
                   <input className="app-input" type="number" min="0" max="5" step="0.1" value={form.rating} onChange={(e) => updateForm("rating", e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Reviews label</label>
+                </FormField>
+                <FormField label="Reviews label">
                   <input className="app-input" value={form.reviews} onChange={(e) => updateForm("reviews", e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Colors</label>
+                </FormField>
+                <FormField label="Colors">
                   <input className="app-input" value={form.colorOptions} onChange={(e) => updateForm("colorOptions", e.target.value)} placeholder="Black, Sand, Sage" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-textStrong">Sizes</label>
+                </FormField>
+                <FormField label="Sizes">
                   <input className="app-input" value={form.sizeOptions} onChange={(e) => updateForm("sizeOptions", e.target.value)} placeholder="S, M, L, XL" />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-textStrong">Specifications</label>
+                </FormField>
+                <FormField label="Specifications" className="md:col-span-2">
                   <textarea className="app-textarea min-h-28" value={form.specifications} onChange={(e) => updateForm("specifications", e.target.value)} placeholder={"Material: Cotton blend\nCare: Machine wash cold"} />
-                </div>
+                </FormField>
               </div>
             </section>
           ) : null}
 
           {activeSection === "publish" ? (
-            <section className="rounded-[28px] border border-white/10 bg-panel/80 p-6">
+            <section className="rounded-panel border border-line bg-surface p-6">
               <div className="mb-5 flex items-center gap-3">
-                <div className="rounded-2xl bg-emerald-500/15 p-2.5 text-emerald-200">
+                <div className="rounded-2xl bg-success/10 p-2.5 text-success">
                   <CheckCircle2 className="size-4" />
                 </div>
                 <div>
@@ -732,18 +708,18 @@ export function ProductStudioPage() {
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-accentSoft">Summary</p>
+                <div className="rounded-card border border-line bg-surfaceMuted p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-textSubtle">Summary</p>
                   <p className="mt-2 text-lg font-semibold text-textStrong">{form.name.trim() || "Untitled product"}</p>
                   <p className="mt-2 text-sm text-textMuted">{form.description || "No description yet."}</p>
                   <p className="mt-3 text-xs text-textMuted">
                     {form.selectedCategorySlugs.length} categories · {form.imageFiles.length + existingProductImages.length} images · {form.status}
                   </p>
                 </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-accentSoft">Storefront</p>
+                <div className="rounded-card border border-line bg-surfaceMuted p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-textSubtle">Storefront</p>
                   <div className="mt-3 flex items-center gap-2 text-sm text-textStrong">
-                    <StoreIcon className="size-4 text-accentSoft" />
+                    <StoreIcon className="size-4 text-textMuted" />
                     {selectedStore?.name ?? "ODOS Official"}
                   </div>
                   <p className="mt-3 text-xs text-textMuted">

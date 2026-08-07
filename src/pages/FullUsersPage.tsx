@@ -1,4 +1,4 @@
-import { ArrowRight, Ban } from "lucide-react";
+import { ArrowRight, Ban, Shield, UserCheck, Users as UsersIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -11,7 +11,9 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
@@ -23,6 +25,7 @@ import {
   type UserDirectoryTab,
 } from "@/utils/userMetrics";
 import { formatDate } from "@/utils/format";
+import { formatPaginationRange } from "@/utils/paginationUi";
 
 const DIRECTORY_TABS = [
   { id: "all", label: "All" },
@@ -39,10 +42,12 @@ export function FullUsersPage() {
   const {
     items: users,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
   } = useInfiniteAdminList({
@@ -96,16 +101,52 @@ export function FullUsersPage() {
     }
   }
 
+  const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredUsers.length })}${
+    hasMore ? " · more pages available" : ""
+  }`;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <AdminFullHeader
-        eyebrow="Users"
+        eyebrow="People"
         title="Complete account registry"
         description={`${snapshot.totalUsers} accounts · open any user for orders, payments, reviews, returns, cart, wishlist, vendor record, wallet, and support threads.`}
         backRoute="/users"
         onRefresh={() => void refresh()}
         refreshing={isLoading}
       />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Total users"
+          value={String(snapshot.totalUsers)}
+          icon={UsersIcon}
+          animationDelay={40}
+        />
+        <StatCard
+          label="Active accounts"
+          value={String(snapshot.activeUsers)}
+          hint={`${snapshot.blockedUsers} blocked`}
+          icon={UserCheck}
+          tone="success"
+          animationDelay={80}
+        />
+        <StatCard
+          label="Vendors"
+          value={String(snapshot.vendors)}
+          hint={`${snapshot.pendingVendors} pending approval`}
+          icon={Shield}
+          animationDelay={120}
+        />
+        <StatCard
+          label="Customers"
+          value={String(snapshot.customers)}
+          hint={`${snapshot.admins} admin accounts`}
+          icon={UsersIcon}
+          tone="info"
+          animationDelay={160}
+        />
+      </div>
 
       <UserSectionNav
         sections={DIRECTORY_TABS.map((tab) => ({
@@ -144,14 +185,18 @@ export function FullUsersPage() {
       >
         <AdminInfiniteList
           compact
+          listSummary={listSummary}
           columns={[
             {
               key: "user",
               header: "User",
               render: (user) => (
-                <div>
-                  <p className="font-medium">{user.fullName}</p>
-                  <p className="text-xs text-textMuted">{user.email}</p>
+                <div className="flex items-center gap-3">
+                  <UserAvatar name={user.fullName} imageUrl={user.avatarUrl} />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-textStrong">{user.fullName}</p>
+                    <p className="text-xs text-textMuted">{user.email}</p>
+                  </div>
                 </div>
               ),
             },
@@ -161,7 +206,7 @@ export function FullUsersPage() {
               render: (user) => (
                 <div className="flex flex-wrap gap-1">
                   {user.roles.map((role) => (
-                    <StatusBadge key={role} status={role === "admin" ? "confirmed" : role} />
+                    <StatusBadge key={role} status={role === "admin" ? "admin" : role} />
                   ))}
                 </div>
               ),
@@ -179,30 +224,36 @@ export function FullUsersPage() {
             {
               key: "joined",
               header: "Joined",
-              render: (user) => formatDate(user.joinedAt),
+              render: (user) => (
+                <span className="text-textMuted">{formatDate(user.joinedAt)}</span>
+              ),
             },
             {
               key: "actions",
               header: "",
+              className: "text-right",
               render: (user) => (
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex items-center justify-end gap-1">
                   {!user.roles.includes("admin") ? (
                     <Button
                       variant="ghost"
-                      leftIcon={<Ban className="size-4" />}
+                      className="px-2.5"
+                      aria-label={user.accountStatus === "blocked" ? "Unblock user" : "Block user"}
                       onClick={(event) => {
                         event.stopPropagation();
                         setStatusTarget(user);
                       }}
                     >
-                      {user.accountStatus === "blocked" ? "Unblock" : "Block"}
+                      <Ban className="size-4" />
                     </Button>
                   ) : null}
                   <Button
-                    leftIcon={<ArrowRight className="size-4" />}
+                    variant="ghost"
+                    className="px-2.5"
+                    aria-label="Open full profile"
                     onClick={() => navigate(`/users/full/${user.id}`)}
                   >
-                    Full profile
+                    <ArrowRight className="size-4" />
                   </Button>
                 </div>
               ),
@@ -211,10 +262,12 @@ export function FullUsersPage() {
           data={filteredUsers}
           keyExtractor={(user) => user.id}
           isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
+          page={page}
+          pageSize={pageSize}
+          isLoadingPage={isLoadingPage}
           hasMore={hasMore}
           error={error}
-          onLoadMore={() => void loadMore()}
+          onPageChange={goToPage}
           onRetry={() => void refresh()}
           emptyTitle="No users found"
           emptyDescription="Try adjusting your search or filters."

@@ -25,10 +25,12 @@ export function FullPromoBannersPage() {
   const {
     items: banners,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
   } = useInfiniteAdminList({
@@ -130,7 +132,7 @@ export function FullPromoBannersPage() {
               header: "Banner",
               render: (banner) => (
                 <div className="flex items-center gap-4">
-                  <div className="size-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+                  <div className="size-14 overflow-hidden rounded-2xl border border-line bg-surfaceMuted">
                     {banner.imageUrl ? (
                       <img src={banner.imageUrl} alt={banner.title} className="size-full object-cover" />
                     ) : (
@@ -211,10 +213,12 @@ export function FullPromoBannersPage() {
           data={filteredBanners}
           keyExtractor={(banner) => banner.id}
           isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
+          page={page}
+          pageSize={pageSize}
+          isLoadingPage={isLoadingPage}
           hasMore={hasMore}
           error={error}
-          onLoadMore={() => void loadMore()}
+          onPageChange={goToPage}
           onRetry={() => void refresh()}
           emptyTitle="No promo banners found"
           emptyDescription="Create a banner in the studio or broaden the current filters."

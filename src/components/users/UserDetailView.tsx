@@ -1,10 +1,5 @@
 import {
-  BadgeCheck,
-  Bell,
   CreditCard,
-  Mail,
-  MapPin,
-  Phone,
   ShoppingBag,
   Store,
 } from "lucide-react";
@@ -13,8 +8,15 @@ import { useNavigate } from "react-router-dom";
 
 import { EntityTimeline } from "@/components/admin/EntityOps";
 import {
+  PreferenceToggle,
+  UserOverviewKpiRow,
+  UserProfileHero,
+  UserSnapshotGroup,
+  UserSnapshotMetric,
+} from "@/components/users/UserDossierUi";
+import { DetailFields } from "@/components/ui/DetailList";
+import {
   DetailTile,
-  getUserInitials,
   UserSectionNav,
   UserStatGrid,
 } from "@/components/users/UsersUi";
@@ -77,8 +79,8 @@ export function UserDetailView({ report }: UserDetailViewProps) {
   });
 
   return (
-    <div className="space-y-4">
-      <UserHero user={user} />
+    <div className="space-y-5">
+      <UserProfileHero user={user} />
 
       <UserSectionNav
         sections={visibleSections}
@@ -106,75 +108,6 @@ export function UserDetailView({ report }: UserDetailViewProps) {
   );
 }
 
-function UserHero({ user }: { user: AdminUserDetail }) {
-  return (
-    <SectionCard compact title="" description="" bodyClassName="p-0">
-      <div className="rounded-[28px] border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-950/40 to-accent/10 p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-start gap-4">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.fullName}
-                className="size-24 rounded-[28px] object-cover shadow-glow"
-              />
-            ) : (
-              <div className="flex size-24 items-center justify-center rounded-[28px] bg-white/10 text-2xl font-semibold text-textStrong">
-                {getUserInitials(user.fullName) || "U"}
-              </div>
-            )}
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-2xl font-semibold text-textStrong">{user.fullName}</h2>
-                {user.isVerified ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                    <BadgeCheck className="size-3.5" />
-                    Verified
-                  </span>
-                ) : null}
-                {user.phoneVerified ? (
-                  <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-200">
-                    Phone verified
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {user.roles.map((role) => (
-                  <StatusBadge key={role} status={role === "admin" ? "confirmed" : role} />
-                ))}
-                <StatusBadge status={user.accountStatus} />
-                <StatusBadge status={user.vendorStatus} />
-              </div>
-              <div className="mt-4 flex flex-col gap-2 text-sm text-textMuted">
-                <span className="inline-flex items-center gap-2">
-                  <Mail className="size-4" />
-                  {user.email}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <Phone className="size-4" />
-                  {user.phone ?? "No phone number"}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <MapPin className="size-4" />
-                  {[user.city, user.region].filter(Boolean).join(", ") || "No location saved"}
-                </span>
-              </div>
-            </div>
-          </div>
-          <UserStatGrid
-            items={[
-              { label: "Orders", value: String(user.stats.totalOrders) },
-              { label: "Total spent", value: formatCurrency(user.stats.totalSpent) },
-              { label: "Reviews", value: String(user.stats.totalReviews) },
-              { label: "Behavior events", value: String(user.behaviorEventCount) },
-            ]}
-          />
-        </div>
-      </div>
-    </SectionCard>
-  );
-}
-
 function OverviewSection({
   user,
   averageRating,
@@ -185,39 +118,50 @@ function OverviewSection({
   supportThreads: SupportChatThread[];
 }) {
   return (
-    <div className="space-y-4">
-      <SectionCard compact title="Account snapshot" description="Everything important at a glance">
-        <UserStatGrid
-          items={[
-            { label: "Joined", value: formatDate(user.joinedAt) },
-            {
-              label: "Last login",
-              value: user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Never",
-            },
-            { label: "Cart items", value: String(user.stats.totalCartItems) },
-            { label: "Wishlist", value: String(user.stats.totalWishlistItems) },
-            { label: "Saved addresses", value: String(user.stats.totalSavedAddresses) },
-            { label: "Payment methods", value: String(user.stats.totalSavedPaymentMethods) },
-            { label: "Notifications", value: String(user.stats.totalNotifications) },
-            { label: "Average rating", value: averageRating > 0 ? `${averageRating.toFixed(1)}/5` : "—" },
-            { label: "Return requests", value: String(user.returnRequests.length) },
-            { label: "Support threads", value: String(supportThreads.length) },
-            {
-              label: "Wallet balance",
-              value: user.customerWallet
-                ? formatCurrency(user.customerWallet.balance)
-                : "No wallet",
-            },
-            { label: "Auth providers", value: user.authProviders.join(", ") || "Password" },
-          ]}
-        />
+    <div className="space-y-5">
+      <UserOverviewKpiRow user={user} />
+
+      <SectionCard compact title="Account snapshot">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <UserSnapshotGroup title="Activity" description="Sessions & account">
+            <UserSnapshotMetric label="Joined" value={formatDate(user.joinedAt)} />
+            <UserSnapshotMetric
+              label="Last login"
+              value={user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Never"}
+            />
+            <UserSnapshotMetric label="Auth" value={user.authProviders.join(", ") || "Password"} />
+            <UserSnapshotMetric label="Behavior events" value={String(user.behaviorEventCount)} />
+          </UserSnapshotGroup>
+          <UserSnapshotGroup title="Commerce" description="Orders & wallet">
+            <UserSnapshotMetric label="Payment methods" value={String(user.stats.totalSavedPaymentMethods)} />
+            <UserSnapshotMetric label="Return requests" value={String(user.returnRequests.length)} />
+            <UserSnapshotMetric
+              label="Wallet balance"
+              value={
+                user.customerWallet ? formatCurrency(user.customerWallet.balance) : "No wallet"
+              }
+            />
+            <UserSnapshotMetric label="Avg rating given" value={averageRating > 0 ? `${averageRating.toFixed(1)}/5` : "—"} />
+          </UserSnapshotGroup>
+          <UserSnapshotGroup title="Support & alerts" description="Inbox & help">
+            <UserSnapshotMetric label="Notifications" value={String(user.stats.totalNotifications)} />
+            <UserSnapshotMetric label="Support threads" value={String(supportThreads.length)} />
+            <UserSnapshotMetric label="Personalization" value={user.personalizationEnabled ? "On" : "Off"} />
+            <UserSnapshotMetric label="Analytics tracking" value={user.analyticsEnabled ? "On" : "Off"} />
+          </UserSnapshotGroup>
+        </div>
       </SectionCard>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <SectionCard compact title="Recent orders" description={`${user.orders.length} total orders`}>
+        <SectionCard
+          compact
+          title="Recent orders"
+          description={`${user.orders.length} total on marketplace`}
+          bodyClassName="p-0"
+        >
           <OrderTable orders={user.orders.slice(0, 6)} compact />
         </SectionCard>
-        <SectionCard compact title="Recent activity signals" description="Latest notifications sent to this user">
+        <SectionCard compact title="Recent notifications" description="Latest signals to this account">
           <NotificationList notifications={user.notifications.slice(0, 6)} />
         </SectionCard>
       </div>
@@ -229,7 +173,7 @@ function ProfileSection({ user }: { user: AdminUserDetail }) {
   return (
     <div className="space-y-4">
       <SectionCard compact title="Personal profile" description="Identity, contact, and account metadata">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        <DetailFields columns={2}>
           <DetailTile label="Full name" value={user.fullName} />
           <DetailTile label="Email" value={user.email} />
           <DetailTile label="Phone" value={user.phone ?? "Not provided"} />
@@ -260,7 +204,7 @@ function ProfileSection({ user }: { user: AdminUserDetail }) {
           {user.vendorRejectionReason ? (
             <DetailTile label="Vendor rejection reason" value={user.vendorRejectionReason} />
           ) : null}
-        </div>
+        </DetailFields>
       </SectionCard>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -268,28 +212,26 @@ function ProfileSection({ user }: { user: AdminUserDetail }) {
           {user.addresses.length === 0 ? (
             <EmptyState title="No addresses" description="This user has not saved any delivery addresses." />
           ) : (
-            <div className="space-y-3">
+            <ul className="divide-y divide-line">
               {user.addresses.map((address) => (
-                <div key={address.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <li key={address.id} className="py-3 first:pt-0">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium">{address.label || "Saved address"}</p>
-                      <p className="mt-1 text-xs text-textMuted">
+                      <p className="text-xs text-textMuted">
                         {address.fullName} · {address.phone}
                       </p>
                     </div>
                     {address.isDefault ? (
-                      <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-[11px] text-accent">
-                        Default
-                      </span>
+                      <span className="text-[11px] text-accent">Default</span>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-sm">
+                  <p className="mt-1 text-sm text-textMuted">
                     {address.street}, {address.city}, {address.region}
                   </p>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </SectionCard>
 
@@ -299,7 +241,7 @@ function ProfileSection({ user }: { user: AdminUserDetail }) {
           ) : (
             <div className="space-y-3">
               {user.paymentMethods.map((method) => (
-                <div key={method.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <div key={method.id} className="rounded-xl border border-line bg-surfaceMuted p-4">
                   <div className="flex items-center gap-2 font-medium">
                     <CreditCard className="size-4 text-textMuted" />
                     {method.label}
@@ -347,7 +289,7 @@ function CommerceSection({ user }: { user: AdminUserDetail }) {
           ]}
         />
         {user.customerWallet ? (
-          <div className="mt-4 grid gap-2 md:grid-cols-4">
+          <DetailFields columns={4} className="mt-6 border-t border-line/80 pt-6">
             <DetailTile label="Lifetime top-ups" value={formatCurrency(user.customerWallet.lifetimeTopups)} />
             <DetailTile label="Lifetime spend" value={formatCurrency(user.customerWallet.lifetimeSpend)} />
             <DetailTile label="Lifetime refunds" value={formatCurrency(user.customerWallet.lifetimeRefunds)} />
@@ -355,7 +297,7 @@ function CommerceSection({ user }: { user: AdminUserDetail }) {
               label="Wallet transactions"
               value={String(user.customerWallet.transactionCount)}
             />
-          </div>
+          </DetailFields>
         ) : null}
       </SectionCard>
 
@@ -505,11 +447,11 @@ function EngagementSection({
           ) : (
             <div className="space-y-2">
               {user.cartItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-xl border border-white/10 p-3">
+                <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line p-3">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.title} className="size-12 rounded-lg object-cover" />
                   ) : (
-                    <div className="flex size-12 items-center justify-center rounded-lg bg-white/10">
+                    <div className="flex size-12 items-center justify-center rounded-lg bg-surfaceMuted">
                       <ShoppingBag className="size-4 text-textMuted" />
                     </div>
                   )}
@@ -531,11 +473,11 @@ function EngagementSection({
           ) : (
             <div className="space-y-2">
               {user.wishlistItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-xl border border-white/10 p-3">
+                <div key={item.id} className="flex items-center gap-3 rounded-xl border border-line p-3">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.title} className="size-12 rounded-lg object-cover" />
                   ) : (
-                    <div className="flex size-12 items-center justify-center rounded-lg bg-white/10">
+                    <div className="flex size-12 items-center justify-center rounded-lg bg-surfaceMuted">
                       <ShoppingBag className="size-4 text-textMuted" />
                     </div>
                   )}
@@ -558,7 +500,7 @@ function VendorSection({ user }: { user: AdminUserDetail }) {
     <div className="space-y-4">
       {user.vendorApplication ? (
         <SectionCard compact title="Vendor application" description="Full vendor onboarding submission">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <DetailFields columns={2}>
             <DetailTile label="Business name" value={user.vendorApplication.businessName} />
             <DetailTile label="Category" value={user.vendorApplication.businessCategory} />
             <DetailTile label="Status" value={<StatusBadge status={user.vendorApplication.status} />} />
@@ -579,8 +521,8 @@ function VendorSection({ user }: { user: AdminUserDetail }) {
             {user.vendorApplication.rejectionReason ? (
               <DetailTile label="Rejection reason" value={user.vendorApplication.rejectionReason} />
             ) : null}
-          </div>
-          <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm leading-6">
+          </DetailFields>
+          <p className="mt-6 border-t border-line/80 pt-6 text-sm leading-relaxed text-textMuted">
             {user.vendorApplication.businessDescription}
           </p>
         </SectionCard>
@@ -590,11 +532,11 @@ function VendorSection({ user }: { user: AdminUserDetail }) {
         <SectionCard compact title="Linked stores" description="Stores owned by this vendor account">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {user.stores.map((store) => (
-              <div key={store.id} className="overflow-hidden rounded-2xl border border-white/10">
+              <div key={store.id} className="overflow-hidden rounded-2xl border border-line">
                 {store.bannerImage ? (
                   <img src={store.bannerImage} alt={store.name} className="h-24 w-full object-cover" />
                 ) : (
-                  <div className="flex h-24 items-center justify-center bg-white/[0.03]">
+                  <div className="flex h-24 items-center justify-center bg-surfaceMuted">
                     <Store className="size-5 text-textMuted" />
                   </div>
                 )}
@@ -634,27 +576,10 @@ function SettingsSection({ user }: { user: AdminUserDetail }) {
   ];
 
   return (
-    <SectionCard compact title="Preferences & privacy" description="Notification and tracking settings for this account">
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+    <SectionCard compact title="Preferences & privacy" description="Notification and tracking settings">
+      <div className="grid gap-2 md:grid-cols-2">
         {toggles.map(({ label, enabled }) => (
-          <div
-            key={label}
-            className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3"
-          >
-            <span className="inline-flex items-center gap-2 text-sm">
-              <Bell className="size-4 text-textMuted" />
-              {label}
-            </span>
-            <span
-              className={
-                enabled
-                  ? "rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200"
-                  : "rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-textMuted"
-              }
-            >
-              {enabled ? "On" : "Off"}
-            </span>
-          </div>
+          <PreferenceToggle key={label} label={label} enabled={enabled} />
         ))}
       </div>
     </SectionCard>
@@ -681,7 +606,7 @@ function SupportSection({
     >
       <div className="space-y-2">
         {threads.map((thread) => (
-          <div key={thread.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div key={thread.id} className="rounded-xl border border-line bg-surfaceMuted p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-medium">{thread.subject ?? "Support request"}</p>
@@ -714,7 +639,7 @@ function OrderTable({ orders, compact = false }: { orders: Order[]; compact?: bo
               className="text-left"
               onClick={() => navigate(`/orders/full/${order.id}`)}
             >
-              <p className="font-medium text-accentSoft">{order.orderNumber}</p>
+              <p className="font-medium text-accent">{order.orderNumber}</p>
               <p className="text-xs text-textMuted">{order.storeName}</p>
             </button>
           ),
@@ -754,7 +679,7 @@ function NotificationList({ notifications }: { notifications: AdminUserNotificat
   return (
     <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
       {notifications.map((notification) => (
-        <div key={notification.id} className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5">
+        <div key={notification.id} className="rounded-xl border border-line bg-surfaceMuted px-3 py-2.5">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-sm font-medium">{notification.title}</p>

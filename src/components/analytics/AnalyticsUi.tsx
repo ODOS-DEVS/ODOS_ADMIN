@@ -1,5 +1,7 @@
 import clsx from "clsx";
 
+import { SkeletonBlock, SkeletonGrid } from "@/components/ui/Skeleton";
+
 type MetricBarProps = {
   label: string;
   value: number;
@@ -9,12 +11,13 @@ type MetricBarProps = {
   animationDelay?: number;
 };
 
+/** Tone keys map onto the app's semantic status tokens — no raw Tailwind palette colors. */
 const toneClasses = {
-  sky: "bg-gradient-to-r from-sky-400/90 to-cyan-300/90",
-  amber: "bg-gradient-to-r from-amber-400/90 to-orange-300/90",
-  emerald: "bg-gradient-to-r from-emerald-400/90 to-lime-300/90",
-  accent: "bg-gradient-to-r from-accent/90 to-amber-300/90",
-  fuchsia: "bg-gradient-to-r from-fuchsia-400/90 to-pink-300/90",
+  sky: "bg-info",
+  amber: "bg-warning",
+  emerald: "bg-success",
+  accent: "bg-accent",
+  fuchsia: "bg-danger",
 };
 
 export function MetricBar({
@@ -36,7 +39,7 @@ export function MetricBar({
         <span className="capitalize text-textMuted">{label}</span>
         <span className="shrink-0 font-medium tabular-nums text-textStrong">{displayValue}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="h-2 overflow-hidden rounded-full bg-line/80">
         <div
           className={clsx("h-full rounded-full transition-[width] duration-700 ease-out", toneClasses[tone])}
           style={{ width: `${width}%` }}
@@ -60,10 +63,10 @@ export function MetricRow({
   animationDelay?: number;
 }) {
   const toneBorder = {
-    default: "border-white/10",
-    success: "border-success/25 bg-success/[0.04]",
-    warning: "border-warning/25 bg-warning/[0.04]",
-    info: "border-info/25 bg-info/[0.04]",
+    default: "border-line bg-surface",
+    success: "border-success/25 bg-success-soft",
+    warning: "border-warning/25 bg-warning-soft",
+    info: "border-info/25 bg-info-soft",
   };
 
   return (
@@ -96,13 +99,13 @@ export function InsightPill({
 }) {
   return (
     <div
-      className="animate-fade-up opacity-0 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5"
+      className="animate-fade-up opacity-0 py-1"
       style={{ animationDelay: `${animationDelay}ms` }}
       title={hint}
     >
-      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-textMuted">{label}</p>
-      <p className="mt-1 text-lg font-semibold tabular-nums text-textStrong">{value}</p>
-      {hint ? <p className="mt-1 line-clamp-1 text-[11px] text-textMuted">{hint}</p> : null}
+      <p className="text-xs text-textMuted">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums text-textStrong">{value}</p>
+      {hint ? <p className="mt-0.5 line-clamp-1 text-xs text-textSubtle">{hint}</p> : null}
     </div>
   );
 }
@@ -118,7 +121,7 @@ export function DistributionList({
 }) {
   if (items.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-textMuted">
+      <p className="rounded-xl border border-dashed border-line bg-surfaceMuted px-3 py-5 text-center text-xs text-textMuted">
         {emptyLabel}
       </p>
     );
@@ -145,27 +148,14 @@ export function DistributionList({
 
 export function AnalyticsSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="h-14 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={`analytics-kpi-${index}`}
-            className="h-24 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
-          />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={`analytics-pill-${index}`} className="h-16 animate-pulse rounded-xl bg-white/[0.03]" />
-        ))}
-      </div>
+    <div className="space-y-5">
+      <SkeletonBlock className="h-48 rounded-panel" />
+      <SkeletonGrid count={4} className="grid grid-cols-2 gap-3 lg:grid-cols-4" tileClassName="h-28 rounded-2xl" />
       <div className="grid gap-4 xl:grid-cols-12">
-        <div className="h-64 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] xl:col-span-8" />
-        <div className="h-64 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] xl:col-span-4" />
-        <div className="h-56 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] xl:col-span-7" />
-        <div className="h-56 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] xl:col-span-5" />
+        <SkeletonBlock className="h-72 rounded-2xl xl:col-span-8" />
+        <SkeletonBlock className="h-72 rounded-2xl xl:col-span-4" />
       </div>
+      <SkeletonBlock className="h-64 rounded-2xl" />
     </div>
   );
 }
@@ -173,13 +163,10 @@ export function AnalyticsSkeleton() {
 export function FullAnalyticsSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-20 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
-      <div className="h-10 animate-pulse rounded-xl border border-white/10 bg-white/[0.03]" />
+      <SkeletonBlock className="h-20 rounded-2xl" />
+      <SkeletonBlock className="h-10 rounded-xl" />
       {Array.from({ length: 8 }).map((_, index) => (
-        <div
-          key={`full-analytics-section-${index}`}
-          className="h-48 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
-        />
+        <SkeletonBlock key={`full-analytics-section-${index}`} className="h-48 rounded-2xl" />
       ))}
     </div>
   );
@@ -209,32 +196,49 @@ export function StatGrid({
 }
 
 export function ReportSectionNav({
-  sections,
+  groups,
   activeId,
   onSelect,
 }: {
-  sections: Array<{ id: string; label: string }>;
+  groups: Array<{ label: string; sections: Array<{ id: string; label: string }> }>;
   activeId?: string;
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="sticky top-0 z-20 -mx-1 overflow-x-auto px-1 pb-1">
-      <div className="flex min-w-max gap-1 rounded-xl border border-white/10 bg-surface/95 p-1 backdrop-blur-md">
-        {sections.map((section) => (
-          <button
-            key={section.id}
-            type="button"
-            onClick={() => onSelect(section.id)}
-            className={clsx(
-              "rounded-lg px-3 py-2 text-xs font-medium transition",
-              activeId === section.id
-                ? "bg-accent/15 text-accentSoft"
-                : "text-textMuted hover:bg-white/[0.04] hover:text-textStrong",
-            )}
-          >
-            {section.label}
-          </button>
-        ))}
+    <div className="sticky top-0 z-20 overflow-hidden rounded-2xl border border-line/80 bg-surface/95 shadow-sm backdrop-blur-sm">
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max items-center gap-1 p-2">
+          {groups.map((group, groupIndex) => (
+            <div key={group.label} className="flex items-center gap-1">
+              {groupIndex > 0 ? (
+                <div
+                  className="mx-1 flex shrink-0 flex-col items-center gap-0.5 px-1"
+                  aria-hidden
+                >
+                  <span className="h-8 w-px bg-line" />
+                </div>
+              ) : null}
+              <span className="hidden shrink-0 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-textSubtle sm:inline">
+                {group.label}
+              </span>
+              {group.sections.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => onSelect(section.id)}
+                  className={clsx(
+                    "shrink-0 rounded-xl px-3.5 py-2 text-xs font-medium transition",
+                    activeId === section.id
+                      ? "bg-accent text-accentForeground shadow-sm"
+                      : "text-textMuted hover:bg-surfaceMuted hover:text-textStrong",
+                  )}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

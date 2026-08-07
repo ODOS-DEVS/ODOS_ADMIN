@@ -14,8 +14,8 @@ export function ErrorState({
   onRetry,
 }: ErrorStateProps) {
   return (
-    <div className="rounded-3xl border border-red-400/20 bg-red-500/5 px-6 py-12 text-center">
-      <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-200">
+    <div className="rounded-2xl border border-danger/20 bg-danger-soft px-6 py-12 text-center">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-danger/10 text-danger">
         <AlertTriangle className="size-5" />
       </div>
       <h3 className="mt-4 text-lg font-semibold text-textStrong">{title}</h3>

@@ -27,10 +27,12 @@ export function FullFinancePage() {
   const {
     items: payments,
     isLoading: isPaymentsLoading,
-    isLoadingMore: isPaymentsLoadingMore,
+    page: paymentsPage,
+    pageSize: paymentsPageSize,
+    isLoadingPage: isPaymentsLoadingPage,
     hasMore: hasMorePayments,
     error: paymentsError,
-    loadMore: loadMorePayments,
+    goToPage: goToPaymentsPage,
     refresh: refreshPayments,
   } = useInfiniteAdminList({
     loadPage: getPaymentTransactionsPage,
@@ -40,10 +42,12 @@ export function FullFinancePage() {
   const {
     items: ledger,
     isLoading: isLedgerLoading,
-    isLoadingMore: isLedgerLoadingMore,
+    page: ledgerPage,
+    pageSize: ledgerPageSize,
+    isLoadingPage: isLedgerLoadingPage,
     hasMore: hasMoreLedger,
     error: ledgerError,
-    loadMore: loadMoreLedger,
+    goToPage: goToLedgerPage,
     refresh: refreshLedger,
   } = useInfiniteAdminList({
     loadPage: getPlatformLedgerEntriesPage,
@@ -105,7 +109,7 @@ export function FullFinancePage() {
       />
 
       <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Treasury cash</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">
             {formatCurrency(overview.currentBalance, overview.currency)}
@@ -114,7 +118,7 @@ export function FullFinancePage() {
             Cash still controlled by ODOS after processor fees, refunds, and vendor payouts.
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Vendor liability</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">
             {formatCurrency(overview.vendorLiabilityBalance, overview.currency)}
@@ -123,7 +127,7 @@ export function FullFinancePage() {
             Money ODOS still owes vendors across held and withdrawable balances.
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">ODOS commission</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">
             {formatCurrency(overview.commissionBalance, overview.currency)}
@@ -132,7 +136,7 @@ export function FullFinancePage() {
             Platform commission retained before any separate business expense accounting.
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Gross collected</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">
             {formatCurrency(overview.grossCollectedTotal, overview.currency)}
@@ -144,25 +148,25 @@ export function FullFinancePage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
           <p className="text-sm text-textMuted">Processor fees</p>
           <p className="mt-3 text-2xl font-semibold text-textStrong">
             {formatCurrency(overview.processorFeeTotal, overview.currency)}
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
           <p className="text-sm text-textMuted">Refunded</p>
           <p className="mt-3 text-2xl font-semibold text-textStrong">
             {formatCurrency(overview.refundedTotal, overview.currency)}
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
           <p className="text-sm text-textMuted">Pending withdrawals</p>
           <p className="mt-3 text-2xl font-semibold text-textStrong">
             {formatCurrency(overview.pendingWithdrawalTotal, overview.currency)}
           </p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
           <p className="text-sm text-textMuted">Approved awaiting payout</p>
           <p className="mt-3 text-2xl font-semibold text-textStrong">
             {formatCurrency(overview.approvedWithdrawalTotal, overview.currency)}
@@ -175,17 +179,17 @@ export function FullFinancePage() {
         description="This shows the verified transaction stream coming in from the payment rail."
       >
         <div className="grid gap-4 xl:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="rounded-2xl border border-line bg-surfaceMuted p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Paid orders</p>
             <p className="mt-3 text-2xl font-semibold text-textStrong">{overview.paidOrderCount}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="rounded-2xl border border-line bg-surfaceMuted p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Paid order volume</p>
             <p className="mt-3 text-2xl font-semibold text-textStrong">
               {formatCurrency(overview.paidOrderVolume, overview.currency)}
             </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="rounded-2xl border border-line bg-surfaceMuted p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Vendor payouts sent</p>
             <p className="mt-3 flex items-center gap-2 text-2xl font-semibold text-textStrong">
               <Wallet className="size-5 text-accent" />
@@ -268,10 +272,12 @@ export function FullFinancePage() {
           data={payments}
           keyExtractor={(payment) => payment.id}
           isLoading={isPaymentsLoading}
-          isLoadingMore={isPaymentsLoadingMore}
+          page={paymentsPage}
+          pageSize={paymentsPageSize}
+          isLoadingPage={isPaymentsLoadingPage}
           hasMore={hasMorePayments}
           error={paymentsError}
-          onLoadMore={() => void loadMorePayments()}
+          onPageChange={goToPaymentsPage}
           onRetry={() => void refreshPayments()}
           emptyTitle="No verified payments yet"
           emptyDescription="Once a shopper completes checkout, the payment record will appear here."
@@ -345,10 +351,12 @@ export function FullFinancePage() {
           data={ledger}
           keyExtractor={(entry) => entry.id}
           isLoading={isLedgerLoading}
-          isLoadingMore={isLedgerLoadingMore}
+          page={ledgerPage}
+          pageSize={ledgerPageSize}
+          isLoadingPage={isLedgerLoadingPage}
           hasMore={hasMoreLedger}
           error={ledgerError}
-          onLoadMore={() => void loadMoreLedger()}
+          onPageChange={goToLedgerPage}
           onRetry={() => void refreshLedger()}
           emptyTitle="No ledger entries yet"
           emptyDescription="Once a payment, refund, or payout runs through the system, the ledger trail will appear here."

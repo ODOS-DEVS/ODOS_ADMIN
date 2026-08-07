@@ -1,4 +1,4 @@
-import { Edit3, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Edit3, Plus, Trash2, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -7,6 +7,11 @@ import {
   getFlashSaleEventsPage,
   updateFlashSaleEvent,
 } from "@/api/flashSaleEventsApi";
+import {
+  getFlashSaleNominationsPage,
+  reviewFlashSaleNomination,
+  type FlashSaleNomination,
+} from "@/api/flashSaleNominationsApi";
 import { getProducts } from "@/api/productsApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +27,8 @@ import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useToast } from "@/hooks/useToast";
 import type { FlashSaleEvent, Product } from "@/types";
 import { formatDate } from "@/utils/format";
+
+type PageView = "events" | "nominations";
 
 type FlashSaleEventFormValues = {
   slug: string;
@@ -75,13 +82,16 @@ function eventWindowLabel(event: FlashSaleEvent) {
 export function FullFlashSaleEventsPage() {
   const { token } = useAdminAuth();
   const { showToast } = useToast();
+  const [view, setView] = useState<PageView>("events");
   const {
     items: events,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
     removeItem,
@@ -89,7 +99,31 @@ export function FullFlashSaleEventsPage() {
   } = useInfiniteAdminList({
     loadPage: getFlashSaleEventsPage,
     getId: (event) => event.id,
+    enabled: view === "events",
   });
+  const {
+    items: nominations,
+    isLoading: isLoadingNominations,
+    page: nominationsPage,
+    pageSize: nominationsPageSize,
+    isLoadingPage: isLoadingNominationsPage,
+    hasMore: nominationsHasMore,
+    error: nominationsError,
+    goToPage: goToNominationsPage,
+    refresh: refreshNominations,
+    replaceItem: replaceNomination,
+  } = useInfiniteAdminList({
+    loadPage: getFlashSaleNominationsPage,
+    getId: (nomination) => nomination.id,
+    enabled: view === "nominations",
+  });
+  const [nominationStatusFilter, setNominationStatusFilter] = useState("pending");
+  const [approvingNomination, setApprovingNomination] = useState<FlashSaleNomination | null>(null);
+  const [approveEventId, setApproveEventId] = useState("");
+  const [approvePrice, setApprovePrice] = useState("");
+  const [approveOldPrice, setApproveOldPrice] = useState("");
+  const [approveStockLimit, setApproveStockLimit] = useState("");
+  const [nominationActionLoading, setNominationActionLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -124,6 +158,103 @@ export function FullFlashSaleEventsPage() {
       return matchesQuery && matchesStatus;
     });
   }, [events, query, statusFilter]);
+
+  const filteredNominations = useMemo(() => {
+    if (nominationStatusFilter === "all") return nominations;
+    return nominations.filter((nomination) => nomination.status === nominationStatusFilter);
+  }, [nominationStatusFilter, nominations]);
+
+  const pendingNominationCount = useMemo(
+    () => nominations.filter((nomination) => nomination.status === "pending").length,
+    [nominations],
+  );
+
+  function openApproveModal(nomination: FlashSaleNomination) {
+    setApprovingNomination(nomination);
+    setApproveEventId(nomination.eventId ?? "");
+    setApprovePrice(nomination.proposedPrice != null ? String(nomination.proposedPrice) : "");
+    setApproveOldPrice(
+      nomination.proposedOldPrice != null ? String(nomination.proposedOldPrice) : "",
+    );
+    setApproveStockLimit(nomination.stockLimit != null ? String(nomination.stockLimit) : "");
+  }
+
+  async function handleApproveNomination() {
+    if (!token || !approvingNomination) return;
+    if (!approveEventId.trim()) {
+      showToast({
+        title: "Choose an event",
+        description: "An approved nomination needs a flash sale event to belong to.",
+        tone: "error",
+      });
+      return;
+    }
+    if (!approvePrice.trim()) {
+      showToast({
+        title: "Flash price required",
+        description: "Set the flash sale price before approving.",
+        tone: "error",
+      });
+      return;
+    }
+
+    setNominationActionLoading(true);
+    try {
+      const updated = await reviewFlashSaleNomination(token, approvingNomination.id, {
+        status: "approved",
+        eventId: approveEventId,
+        flashSalePrice: Number(approvePrice),
+        flashSaleOldPrice: approveOldPrice.trim() ? Number(approveOldPrice) : null,
+        stockLimit: approveStockLimit.trim() ? Number(approveStockLimit) : null,
+      });
+      replaceNomination(updated);
+      showToast({
+        title: "Nomination approved",
+        description: `${updated.productTitle ?? "Product"} is now live in the flash sale.`,
+        tone: "success",
+      });
+      setApprovingNomination(null);
+    } catch (approveError) {
+      showToast({
+        title: "Unable to approve nomination",
+        description: approveError instanceof Error ? approveError.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setNominationActionLoading(false);
+    }
+  }
+
+  async function handleRejectNomination(nomination: FlashSaleNomination) {
+    if (!token) return;
+    const entered = window.prompt(
+      `Optional rejection note for ${nomination.productTitle ?? "this nomination"}`,
+      nomination.reviewNotes ?? "",
+    );
+    if (entered === null) return;
+
+    setNominationActionLoading(true);
+    try {
+      const updated = await reviewFlashSaleNomination(token, nomination.id, {
+        status: "rejected",
+        reviewNotes: entered.trim() || null,
+      });
+      replaceNomination(updated);
+      showToast({
+        title: "Nomination rejected",
+        description: `${nomination.productTitle ?? "The product"} was not selected for this flash sale.`,
+        tone: "success",
+      });
+    } catch (rejectError) {
+      showToast({
+        title: "Unable to reject nomination",
+        description: rejectError instanceof Error ? rejectError.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setNominationActionLoading(false);
+    }
+  }
 
   const filteredProducts = useMemo(() => {
     const normalized = productQuery.trim().toLowerCase();
@@ -269,15 +400,154 @@ export function FullFlashSaleEventsPage() {
         title="Complete flash sale calendar"
         description="Every flash event, product roster, and schedule."
         backRoute="/flash-sale-events"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
+        onRefresh={() => void (view === "events" ? refresh() : refreshNominations())}
+        refreshing={view === "events" ? isLoading : isLoadingNominations}
         actions={
-          <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
-            Create event
-          </Button>
+          view === "events" ? (
+            <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
+              Create event
+            </Button>
+          ) : undefined
         }
       />
 
+      <div className="flex gap-2">
+        <Button
+          variant={view === "events" ? "primary" : "secondary"}
+          onClick={() => setView("events")}
+        >
+          Events
+        </Button>
+        <Button
+          variant={view === "nominations" ? "primary" : "secondary"}
+          onClick={() => setView("nominations")}
+        >
+          Vendor nominations
+          {pendingNominationCount > 0 ? ` (${pendingNominationCount})` : ""}
+        </Button>
+      </div>
+
+      {view === "nominations" ? (
+        <SectionCard
+          title="Vendor flash sale nominations"
+          description="Approve to publish the vendor's flash price into an event, or reject with an optional note."
+          action={
+            <FilterSelect
+              value={nominationStatusFilter}
+              onChange={(event) => setNominationStatusFilter(event.target.value)}
+              options={[
+                { label: "Pending", value: "pending" },
+                { label: "Approved", value: "approved" },
+                { label: "Rejected", value: "rejected" },
+                { label: "All", value: "all" },
+              ]}
+            />
+          }
+        >
+          <AdminInfiniteList
+            columns={[
+              {
+                key: "product",
+                header: "Product",
+                render: (nomination) => (
+                  <div>
+                    <p className="font-medium">{nomination.productTitle ?? nomination.productId}</p>
+                    <p className="mt-1 text-xs text-textMuted">
+                      {nomination.vendorName ?? nomination.vendorUserId}
+                    </p>
+                    {nomination.eventTitle ? (
+                      <p className="mt-1 text-xs text-textMuted">Event: {nomination.eventTitle}</p>
+                    ) : null}
+                  </div>
+                ),
+              },
+              {
+                key: "pricing",
+                header: "Proposed pricing",
+                render: (nomination) => (
+                  <div className="text-sm">
+                    {nomination.proposedPrice != null ? (
+                      <p className="font-medium">GHS {nomination.proposedPrice.toFixed(2)}</p>
+                    ) : (
+                      <p className="text-textMuted">Not set</p>
+                    )}
+                    {nomination.proposedOldPrice != null ? (
+                      <p className="text-xs text-textMuted">
+                        was GHS {nomination.proposedOldPrice.toFixed(2)}
+                      </p>
+                    ) : null}
+                  </div>
+                ),
+              },
+              {
+                key: "stock",
+                header: "Stock cap",
+                render: (nomination) =>
+                  nomination.stockLimit != null ? (
+                    <div className="text-sm">
+                      <p className="font-medium">
+                        {nomination.unitsSold ?? 0} / {nomination.stockLimit} sold
+                      </p>
+                      {nomination.unitsRemaining != null ? (
+                        <p className="text-xs text-textMuted">
+                          {nomination.unitsRemaining} left
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="text-textMuted">Unlimited</span>
+                  ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (nomination) => <StatusBadge status={nomination.status} />,
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (nomination) =>
+                  nomination.status === "pending" ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        leftIcon={<CheckCircle2 className="size-4" />}
+                        onClick={() => openApproveModal(nomination)}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="danger"
+                        leftIcon={<XCircle className="size-4" />}
+                        onClick={() => void handleRejectNomination(nomination)}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-textMuted">
+                      {nomination.reviewNotes || "Reviewed"}
+                    </span>
+                  ),
+              },
+            ]}
+            data={filteredNominations}
+            keyExtractor={(nomination) => nomination.id}
+            isLoading={isLoadingNominations}
+            page={nominationsPage}
+            pageSize={nominationsPageSize}
+            isLoadingPage={isLoadingNominationsPage}
+            hasMore={nominationsHasMore}
+            error={nominationsError}
+            onPageChange={goToNominationsPage}
+            onRetry={() => void refreshNominations()}
+            emptyTitle="No nominations found"
+            emptyDescription="Vendor flash sale submissions will appear here for review."
+          />
+        </SectionCard>
+      ) : null}
+
+      {view === "events" ? (
       <SectionCard
         title="Event library"
         description="Lower sort order values appear first. Products only surface while the event window is live."
@@ -363,15 +633,99 @@ export function FullFlashSaleEventsPage() {
             data={filteredEvents}
             keyExtractor={(event) => event.id}
             isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
+            page={page}
+            pageSize={pageSize}
+            isLoadingPage={isLoadingPage}
             hasMore={hasMore}
             error={error}
-            onLoadMore={() => void loadMore()}
+            onPageChange={goToPage}
             onRetry={() => void refresh()}
             emptyTitle="No flash sale events found"
             emptyDescription="Create an event or adjust the filters."
           />
       </SectionCard>
+      ) : null}
+
+      <Modal
+        open={Boolean(approvingNomination)}
+        title="Approve flash sale nomination"
+        description={
+          approvingNomination
+            ? `${approvingNomination.productTitle ?? "This product"} will go live at the flash price below.`
+            : undefined
+        }
+        onClose={() => setApprovingNomination(null)}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => setApprovingNomination(null)}>
+              Cancel
+            </Button>
+            <Button
+              isLoading={nominationActionLoading}
+              onClick={() => void handleApproveNomination()}
+            >
+              Approve
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <label className="block space-y-2">
+            <span className="text-sm text-textMuted">Flash sale event</span>
+            <select
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
+              value={approveEventId}
+              onChange={(event) => setApproveEventId(event.target.value)}
+            >
+              <option value="">Select an event</option>
+              {events.map((eventOption) => (
+                <option key={eventOption.id} value={eventOption.id}>
+                  {eventOption.title}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block space-y-2">
+              <span className="text-sm text-textMuted">Flash price (GHS)</span>
+              <input
+                type="number"
+                min={0}
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
+                value={approvePrice}
+                onChange={(event) => setApprovePrice(event.target.value)}
+              />
+            </label>
+            <label className="block space-y-2">
+              <span className="text-sm text-textMuted">Was price (GHS, optional)</span>
+              <input
+                type="number"
+                min={0}
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
+                value={approveOldPrice}
+                onChange={(event) => setApproveOldPrice(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <label className="block space-y-2">
+            <span className="text-sm text-textMuted">Stock cap (optional)</span>
+            <input
+              type="number"
+              min={0}
+              placeholder="Leave blank for unlimited"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
+              value={approveStockLimit}
+              onChange={(event) => setApproveStockLimit(event.target.value)}
+            />
+            <span className="text-xs text-textMuted">
+              Once this many units sell at the flash price, the item automatically reverts to its
+              regular price.
+            </span>
+          </label>
+        </div>
+      </Modal>
 
       <Modal
         open={isEditorOpen}
@@ -403,7 +757,7 @@ export function FullFlashSaleEventsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Title</span>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={eventForm.title}
               onChange={(event) =>
                 setEventForm((current) => ({
@@ -418,7 +772,7 @@ export function FullFlashSaleEventsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Slug</span>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={eventForm.slug}
               onChange={(event) =>
                 setEventForm((current) => ({ ...current, slug: slugify(event.target.value) }))
@@ -429,7 +783,7 @@ export function FullFlashSaleEventsPage() {
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Subtitle</span>
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+              className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
               value={eventForm.subtitle}
               onChange={(event) =>
                 setEventForm((current) => ({ ...current, subtitle: event.target.value }))
@@ -442,7 +796,7 @@ export function FullFlashSaleEventsPage() {
               <span className="text-sm text-textMuted">Starts at</span>
               <input
                 type="datetime-local"
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={eventForm.startsAt}
                 onChange={(event) =>
                   setEventForm((current) => ({ ...current, startsAt: event.target.value }))
@@ -453,7 +807,7 @@ export function FullFlashSaleEventsPage() {
               <span className="text-sm text-textMuted">Ends at</span>
               <input
                 type="datetime-local"
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={eventForm.endsAt}
                 onChange={(event) =>
                   setEventForm((current) => ({ ...current, endsAt: event.target.value }))
@@ -468,7 +822,7 @@ export function FullFlashSaleEventsPage() {
               <input
                 type="number"
                 min={0}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={eventForm.sortOrder}
                 onChange={(event) =>
                   setEventForm((current) => ({
@@ -481,7 +835,7 @@ export function FullFlashSaleEventsPage() {
             <label className="block space-y-2">
               <span className="text-sm text-textMuted">Status</span>
               <select
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-textStrong outline-none"
+                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
                 value={eventForm.status}
                 onChange={(event) =>
                   setEventForm((current) => ({
@@ -511,14 +865,14 @@ export function FullFlashSaleEventsPage() {
                 className="sm:w-72"
               />
             </div>
-            <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-white/10 p-3">
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-line p-3">
               {filteredProducts.length === 0 ? (
                 <p className="text-sm text-textMuted">No active products match this search.</p>
               ) : (
                 filteredProducts.map((product) => (
                   <label
                     key={product.id}
-                    className="flex cursor-pointer items-start gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.04]"
+                    className="flex cursor-pointer items-start gap-3 rounded-xl px-2 py-2 hover:bg-surfaceMuted"
                   >
                     <input
                       type="checkbox"

@@ -19,12 +19,14 @@ type InfiniteDataTableProps<T> = {
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
+  listSummary?: string;
 };
 
 export function InfiniteDataTable<T>({
   hasMore,
   isLoadingMore,
   onLoadMore,
+  listSummary,
   ...tableProps
 }: InfiniteDataTableProps<T>) {
   return (
@@ -34,6 +36,7 @@ export function InfiniteDataTable<T>({
         hasMore={hasMore}
         isLoadingMore={isLoadingMore}
         onLoadMore={onLoadMore}
+        summary={listSummary}
       />
     </>
   );

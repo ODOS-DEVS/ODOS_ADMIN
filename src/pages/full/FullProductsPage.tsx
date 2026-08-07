@@ -1,10 +1,10 @@
 import {
   CheckCircle2,
   Clock3,
-  Edit3,
   Mail,
   MapPin,
-  Sparkles,
+  Package,
+  Plus,
   Star,
   Tag,
   UserRound,
@@ -15,12 +15,20 @@ import { useNavigate } from "react-router-dom";
 import { getCategories } from "@/api/categoriesApi";
 import { getProduct, getProductsPage, updateProductStatus } from "@/api/productsApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
+import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
+import {
+  ProductNameCell,
+  ProductsDirectorySkeleton,
+  ProductTableActions,
+} from "@/components/products/ProductsDirectoryUi";
 import { Button } from "@/components/ui/Button";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { TABLE_ACTIONS_COLUMN_CLASS_WIDE } from "@/components/ui/IconButton";
+import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { Modal } from "@/components/ui/Modal";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
@@ -28,16 +36,13 @@ import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { Category, Product, ProductStatus } from "@/types";
 import { formatCurrency, formatDate } from "@/utils/format";
+import { formatPaginationRange } from "@/utils/paginationUi";
 import { normalizeTaxonomyValue } from "@/utils/productStudio";
 
-function ProductDetailRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
-      <div className="mt-2 text-sm text-textStrong">{value}</div>
-    </div>
-  );
-}
+import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
+
+const TOOLBAR_CONTROL_CLASS =
+  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
 
 export function FullProductsPage() {
   const { token } = useAdminAuth();
@@ -46,10 +51,12 @@ export function FullProductsPage() {
   const {
     items: products,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
   } = useInfiniteAdminList({
@@ -138,6 +145,16 @@ export function FullProductsPage() {
     });
   }, [categoriesBySlug, categoryFilter, products, query, statusFilter, stockFilter]);
 
+  const snapshot = useMemo(() => {
+    const active = products.filter((product) => product.status === "active").length;
+    const pending = products.filter((product) => product.status === "pending").length;
+    return { total: products.length, active, pending };
+  }, [products]);
+
+  const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredProducts.length })}${
+    hasMore ? " · more pages available" : ""
+  }`;
+
   function closeProductDetail() {
     setSelectedProduct(null);
     setProductDetailError(null);
@@ -204,7 +221,7 @@ export function FullProductsPage() {
         title: nextStatus === "active" && product.status === "pending" ? "Product approved" : "Product updated",
         description:
           nextStatus === "active" && product.status === "pending"
-            ? `${updated.name} is now approved and can appear across ODOS.`
+            ? `${updated.name} is approved and active.`
             : `${updated.name} is now ${nextStatus}.`,
         tone: "success",
       });
@@ -219,176 +236,171 @@ export function FullProductsPage() {
     }
   }
 
+  if (isLoading && products.length === 0) {
+    return <ProductsDirectorySkeleton />;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminFullHeader
         eyebrow="Products"
-        title="Complete product catalog"
-        description="Browse, create, edit in studio, and inspect every product listing."
+        title="Product list"
+        description={`${snapshot.total} loaded · ${snapshot.pending} pending approval · search, filter, edit, or change status.`}
         backRoute="/products"
         onRefresh={() => void refresh()}
         refreshing={isLoading}
         actions={
-          <Button
-            leftIcon={<Sparkles className="size-4" />}
+          <HeaderActionButton
+            leftIcon={<Plus className="size-4" />}
             onClick={() => navigate("/products/full/new")}
           >
-            Create in studio
-          </Button>
+            Add product
+          </HeaderActionButton>
         }
       />
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="On this page" value={String(snapshot.total)} icon={Package} animationDelay={40} />
+        <StatCard
+          label="Active"
+          value={String(snapshot.active)}
+          icon={CheckCircle2}
+          tone="success"
+          animationDelay={80}
+        />
+        <StatCard
+          label="Pending"
+          value={String(snapshot.pending)}
+          hint="Needs approval"
+          icon={Clock3}
+          tone="warning"
+          animationDelay={120}
+        />
+      </div>
+
       <SectionCard
-        title="Catalog inventory"
-        description="Search products, review merchandising quality, and create real products that populate the ODOS customer experience."
+        compact
+        title="All products"
         action={
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search products or descriptions"
-              className="xl:w-80"
-            />
-            <FilterSelect
-              value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
-              options={categoryOptions}
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              options={[
-                { label: "All statuses", value: "all" },
-                { label: "Pending approval", value: "pending" },
-                { label: "Active", value: "active" },
-                { label: "Hidden", value: "hidden" },
-                { label: "Suspended", value: "suspended" },
-              ]}
-            />
-          </div>
+          <ListToolbar>
+            <ListToolbarField className="sm:min-w-[16rem]">
+              <SearchInput
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Name, store, category"
+                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
+              />
+            </ListToolbarField>
+            <ListToolbarField className="sm:min-w-[11rem]">
+              <FilterSelect
+                value={categoryFilter}
+                onChange={(event) => setCategoryFilter(event.target.value)}
+                options={categoryOptions}
+                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
+              />
+            </ListToolbarField>
+            <ListToolbarField className="sm:min-w-[11rem]">
+              <FilterSelect
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                options={[
+                  { label: "All statuses", value: "all" },
+                  { label: "Pending approval", value: "pending" },
+                  { label: "Active", value: "active" },
+                  { label: "Hidden", value: "hidden" },
+                  { label: "Suspended", value: "suspended" },
+                ]}
+                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
+              />
+            </ListToolbarField>
+          </ListToolbar>
         }
+        bodyClassName="p-0"
       >
         <AdminInfiniteList
-            columns={[
-              {
-                key: "product",
-                header: "Product",
-                render: (product) => (
-                  <div className="flex items-center gap-3">
-                    <div className="size-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05]">
-                      {product.images[0] ? (
-                        <img src={product.images[0]} alt={product.name} className="size-full object-cover" />
-                      ) : (
-                        <div className="flex size-full items-center justify-center text-xs text-textMuted">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="mt-1 text-xs text-textMuted">
-                        {(product.categorySlugs?.length ?? 0) > 1
-                          ? `${product.category} + ${(product.categorySlugs?.length ?? 1) - 1} more`
-                          : product.category}
-                      </p>
-                      <p className="mt-1 text-xs text-textMuted">
-                        {product.subcategory ?? "No subcategory selected"}
-                      </p>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: "store",
-                header: "Store",
-                render: (product) => (
-                  <div>
-                    <p>{product.storeName ?? "ODOS Official"}</p>
-                    <p className="mt-1 text-xs text-textMuted">{product.storeId ?? "Platform store"}</p>
-                  </div>
-                ),
-              },
-              {
-                key: "price",
-                header: "Price",
-                render: (product) => (
-                  <div>
-                    <p>{formatCurrency(product.price)}</p>
-                    {product.oldPrice ? (
-                      <p className="mt-1 text-xs text-textMuted line-through">
-                        {formatCurrency(product.oldPrice)}
-                      </p>
-                    ) : null}
-                  </div>
-                ),
-              },
-              {
-                key: "rating",
-                header: "Rating",
-                render: (product) => (
-                  <div className="flex items-center gap-2">
-                    <Star className="size-4 fill-amber-300 text-amber-300" />
-                    <div>
-                      <p>{typeof product.rating === "number" ? product.rating.toFixed(1) : "Not set"}</p>
-                      {product.reviews ? (
-                        <p className="mt-1 text-xs text-textMuted">{product.reviews}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: "stock",
-                header: "Stock",
-                render: (product) => `${product.stock} units`,
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (product) => <StatusBadge status={product.status} />,
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                render: (product) => (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="primary"
-                      leftIcon={<Edit3 className="size-4" />}
-                      onClick={() => navigate(`/products/full/${product.id}/studio`)}
-                    >
-                      Open studio
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => navigate(`/products/full/${product.id}`)}
-                    >
-                      Open dossier
-                    </Button>
-                    <Button
-                      leftIcon={<Tag className="size-4" />}
-                      onClick={() => {
-                        setStatusProduct(product);
-                        setPendingStatus(product.status);
-                      }}
-                    >
-                      {product.status === "pending" ? "Review" : "Update status"}
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-            data={filteredProducts}
-            keyExtractor={(product) => product.id}
-            isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
-            hasMore={hasMore}
-            error={error}
-            onLoadMore={() => void loadMore()}
-            onRetry={() => void refresh()}
-            emptyTitle="No products found"
-            emptyDescription="Create your first product or clear the filters to reveal more inventory."
-          />
+          compact
+          listSummary={listSummary}
+          columns={[
+            {
+              key: "product",
+              header: "Product",
+              className: "min-w-[220px]",
+              render: (product) => <ProductNameCell product={product} />,
+            },
+            {
+              key: "store",
+              header: "Store",
+              className: "min-w-[120px]",
+              render: (product) => (
+                <p className="truncate text-sm text-textStrong">{product.storeName ?? "ODOS Official"}</p>
+              ),
+            },
+            {
+              key: "price",
+              header: "Price",
+              className: "whitespace-nowrap tabular-nums",
+              render: (product) => (
+                <div>
+                  <p className="font-medium text-textStrong">{formatCurrency(product.price)}</p>
+                  {product.oldPrice ? (
+                    <p className="text-xs text-textMuted line-through">{formatCurrency(product.oldPrice)}</p>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              key: "rating",
+              header: "Rating",
+              className: "w-[5rem]",
+              render: (product) => (
+                <div className="flex items-center gap-1 text-sm tabular-nums">
+                  <Star className="size-3.5 fill-amber-300 text-amber-300" aria-hidden />
+                  {typeof product.rating === "number" ? product.rating.toFixed(1) : "—"}
+                </div>
+              ),
+            },
+            {
+              key: "stock",
+              header: "Stock",
+              className: "w-[5rem] tabular-nums text-sm",
+              render: (product) => product.stock,
+            },
+            {
+              key: "status",
+              header: "Status",
+              className: "w-[7.5rem]",
+              render: (product) => <StatusBadge status={product.status} />,
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
+              render: (product) => (
+                <ProductTableActions
+                  product={product}
+                  onEdit={() => navigate(`/products/full/${product.id}/studio`)}
+                  onOpenDetail={() => navigate(`/products/full/${product.id}`)}
+                  onStatus={() => {
+                    setStatusProduct(product);
+                    setPendingStatus(product.status);
+                  }}
+                />
+              ),
+            },
+          ]}
+          data={filteredProducts}
+          keyExtractor={(product) => product.id}
+          isLoading={isLoading}
+          page={page}
+          pageSize={pageSize}
+          isLoadingPage={isLoadingPage}
+          hasMore={hasMore}
+          error={error}
+          onPageChange={goToPage}
+          onRetry={() => void refresh()}
+          emptyTitle="No products found"
+          emptyDescription="Clear filters or add a product."
+        />
       </SectionCard>
 
 
@@ -433,90 +445,87 @@ export function FullProductsPage() {
         }
       >
         {selectedProduct ? (
-          <div className="space-y-5">
+          <DetailStack>
             {productDetailError ? (
-              <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              <div className="rounded-2xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger">
                 {productDetailError}
               </div>
             ) : null}
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)]">
-              <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
+            <div className="grid gap-6 border-b border-line/90 pb-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.85fr)]">
+              <div className="overflow-hidden rounded-lg bg-surfaceMuted ring-1 ring-line/80">
                 {selectedProduct.images[detailImageIndex] ? (
                   <img
                     src={selectedProduct.images[detailImageIndex]}
                     alt={selectedProduct.name}
-                    className="h-80 w-full object-cover"
+                    className="aspect-[4/3] w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-80 items-center justify-center text-sm text-textMuted">
+                  <div className="flex aspect-[4/3] items-center justify-center text-sm text-textMuted">
                     No product image uploaded
                   </div>
                 )}
               </div>
-              <div className="space-y-4">
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="flex flex-wrap items-center gap-3">
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={selectedProduct.status} />
                     {selectedProduct.status === "pending" ? (
-                      <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-100">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning">
                         <Clock3 className="size-3.5" />
                         Awaiting admin approval
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm text-textMuted">
+                  <p className="text-sm leading-relaxed text-textMuted">
                     {selectedProduct.status === "pending"
-                      ? "This product was submitted by a vendor and is currently blocked from the ODOS shopper experience until an admin approves it."
-                      : "This product is already part of the managed ODOS catalog. Review the submission details and merchandising choices below."}
+                      ? "Submitted by a vendor and blocked from the shopper experience until approved."
+                      : "Part of the managed catalog. Review listing and merchandising below."}
                   </p>
                 </div>
 
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-textMuted">
-                    Submission gallery
-                  </p>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-textMuted">Gallery</p>
                   {selectedProduct.images.length > 0 ? (
-                    <div className="mt-3 grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                       {selectedProduct.images.map((image, index) => (
                         <button
                           key={`${image}-${index}`}
                           type="button"
                           onClick={() => setDetailImageIndex(index)}
-                          className={`overflow-hidden rounded-2xl border transition ${
+                          className={`overflow-hidden rounded-lg ring-1 transition ${
                             detailImageIndex === index
-                              ? "border-accent/40 shadow-glow"
-                              : "border-white/10 hover:border-white/20"
+                              ? "ring-accent/50"
+                              : "ring-line/80 hover:ring-line"
                           }`}
                         >
                           <img
                             src={image}
                             alt={`${selectedProduct.name} ${index + 1}`}
-                            className="h-24 w-full object-cover"
+                            className="aspect-square w-full object-cover"
                           />
                         </button>
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-3 text-sm text-textMuted">No gallery images were uploaded for this product.</p>
+                    <p className="text-sm text-textMuted">No gallery images uploaded.</p>
                   )}
                 </div>
               </div>
             </div>
 
             {productDetailLoading ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textMuted">
-                Refreshing full product details...
-              </div>
+              <p className="text-sm text-textMuted">Refreshing full product details…</p>
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <ProductDetailRow
+            <DetailSection title="Listing details">
+              <DetailFields columns={2}>
+              <DetailField
                 label="Vendor"
                 value={
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <UserRound className="size-4 text-accentSoft" />
+                      <UserRound className="size-4 text-textMuted" />
                       <span>{selectedProduct.vendorName ?? "ODOS Admin"}</span>
                     </div>
                     <div className="flex items-center gap-2 text-textMuted">
@@ -526,7 +535,7 @@ export function FullProductsPage() {
                   </div>
                 }
               />
-              <ProductDetailRow
+              <DetailField
                 label="Store"
                 value={
                   <div className="space-y-2">
@@ -536,12 +545,12 @@ export function FullProductsPage() {
                   </div>
                 }
               />
-              <ProductDetailRow
+              <DetailField
                 label="Location"
                 value={
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <MapPin className="size-4 text-accentSoft" />
+                      <MapPin className="size-4 text-textMuted" />
                       <span>{selectedProduct.storeLocation ?? "No store location"}</span>
                     </div>
                     <p className="text-textMuted">
@@ -550,7 +559,7 @@ export function FullProductsPage() {
                   </div>
                 }
               />
-              <ProductDetailRow
+              <DetailField
                 label="Categories"
                 value={
                   selectedProduct.categorySlugs?.length
@@ -560,7 +569,7 @@ export function FullProductsPage() {
                     : selectedProduct.category
                 }
               />
-              <ProductDetailRow
+              <DetailField
                 label="Subcategories"
                 value={
                   selectedProduct.subcategorySlugs?.length
@@ -570,23 +579,23 @@ export function FullProductsPage() {
                     : selectedProduct.subcategory ?? "Not set"
                 }
               />
-              <ProductDetailRow label="Audience" value={selectedProduct.audienceSlug ?? "All shoppers"} />
-              <ProductDetailRow label="Section" value={selectedProduct.section ?? "Default placement"} />
-              <ProductDetailRow
+              <DetailField label="Audience" value={selectedProduct.audienceSlug ?? "All shoppers"} />
+              <DetailField label="Section" value={selectedProduct.section ?? "Default placement"} />
+              <DetailField
                 label="Placements"
                 value={selectedProduct.placementTags?.join(", ") ?? "Not set"}
               />
-              <ProductDetailRow label="Price" value={formatCurrency(selectedProduct.price)} />
-              <ProductDetailRow
+              <DetailField label="Price" value={formatCurrency(selectedProduct.price)} />
+              <DetailField
                 label="Compare-at price"
                 value={selectedProduct.oldPrice ? formatCurrency(selectedProduct.oldPrice) : "Not set"}
               />
-              <ProductDetailRow
+              <DetailField
                 label="Discount"
                 value={selectedProduct.discount ?? "No discount generated"}
               />
-              <ProductDetailRow label="Stock" value={`${selectedProduct.stock} units`} />
-              <ProductDetailRow
+              <DetailField label="Stock" value={`${selectedProduct.stock} units`} />
+              <DetailField
                 label="Rating"
                 value={
                   typeof selectedProduct.rating === "number"
@@ -594,23 +603,21 @@ export function FullProductsPage() {
                     : "Not set"
                 }
               />
-              <ProductDetailRow
+              <DetailField
                 label="Colors"
                 value={selectedProduct.colorOptions?.join(", ") ?? "Not defined"}
               />
-              <ProductDetailRow
+              <DetailField
                 label="Sizes"
                 value={selectedProduct.sizeOptions?.join(", ") ?? "Not defined"}
               />
-              <ProductDetailRow
+              <DetailField
                 label="Specifications"
                 value={
                   selectedProduct.specifications?.length ? (
-                    <ul className="space-y-2">
+                    <ul className="list-disc space-y-1 pl-4 text-textStrong">
                       {selectedProduct.specifications.map((item) => (
-                        <li key={item} className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                          {item}
-                        </li>
+                        <li key={item}>{item}</li>
                       ))}
                     </ul>
                   ) : (
@@ -618,24 +625,27 @@ export function FullProductsPage() {
                   )
                 }
               />
-              <ProductDetailRow label="Image key" value={selectedProduct.imageKey} />
-              <ProductDetailRow label="Product ID" value={selectedProduct.id} />
-              <ProductDetailRow label="Created" value={formatDate(selectedProduct.createdAt)} />
-              <ProductDetailRow label="Last updated" value={formatDate(selectedProduct.updatedAt)} />
-            </div>
+              <DetailField label="Image key" value={selectedProduct.imageKey} />
+              <DetailField label="Product ID" value={selectedProduct.id} />
+              <DetailField label="Created" value={formatDate(selectedProduct.createdAt)} />
+              <DetailField label="Last updated" value={formatDate(selectedProduct.updatedAt)} />
+              </DetailFields>
+            </DetailSection>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <ProductDetailRow label="Description" value={selectedProduct.description} />
-              <ProductDetailRow
+            <DetailSection title="Copy">
+              <DetailFields columns={1}>
+              <DetailField label="Description" value={selectedProduct.description} />
+              <DetailField
                 label="Approval notes"
                 value={
                   selectedProduct.status === "pending"
-                    ? "Review pricing, images, taxonomy, and brand/store correctness before publishing to the shopper app."
-                    : "This listing has already passed review or was created directly from the admin side."
+                    ? "Review pricing, images, categories, and store before approving."
+                    : "This listing was already reviewed or created from admin."
                 }
               />
-            </div>
-          </div>
+              </DetailFields>
+            </DetailSection>
+          </DetailStack>
         ) : null}
       </Modal>
 

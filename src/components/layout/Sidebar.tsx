@@ -27,6 +27,7 @@ import {
 import { NavLink } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useOpsQueueBadges } from "@/hooks/useOpsQueueBadges";
@@ -43,10 +44,9 @@ type NavGroup = {
   items: NavItem[];
 };
 
-/** High-churn desks go straight to full list pages. */
 const navGroups: NavGroup[] = [
   {
-    label: "Overview",
+    label: "Command",
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/analytics", label: "Analytics", icon: BarChart3 },
@@ -163,7 +163,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       <div
-        className={`fixed inset-0 z-30 bg-slate-950/60 backdrop-blur-sm transition lg:hidden ${
+        className={`fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm transition lg:hidden ${
           isOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
@@ -171,23 +171,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         onClick={onClose}
       />
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-screen w-[280px] flex-col border-r border-white/10 bg-canvas/95 px-5 py-6 shadow-glow transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-screen w-[280px] flex-col border-r border-line bg-surface px-4 py-5 transition-transform duration-300 lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="rounded-3xl border border-white/10 bg-panel-gradient px-4 py-5">
-          <p className="text-center text-xs font-semibold uppercase tracking-[0.28em] text-accentSoft">
-            ODOS Admin
-          </p>
+        <div className="flex items-center gap-3 px-2">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-sm font-bold text-accentForeground shadow-sm">
+            O
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-textStrong">ODOS Admin</p>
+            <p className="truncate text-xs text-textMuted">Business operations</p>
+          </div>
         </div>
 
-        <nav className="mt-6 flex-1 space-y-5 overflow-y-auto pr-1">
-          {visibleNavGroups.map((group, groupIndex) => (
+        <div className="mt-5 px-1">
+          <SearchInput placeholder="Search navigation…" aria-label="Filter navigation" />
+        </div>
+
+        <nav className="mt-5 flex-1 space-y-5 overflow-y-auto px-1 pr-0.5">
+          {visibleNavGroups.map((group) => (
             <div key={group.label}>
-              <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-textMuted/80">
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-textSubtle">
                 {group.label}
               </p>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const badge = item.badgeKey ? badges[item.badgeKey] : 0;
@@ -197,17 +205,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       to={item.to}
                       onClick={onClose}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${
+                        `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                           isActive
-                            ? "border border-accent/20 bg-accent/15 text-textStrong"
-                            : "text-textMuted hover:bg-white/5 hover:text-textStrong"
+                            ? "border border-line bg-surface text-textStrong shadow-nav-active"
+                            : "text-textMuted hover:bg-surfaceMuted hover:text-textStrong"
                         }`
                       }
                     >
                       <Icon className="size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{item.label}</span>
                       {badge > 0 ? (
-                        <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-warning">
+                        <span className="rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-semibold tabular-nums text-warning">
                           {badge > 99 ? "99+" : badge}
                         </span>
                       ) : null}
@@ -215,23 +223,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   );
                 })}
               </div>
-              {groupIndex < visibleNavGroups.length - 1 ? (
-                <div className="mt-4 border-b border-white/5" />
-              ) : null}
             </div>
           ))}
         </nav>
 
-        <div className="mt-5 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-glow">
-          <div className="flex items-center gap-3">
+        <div className="mt-4 border-t border-line px-1 pt-4">
+          <div className="flex items-center gap-3 rounded-xl px-2 py-2">
             {adminUser?.avatarUrl ? (
               <img
                 src={adminUser.avatarUrl}
                 alt={adminUser.fullName}
-                className="size-12 rounded-2xl object-cover"
+                className="size-10 rounded-full object-cover"
               />
             ) : (
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-accent/15 text-sm font-semibold text-accentSoft">
+              <div className="flex size-10 items-center justify-center rounded-full bg-accentSoft text-sm font-semibold text-accent">
                 {initials ?? "OA"}
               </div>
             )}
@@ -247,7 +252,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           <Button
             variant="ghost"
-            className="mt-4 w-full justify-center"
+            className="mt-2 w-full justify-start px-2"
             leftIcon={<LogOut className="size-4" />}
             onClick={logout}
           >

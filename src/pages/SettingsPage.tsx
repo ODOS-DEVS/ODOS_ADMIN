@@ -1,22 +1,26 @@
 import {
   BellRing,
   Camera,
-  CreditCard,
   LayoutPanelTop,
   Save,
   ShieldCheck,
   Store,
   UserRound,
+  Users,
 } from "lucide-react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ComponentType } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { updateAdminMe } from "@/api/adminAuthApi";
+import { AdminTeamPanel } from "@/components/settings/AdminTeamPanel";
 import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
 import { ImageCropModal } from "@/components/ui/ImageCropModal";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { ToggleRow } from "@/components/ui/Toggle";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useTabSection } from "@/hooks/useTabSection";
 import { useToast } from "@/hooks/useToast";
 import {
   defaultAdminPreferences,
@@ -24,47 +28,21 @@ import {
   setStoredAdminPreferences,
   type AdminPreferences,
 } from "@/utils/adminPreferences";
+import { labelForAdminPermission } from "@/utils/adminPermissionLabels";
 
-function ToggleRow({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-      <div className="min-w-0">
-        <p className="font-medium text-textStrong">{label}</p>
-        <p className="mt-1 text-sm text-textMuted">{description}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-7 w-12 shrink-0 rounded-full border transition ${
-          checked
-            ? "border-accent/40 bg-accent/20"
-            : "border-white/10 bg-white/[0.06]"
-        }`}
-      >
-        <span
-          className={`absolute top-1 size-5 rounded-full transition ${
-            checked ? "left-6 bg-accent" : "left-1 bg-white/70"
-          }`}
-        />
-      </button>
-    </div>
-  );
-}
+type SettingsSection = "profile" | "workspace" | "merchandising" | "notifications" | "security" | "team";
+
+const BASE_SECTIONS: Array<{ id: SettingsSection; label: string; icon: ComponentType<{ className?: string }> }> = [
+  { id: "profile", label: "Profile", icon: UserRound },
+  { id: "workspace", label: "Workspace", icon: LayoutPanelTop },
+  { id: "merchandising", label: "Merchandising", icon: Store },
+  { id: "notifications", label: "Notifications", icon: BellRing },
+  { id: "security", label: "Security", icon: ShieldCheck },
+];
 
 export function SettingsPage() {
   const { adminUser, token, syncAdminUser } = useAdminAuth();
+  const { isSuperAdmin } = useAdminPermissions();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [fullName, setFullName] = useState(adminUser?.fullName ?? "");
@@ -73,6 +51,12 @@ export function SettingsPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [preferences, setPreferences] = useState<AdminPreferences>(() => getStoredAdminPreferences());
+  const { activeSection, setActiveSection } = useTabSection<SettingsSection>("profile");
+
+  const sections = useMemo(
+    () => (isSuperAdmin ? [...BASE_SECTIONS, { id: "team" as const, label: "Team", icon: Users }] : BASE_SECTIONS),
+    [isSuperAdmin],
+  );
 
   useEffect(() => {
     setFullName(adminUser?.fullName ?? "");
@@ -170,59 +154,113 @@ export function SettingsPage() {
     });
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Settings"
-        title="Admin settings"
-        description="Shape your ODOS admin profile, workspace behavior, and daily operating defaults from one polished control room."
-      />
+  const initials =
+    adminUser?.fullName
+      ?.split(" ")
+      .map((name) => name[0])
+      .join("")
+      .slice(0, 2) ?? "OA";
+  const shortId = adminUser?.id ? adminUser.id.slice(0, 8).toUpperCase() : "PENDING";
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-6">
-          <SectionCard
-            title="Admin profile"
-            description="Update the identity that appears across ODOS Admin and the platform-managed ODOS Official store."
-            action={
-              <Button
-                onClick={() => void handleProfileSave()}
-                isLoading={isSavingProfile}
-                disabled={!hasProfileChanges}
-                leftIcon={<Save className="size-4" />}
-              >
-                Save profile
-              </Button>
-            }
-          >
-            <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
-                <div className="flex flex-col items-center text-center">
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-xs font-medium text-textMuted">Settings</p>
+        <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-textStrong">Your desk</h1>
+        <p className="mt-1 max-w-xl text-sm text-textMuted">
+          Your ODOS admin identity, workspace behavior, and daily operating defaults.
+        </p>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[280px,minmax(0,1fr)] lg:items-start">
+        {/* Identity badge + section nav */}
+        <div className="space-y-4 lg:sticky lg:top-6">
+          <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-card">
+            <div className="h-1.5 bg-accent" />
+            <div className="flex flex-col items-center px-6 py-6 text-center">
+              {avatarPreviewUrl ? (
+                <img
+                  src={avatarPreviewUrl}
+                  alt={adminUser?.fullName ?? "Admin avatar"}
+                  className="size-20 rounded-full object-cover shadow-card"
+                />
+              ) : (
+                <div className="flex size-20 items-center justify-center rounded-full bg-accent/15 text-2xl font-semibold text-accent">
+                  {initials}
+                </div>
+              )}
+              <p className="mt-3 font-display text-base font-semibold text-textStrong">
+                {adminUser?.fullName ?? "ODOS Admin"}
+              </p>
+              <p className="mt-1 truncate text-xs text-textMuted">{adminUser?.email}</p>
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-line bg-surfaceMuted px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-textMuted">
+                <ShieldCheck className="size-3" />
+                {labelForAdminPermission(adminUser?.adminPermission)}
+              </div>
+              <p className="mt-3 font-mono text-[10px] tracking-[0.08em] text-textSubtle">ADMIN · {shortId}</p>
+            </div>
+          </div>
+
+          <nav className="space-y-0.5 rounded-panel border border-line bg-surface p-2 shadow-card">
+            {sections.map((section) => {
+              const Icon = section.icon;
+              const isActive = activeSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => setActiveSection(section.id)}
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
+                    isActive
+                      ? "bg-accent/10 text-accent"
+                      : "text-textMuted hover:bg-surfaceMuted hover:text-textStrong"
+                  }`}
+                >
+                  <Icon className="size-4" />
+                  {section.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Active section content */}
+        <div className="space-y-5">
+          {activeSection === "profile" ? (
+            <SectionCard
+              title="Profile"
+              description="Update the identity that appears across ODOS Admin and the platform-managed ODOS Official store."
+              action={
+                <Button
+                  onClick={() => void handleProfileSave()}
+                  isLoading={isSavingProfile}
+                  disabled={!hasProfileChanges}
+                  leftIcon={<Save className="size-4" />}
+                >
+                  Save profile
+                </Button>
+              }
+            >
+              <div className="grid gap-6 lg:grid-cols-[220px,minmax(0,1fr)]">
+                <div className="flex flex-col items-center gap-3 rounded-panel border border-line bg-surfaceMuted p-5 text-center">
                   {avatarPreviewUrl ? (
                     <img
                       src={avatarPreviewUrl}
                       alt={adminUser?.fullName ?? "Admin avatar"}
-                      className="size-28 rounded-[30px] object-cover shadow-glow"
+                      className="size-24 rounded-[26px] object-cover shadow-card"
                     />
                   ) : (
-                    <div className="flex size-28 items-center justify-center rounded-[30px] bg-accent/15 text-3xl font-semibold text-accentSoft">
-                      {adminUser?.fullName
-                        ?.split(" ")
-                        .map((name) => name[0])
-                        .join("")
-                        .slice(0, 2) ?? "OA"}
+                    <div className="flex size-24 items-center justify-center rounded-[26px] bg-accent/15 text-2xl font-semibold text-accent">
+                      {initials}
                     </div>
                   )}
-                  <p className="mt-4 text-lg font-semibold text-textStrong">
-                    {adminUser?.fullName ?? "ODOS Admin"}
-                  </p>
-                  <p className="mt-1 text-sm text-textMuted">{adminUser?.email}</p>
                   <Button
-                    className="mt-5 w-full"
+                    className="w-full"
                     variant="secondary"
                     leftIcon={<Camera className="size-4" />}
                     onClick={openAvatarPicker}
                   >
-                    Upload profile image
+                    Upload image
                   </Button>
                   <input
                     ref={fileInputRef}
@@ -231,73 +269,69 @@ export function SettingsPage() {
                     className="hidden"
                     onChange={handleAvatarSelection}
                   />
-                  <p className="mt-4 text-xs text-textMuted">
-                    Square crops work best here. Once saved, the same image becomes the ODOS Official storefront picture in the app.
+                  <p className="text-xs text-textMuted">
+                    Square crops work best. This image also becomes the ODOS Official storefront picture
+                    across the sidebar, analytics, and topbar.
                   </p>
                 </div>
-              </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-textStrong">Full name</label>
-                  <input
-                    className="app-input"
-                    value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
-                    placeholder="Enter your full name"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-textStrong">Email</label>
-                  <input className="app-input opacity-70" value={adminUser?.email ?? ""} disabled />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-textStrong">Phone number</label>
-                  <input
-                    className="app-input"
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    placeholder="0XX XXX XXXX"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-textStrong">Access roles</label>
-                  <input className="app-input opacity-70" value={joinedRoles} disabled />
-                </div>
-                <div className="md:col-span-2">
-                  <div className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-4">
-                    <p className="text-sm font-medium text-textStrong">Branding sync</p>
-                    <p className="mt-1 text-sm text-textMuted">
-                      Your ODOS Official store image is now tied to this admin profile, which keeps the app’s platform-managed storefront feeling personal and maintained.
-                    </p>
-                  </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Full name">
+                    <input
+                      className="app-input"
+                      value={fullName}
+                      onChange={(event) => setFullName(event.target.value)}
+                      placeholder="Enter your full name"
+                    />
+                  </FormField>
+                  <FormField label="Email">
+                    <input className="app-input opacity-70" value={adminUser?.email ?? ""} disabled />
+                  </FormField>
+                  <FormField label="Phone number">
+                    <input
+                      className="app-input"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      placeholder="0XX XXX XXXX"
+                    />
+                  </FormField>
+                  <FormField label="Permission band">
+                    <input
+                      className="app-input opacity-70"
+                      value={labelForAdminPermission(adminUser?.adminPermission)}
+                      disabled
+                    />
+                  </FormField>
+                  <FormField label="Access roles" className="sm:col-span-2">
+                    <input className="app-input opacity-70" value={joinedRoles} disabled />
+                  </FormField>
                 </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
+          ) : null}
 
-          <SectionCard
-            title="Workspace experience"
-            description="Tune how this admin workspace feels day to day without waiting on backend preference endpoints."
-            action={
-              <div className="flex gap-3">
-                <Button variant="ghost" onClick={resetPreferences}>
-                  Reset
-                </Button>
-                <Button variant="secondary" onClick={handlePreferenceSave}>
-                  Save preferences
-                </Button>
-              </div>
-            }
-          >
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          {activeSection === "workspace" ? (
+            <SectionCard
+              title="Workspace experience"
+              description="Tune how this admin workspace feels day to day. These are saved to this browser."
+              action={
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={resetPreferences}>
+                    Reset
+                  </Button>
+                  <Button variant="secondary" onClick={handlePreferenceSave}>
+                    Save preferences
+                  </Button>
+                </div>
+              }
+            >
               <div className="space-y-4">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className="mb-2 block text-sm font-medium text-textStrong">
-                    Default landing page
-                  </label>
+                <FormField
+                  label="Default landing page"
+                  helper="Helpful when you already know which desk you want to land on first each day."
+                >
                   <select
-                    className="app-input"
+                    className="app-select"
                     value={preferences.defaultLandingPage}
                     onChange={(event) =>
                       updatePreference(
@@ -311,10 +345,7 @@ export function SettingsPage() {
                     <option value="/orders">Orders queue</option>
                     <option value="/vendor-applications">Vendor applications</option>
                   </select>
-                  <p className="mt-2 text-sm text-textMuted">
-                    Helpful when you already know which desk you want to land on first each day.
-                  </p>
-                </div>
+                </FormField>
                 <ToggleRow
                   label="Compact tables"
                   description="Use denser spacing in listings when you want to review more rows at once."
@@ -328,7 +359,46 @@ export function SettingsPage() {
                   onChange={(value) => updatePreference("confirmDestructiveActions", value)}
                 />
               </div>
+            </SectionCard>
+          ) : null}
 
+          {activeSection === "merchandising" ? (
+            <SectionCard
+              title="Merchandising defaults"
+              description="Keep ODOS feeling fresh by deciding whether new arrivals and flash-sale moments should stay front and center."
+              action={
+                <Button variant="secondary" onClick={handlePreferenceSave}>
+                  Save preferences
+                </Button>
+              }
+            >
+              <div className="space-y-4">
+                <ToggleRow
+                  label="Highlight fresh catalog first"
+                  description="Favor newer products and recent updates during merchandising reviews."
+                  checked={preferences.highlightFreshCatalog}
+                  onChange={(value) => updatePreference("highlightFreshCatalog", value)}
+                />
+                <ToggleRow
+                  label="Feature flash sales first"
+                  description="Keep time-sensitive promotions more visible when curating the storefront."
+                  checked={preferences.featureFlashSalesFirst}
+                  onChange={(value) => updatePreference("featureFlashSalesFirst", value)}
+                />
+              </div>
+            </SectionCard>
+          ) : null}
+
+          {activeSection === "notifications" ? (
+            <SectionCard
+              title="Notification desk"
+              description="Shape how urgent the admin workspace should feel as approvals, store health, and operational alerts increase."
+              action={
+                <Button variant="secondary" onClick={handlePreferenceSave}>
+                  Save preferences
+                </Button>
+              }
+            >
               <div className="space-y-4">
                 <ToggleRow
                   label="Vendor review alerts"
@@ -348,109 +418,41 @@ export function SettingsPage() {
                   checked={preferences.securityAlerts}
                   onChange={(value) => updatePreference("securityAlerts", value)}
                 />
+                <p className="text-xs text-textMuted">
+                  These preferences are currently browser-level workspace choices — a good bridge until
+                  server-backed admin preference profiles are ready.
+                </p>
               </div>
-            </div>
-          </SectionCard>
-        </div>
+            </SectionCard>
+          ) : null}
 
-        <div className="space-y-6">
-          {[
-            {
-              title: "Merchandising defaults",
-              description:
-                "Keep ODOS feeling fresh by deciding whether new arrivals and flash-sale moments should stay front and center for the operations team.",
-              icon: Store,
-              content: (
-                <div className="mt-4 space-y-4">
-                  <ToggleRow
-                    label="Highlight fresh catalog first"
-                    description="Favor newer products and recent updates during merchandising reviews."
-                    checked={preferences.highlightFreshCatalog}
-                    onChange={(value) => updatePreference("highlightFreshCatalog", value)}
-                  />
-                  <ToggleRow
-                    label="Feature flash sales first"
-                    description="Keep time-sensitive promotions more visible when curating the storefront."
-                    checked={preferences.featureFlashSalesFirst}
-                    onChange={(value) => updatePreference("featureFlashSalesFirst", value)}
-                  />
+          {activeSection === "security" ? (
+            <SectionCard
+              title="Access and safety"
+              description="How this admin space handles sensitive workflow decisions and team access over time."
+            >
+              <div className="space-y-4 text-sm">
+                <div className="rounded-2xl border border-line bg-surfaceMuted p-4">
+                  <p className="text-textMuted">
+                    Signed in as <span className="font-medium text-textStrong">{adminUser?.email}</span>
+                  </p>
+                  <p className="mt-1 text-textMuted">
+                    Role coverage: <span className="font-medium text-textStrong">{joinedRoles}</span>
+                  </p>
                 </div>
-              ),
-            },
-            {
-              title: "Payout and finance notes",
-              description:
-                "A calm placeholder for commission, settlement timing, and refund policy controls while the payment backend matures.",
-              icon: CreditCard,
-              content: (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-textMuted">
-                  Keep this space ready for payout cadence, service-fee controls, VAT/tax notes, and refund automation once those endpoints are live.
+                <div className="rounded-2xl border border-line bg-surfaceMuted p-4">
+                  <p className="font-medium text-textStrong">On the roadmap</p>
+                  <ul className="mt-2 space-y-1.5 text-textMuted">
+                    <li>· Audit visibility and multi-admin permission bands as the operations team grows.</li>
+                    <li>· Payout cadence, service-fee controls, VAT/tax notes, and refund automation.</li>
+                    <li>· Server-backed notification preference profiles.</li>
+                  </ul>
                 </div>
-              ),
-            },
-            {
-              title: "Access and safety",
-              description:
-                "Document how this admin space should handle sensitive workflow decisions and team access over time.",
-              icon: ShieldCheck,
-              content: (
-                <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-textMuted">
-                  <p>Signed in as: <span className="text-textStrong">{adminUser?.email}</span></p>
-                  <p>Role coverage: <span className="text-textStrong">{joinedRoles}</span></p>
-                  <p>Suggested next step: add audit visibility and multi-admin permission bands when the operations team grows.</p>
-                </div>
-              ),
-            },
-            {
-              title: "Notification desk",
-              description:
-                "Shape how urgent the admin workspace should feel as approvals, store health, and operational alerts increase.",
-              icon: BellRing,
-              content: (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-textMuted">
-                  Alert preferences saved here are currently browser-level workspace choices. They are a good bridge until server-backed admin preference profiles are ready.
-                </div>
-              ),
-            },
-            {
-              title: "Workspace identity",
-              description:
-                "Keep the admin experience consistent across the left rail, analytics view, and topbar identity card.",
-              icon: LayoutPanelTop,
-              content: (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-textMuted">
-                  Your profile image, full name, and ODOS Official store image now stay aligned so the platform-managed storefront feels actively maintained.
-                </div>
-              ),
-            },
-            {
-              title: "Admin presence",
-              description:
-                "A gentle reminder that the human behind the control room matters as much as the catalog and the charts.",
-              icon: UserRound,
-              content: (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-textMuted">
-                  Choose a warm, recognizable profile image. It helps the ODOS Official presence feel intentional anywhere the store appears in the shopper app.
-                </div>
-              ),
-            },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <SectionCard key={item.title}>
-                <div className="flex items-start gap-4">
-                  <div className="rounded-2xl border border-accent/20 bg-accent/10 p-3 text-accentSoft">
-                    <Icon className="size-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-lg font-semibold text-textStrong">{item.title}</h2>
-                    <p className="mt-2 text-sm text-textMuted">{item.description}</p>
-                    {item.content}
-                  </div>
-                </div>
-              </SectionCard>
-            );
-          })}
+              </div>
+            </SectionCard>
+          ) : null}
+
+          {activeSection === "team" && isSuperAdmin ? <AdminTeamPanel /> : null}
         </div>
       </div>
 

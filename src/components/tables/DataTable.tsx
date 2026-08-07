@@ -25,15 +25,15 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-white/10">
-        <thead>
+      <table className="min-w-full">
+        <thead className="border-b border-line bg-surfaceMuted/80">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
                 className={clsx(
-                  "text-left text-xs font-semibold uppercase tracking-[0.18em] text-textMuted",
-                  compact ? "px-3 py-2" : "px-4 py-3",
+                  "text-left text-xs font-semibold uppercase tracking-wide text-textMuted",
+                  compact ? "px-4 py-3" : "px-5 py-3.5",
                   column.className,
                 )}
               >
@@ -42,18 +42,18 @@ export function DataTable<T>({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/5">
+        <tbody className="divide-y divide-line bg-surface">
           {data.map((row) => (
             <tr
               key={keyExtractor(row)}
-              className={clsx("transition hover:bg-white/[0.03]", rowClassName)}
+              className={clsx("transition hover:bg-surfaceMuted/70", rowClassName)}
             >
               {columns.map((column) => (
                 <td
                   key={column.key}
                   className={clsx(
                     "align-middle text-sm text-textStrong",
-                    compact ? "px-3 py-2.5" : "px-4 py-4 align-top",
+                    compact ? "px-4 py-3.5" : "px-5 py-4",
                     column.className,
                   )}
                 >

@@ -13,47 +13,10 @@ import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { Toggle, ToggleRow } from "@/components/ui/Toggle";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useToast } from "@/hooks/useToast";
 import { formatCurrency, formatDateTime } from "@/utils/format";
-
-function ToggleRow({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-      <div className="min-w-0">
-        <p className="font-medium text-textStrong">{label}</p>
-        <p className="mt-1 text-sm text-textMuted">{description}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-7 w-12 shrink-0 rounded-full border transition ${
-          checked
-            ? "border-accent/40 bg-accent/20"
-            : "border-white/10 bg-white/[0.06]"
-        }`}
-      >
-        <span
-          className={`absolute top-1 size-5 rounded-full transition ${
-            checked ? "left-6 bg-accent" : "left-1 bg-white/70"
-          }`}
-        />
-      </button>
-    </div>
-  );
-}
 
 function MethodFields({
   title,
@@ -79,29 +42,13 @@ function MethodFields({
   onEnabledChange: (value: boolean) => void;
 }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
+    <div className="rounded-panel border border-line bg-surfaceMuted p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-textStrong">{title}</p>
           <p className="mt-1 text-sm text-textMuted">Shown to shoppers at checkout and on order tracking.</p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          onClick={() => onEnabledChange(!enabled)}
-          className={`relative inline-flex h-7 w-12 shrink-0 rounded-full border transition ${
-            enabled
-              ? "border-accent/40 bg-accent/20"
-              : "border-white/10 bg-white/[0.06]"
-          }`}
-        >
-          <span
-            className={`absolute top-1 size-5 rounded-full transition ${
-              enabled ? "left-6 bg-accent" : "left-1 bg-white/70"
-            }`}
-          />
-        </button>
+        <Toggle checked={enabled} onChange={onEnabledChange} label={`${title} enabled`} />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div>
@@ -354,19 +301,19 @@ export function DeliverySettingsPage() {
               <p className="text-textMuted">
                 Last updated {formatDateTime(settings.updatedAt)}
               </p>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div className="rounded-2xl border border-line bg-surfaceMuted px-4 py-3">
                 <p className="font-medium text-textStrong">Standard</p>
                 <p className="mt-1 text-textMuted">
                   {draft.economyTitle} · {formatCurrency(draft.economyFee)} · free over {formatCurrency(draft.freeShippingThreshold)}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div className="rounded-2xl border border-line bg-surfaceMuted px-4 py-3">
                 <p className="font-medium text-textStrong">Express</p>
                 <p className="mt-1 text-textMuted">
                   {draft.expressTitle} · {formatCurrency(draft.expressFee)} · {draft.expressEta}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div className="rounded-2xl border border-line bg-surfaceMuted px-4 py-3">
                 <p className="font-medium text-textStrong">Same-day</p>
                 <p className="mt-1 text-textMuted">
                   {draft.sameDayTitle} · {formatCurrency(draft.sameDayFee)} · before {draft.sameDayCutoffHour}:00 in eligible regions

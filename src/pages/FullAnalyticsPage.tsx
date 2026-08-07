@@ -1,19 +1,18 @@
-import { ArrowLeft, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { CircleDollarSign, RefreshCw, ShoppingCart, Store, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { loadFullAnalyticsReport } from "@/api/fullAnalyticsApi";
 import { FullAnalyticsReportView } from "@/components/analytics/FullAnalyticsReportView";
 import { FullAnalyticsSkeleton } from "@/components/analytics/AnalyticsUi";
-import { Button } from "@/components/ui/Button";
+import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { StatCard } from "@/components/ui/StatCard";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import type { FullAnalyticsReport } from "@/types/fullAnalytics";
-import { formatDateTime } from "@/utils/format";
+import { formatCurrency, formatDateTime } from "@/utils/format";
 
 export function FullAnalyticsPage() {
   const { token } = useAdminAuth();
-  const navigate = useNavigate();
   const [report, setReport] = useState<FullAnalyticsReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -47,11 +46,23 @@ export function FullAnalyticsPage() {
     void loadReport();
   }, [loadReport]);
 
+  const headlineStats = useMemo(() => {
+    if (!report) return null;
+    const { dashboard, finance } = report;
+    const gross = finance?.grossCollectedTotal ?? dashboard.stats.totalRevenue;
+    return {
+      gross,
+      orders: finance?.paidOrderCount ?? dashboard.stats.totalOrders,
+      users: report.users.length,
+      stores: report.stores.length,
+    };
+  }, [report]);
+
   if (isLoading) {
     return <FullAnalyticsSkeleton />;
   }
 
-  if (error || !report) {
+  if (error || !report || !headlineStats) {
     return (
       <ErrorState
         description={error ?? "Full analytics report is unavailable right now."}
@@ -61,44 +72,43 @@ export function FullAnalyticsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="animate-fade-up opacity-0" style={{ animationDelay: "0ms" }}>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
-              Full analytics report
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">
-              Owner-level platform intelligence
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm text-textMuted">
-              Comprehensive breakdown of commerce, treasury, marketplace, vendors, customers,
-              marketing, operations, and derived signals — aggregated from all admin datasets.
-            </p>
-            <p className="mt-2 text-xs text-textMuted">
-              Last refreshed {formatDateTime(report.loadedAt)}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="secondary"
-              leftIcon={<ArrowLeft className="size-4" />}
-              onClick={() => navigate("/analytics")}
-            >
-              Brief overview
-            </Button>
-            <Button
-              variant="secondary"
-              leftIcon={
-                <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              }
-              onClick={() => void loadReport(true)}
-              disabled={isRefreshing}
-            >
-              Refresh report
-            </Button>
-          </div>
-        </div>
+    <div className="space-y-5">
+      <AdminFullHeader
+        eyebrow="Analytics"
+        title="Full report"
+        description={`Generated ${formatDateTime(report.loadedAt)} · treasury, vendors, orders, and support in one scroll.`}
+        backRoute="/analytics"
+        onRefresh={() => void loadReport(true)}
+        refreshing={isRefreshing}
+      />
+
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard
+          label="Gross collected"
+          value={formatCurrency(Math.round(headlineStats.gross))}
+          icon={CircleDollarSign}
+          tone="success"
+          animationDelay={40}
+        />
+        <StatCard
+          label="Paid orders"
+          value={String(headlineStats.orders)}
+          icon={ShoppingCart}
+          animationDelay={80}
+        />
+        <StatCard
+          label="Users loaded"
+          value={String(headlineStats.users)}
+          icon={Users}
+          tone="info"
+          animationDelay={120}
+        />
+        <StatCard
+          label="Stores loaded"
+          value={String(headlineStats.stores)}
+          icon={Store}
+          animationDelay={160}
+        />
       </div>
 
       <FullAnalyticsReportView report={report} />

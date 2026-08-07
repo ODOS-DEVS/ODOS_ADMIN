@@ -6,6 +6,7 @@ import { getReviewsPage, updateReviewModeration } from "@/api/reviewsApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
 import { Modal } from "@/components/ui/Modal";
 import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -24,15 +25,6 @@ type ModerationTarget = {
   nextHidden: boolean;
 };
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-textMuted">{label}</p>
-      <p className="mt-2 text-sm text-textStrong">{value}</p>
-    </div>
-  );
-}
-
 function truncateComment(comment: string) {
   if (comment.length <= 120) {
     return comment;
@@ -47,10 +39,12 @@ export function FullReviewsPage() {
   const {
     items: reviews,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
   } = useInfiniteAdminList({
@@ -162,15 +156,15 @@ export function FullReviewsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Total reviews</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.total}</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Visible to shoppers</p>
           <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.visibleCount}</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-sm text-textMuted">Average rating</p>
           <p className="mt-3 flex items-center gap-2 text-3xl font-semibold text-textStrong">
             <Star className="size-5 text-accent" />
@@ -300,10 +294,12 @@ export function FullReviewsPage() {
             data={filteredReviews}
             keyExtractor={(review) => review.id}
             isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
+            page={page}
+            pageSize={pageSize}
+            isLoadingPage={isLoadingPage}
             hasMore={hasMore}
             error={error}
-            onLoadMore={() => void loadMore()}
+            onPageChange={goToPage}
             onRetry={() => void refresh()}
             emptyTitle="No reviews found"
             emptyDescription="Try a different search or switch the visibility filter."
@@ -317,32 +313,32 @@ export function FullReviewsPage() {
         description="Inspect the shopper, order context, rating, and moderation state for this review."
       >
         {selectedReview ? (
-          <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <DetailRow label="Shopper" value={selectedReview.userName} />
-              <DetailRow label="Email" value={selectedReview.userEmail} />
-              <DetailRow label="Store" value={selectedReview.storeName ?? "ODOS store"} />
-              <DetailRow label="Order" value={selectedReview.orderNumber} />
-              <DetailRow label="Rating" value={`${selectedReview.rating.toFixed(1)} / 5`} />
-              <DetailRow
-                label="Status"
-                value={selectedReview.isHidden ? "Hidden from shoppers" : "Visible to shoppers"}
-              />
-              <DetailRow label="Created" value={formatDateTime(selectedReview.createdAt)} />
-              <DetailRow label="Updated" value={formatDateTime(selectedReview.updatedAt)} />
-            </div>
+          <DetailStack>
+            <DetailSection title="Review details">
+              <DetailFields columns={2}>
+                <DetailField label="Shopper" value={selectedReview.userName} />
+                <DetailField label="Email" value={selectedReview.userEmail} />
+                <DetailField label="Store" value={selectedReview.storeName ?? "ODOS store"} />
+                <DetailField label="Order" value={selectedReview.orderNumber} />
+                <DetailField label="Rating" value={`${selectedReview.rating.toFixed(1)} / 5`} />
+                <DetailField
+                  label="Status"
+                  value={selectedReview.isHidden ? "Hidden from shoppers" : "Visible to shoppers"}
+                />
+                <DetailField label="Created" value={formatDateTime(selectedReview.createdAt)} />
+                <DetailField label="Updated" value={formatDateTime(selectedReview.updatedAt)} />
+              </DetailFields>
+            </DetailSection>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Comment</p>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-textStrong">
+            <DetailSection title="Comment">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-textStrong">
                 {selectedReview.comment}
               </p>
-            </div>
+            </DetailSection>
 
             {selectedReview.vendorReply ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Seller reply</p>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-textStrong">
+              <DetailSection title="Seller reply">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-textStrong">
                   {selectedReview.vendorReply}
                 </p>
                 {selectedReview.vendorRepliedAt ? (
@@ -350,16 +346,15 @@ export function FullReviewsPage() {
                     Replied {formatDateTime(selectedReview.vendorRepliedAt)}
                   </p>
                 ) : null}
-              </div>
+              </DetailSection>
             ) : null}
 
             {selectedReview.moderationReason ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Moderation note</p>
-                <p className="mt-3 text-sm text-textStrong">{selectedReview.moderationReason}</p>
-              </div>
+              <DetailSection title="Moderation note">
+                <p className="text-sm leading-relaxed text-textStrong">{selectedReview.moderationReason}</p>
+              </DetailSection>
             ) : null}
-          </div>
+          </DetailStack>
         ) : null}
       </Modal>
 
@@ -404,43 +399,39 @@ export function FullReviewsPage() {
         }
       >
         {moderationTarget ? (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <DetailStack className="gap-8">
+            <DetailSection title="Review preview">
               <div className="flex items-start gap-3">
-                <MessageSquareText className="mt-0.5 size-4 text-accentSoft" />
-                <div>
+                <MessageSquareText className="mt-0.5 size-4 shrink-0 text-textMuted" />
+                <div className="min-w-0 space-y-2">
                   <p className="font-medium text-textStrong">{moderationTarget.review.userName}</p>
-                  <p className="mt-2 text-sm leading-6 text-textMuted">
-                    {moderationTarget.review.comment}
-                  </p>
+                  <p className="text-sm leading-relaxed text-textMuted">{moderationTarget.review.comment}</p>
                 </div>
               </div>
-            </div>
+            </DetailSection>
 
             {moderationTarget.nextHidden ? (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-textStrong">
-                  Internal moderation note
-                </label>
-                <textarea
-                  className="app-textarea min-h-[120px]"
-                  placeholder="Optional note about why this review was hidden."
-                  value={moderationReason}
-                  onChange={(event) => setModerationReason(event.target.value)}
-                />
-                <p className="text-xs text-textMuted">
-                  This note is for the ODOS team. It does not appear to shoppers.
-                </p>
-              </div>
+              <DetailSection title="Internal moderation note">
+                <div className="space-y-2">
+                  <textarea
+                    className="app-textarea min-h-[120px]"
+                    placeholder="Optional note about why this review was hidden."
+                    value={moderationReason}
+                    onChange={(event) => setModerationReason(event.target.value)}
+                  />
+                  <p className="text-xs text-textMuted">
+                    This note is for the ODOS team. It does not appear to shoppers.
+                  </p>
+                </div>
+              </DetailSection>
             ) : moderationTarget.review.moderationReason ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-textMuted">
-                Existing moderation note:{" "}
-                <span className="text-textStrong">
+              <DetailSection title="Existing moderation note">
+                <p className="text-sm leading-relaxed text-textStrong">
                   {moderationTarget.review.moderationReason}
-                </span>
-              </div>
+                </p>
+              </DetailSection>
             ) : null}
-          </div>
+          </DetailStack>
         ) : null}
       </Modal>
     </div>

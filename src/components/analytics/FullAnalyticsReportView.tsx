@@ -39,6 +39,23 @@ const REPORT_SECTIONS = [
   { id: "activity", label: "Activity" },
 ] as const;
 
+const REPORT_NAV_GROUPS = [
+  {
+    label: "Platform & operations",
+    sections: REPORT_SECTIONS.filter((section) =>
+      ["executive", "commerce", "marketplace", "vendors", "customers", "marketing", "operations", "intelligence", "activity"].includes(
+        section.id,
+      ),
+    ),
+  },
+  {
+    label: "Treasury & ledger",
+    sections: REPORT_SECTIONS.filter((section) =>
+      ["treasury", "payments", "ledger"].includes(section.id),
+    ),
+  },
+] as const;
+
 type ReportSectionId = (typeof REPORT_SECTIONS)[number]["id"];
 
 type FullAnalyticsReportViewProps = {
@@ -84,7 +101,10 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
   return (
     <div className="space-y-4">
       <ReportSectionNav
-        sections={[...REPORT_SECTIONS]}
+        groups={REPORT_NAV_GROUPS.map((group) => ({
+          label: group.label,
+          sections: [...group.sections],
+        }))}
         activeId={activeSection}
         onSelect={(id) => setActiveSection(id as ReportSectionId)}
       />
@@ -106,29 +126,37 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
           title="Executive summary"
           description={`Platform-wide owner report · generated ${formatDateTime(report.loadedAt)}`}
         >
-          <StatGrid
-            items={[
-              { label: "Gross collected", value: formatCurrency(Math.round(grossCollected)) },
-              { label: "Paid orders", value: new Intl.NumberFormat("en-GH").format(paidOrders) },
-              {
-                label: "Total order volume",
-                value: formatCurrency(Math.round(report.totalOrderVolume)),
-                hint: `${report.orders.length} orders loaded`,
-              },
-              {
-                label: "Avg paid order",
-                value: formatCurrency(Math.round(snapshot.paidAverageOrderValue)),
-              },
-              { label: "Users", value: String(report.users.length) },
-              { label: "Vendors", value: String(report.vendors.length) },
-              { label: "Stores", value: String(report.stores.length) },
-              { label: "Products", value: String(report.products.length) },
-              { label: "Returns", value: String(report.returns.length) },
-              { label: "Reviews", value: String(report.reviews.length) },
-              { label: "Support threads", value: String(report.supportThreads.length) },
-              { label: "Notifications", value: String(report.notifications.length) },
-            ]}
-          />
+          <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
+            <StatGrid
+              columns={2}
+              items={[
+                { label: "Gross collected", value: formatCurrency(Math.round(grossCollected)) },
+                { label: "Paid orders", value: new Intl.NumberFormat("en-GH").format(paidOrders) },
+                {
+                  label: "Total order volume",
+                  value: formatCurrency(Math.round(report.totalOrderVolume)),
+                  hint: `${report.orders.length} orders loaded`,
+                },
+                {
+                  label: "Avg paid order",
+                  value: formatCurrency(Math.round(snapshot.paidAverageOrderValue)),
+                },
+              ]}
+            />
+            <StatGrid
+              columns={2}
+              items={[
+                { label: "Users", value: String(report.users.length) },
+                { label: "Vendors", value: String(report.vendors.length) },
+                { label: "Stores", value: String(report.stores.length) },
+                { label: "Products", value: String(report.products.length) },
+                { label: "Returns", value: String(report.returns.length) },
+                { label: "Reviews", value: String(report.reviews.length) },
+                { label: "Support threads", value: String(report.supportThreads.length) },
+                { label: "Notifications", value: String(report.notifications.length) },
+              ]}
+            />
+          </div>
         </SectionCard>
       ) : null}
 
@@ -253,8 +281,9 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
           }
         >
           {finance ? (
-            <>
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,1fr)] xl:items-start">
               <StatGrid
+                columns={2}
                 items={[
                   { label: "Current balance", value: formatCurrency(finance.currentBalance) },
                   {
@@ -294,7 +323,7 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
                   { label: "Currency", value: finance.currency.toUpperCase() },
                 ]}
               />
-              <div className="mt-4 grid gap-2 md:grid-cols-3">
+              <div className="space-y-2 xl:sticky xl:top-24">
                 <MetricRow
                   label="Refund rate"
                   value={`${snapshot.refundRate.toFixed(2)}%`}
@@ -313,9 +342,9 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
                   tone="success"
                 />
               </div>
-            </>
+            </div>
           ) : (
-            <p className="rounded-xl border border-dashed border-white/10 px-3 py-5 text-xs text-textMuted">
+            <p className="rounded-xl border border-dashed border-line px-3 py-5 text-xs text-textMuted">
               Finance overview unavailable. Treasury metrics appear once checkout payments are recorded.
             </p>
           )}
@@ -325,6 +354,24 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
       {activeSection === "payments" ? (
         <SectionCard compact title="Payment transactions" description="Gateway activity and provider mix">
           <div className="grid gap-5 xl:grid-cols-2">
+            <StatGrid
+              columns={2}
+              items={[
+                { label: "Transactions", value: String(report.payments.length) },
+                {
+                  label: "Total processed",
+                  value: formatCurrency(
+                    report.payments.reduce((sum, payment) => sum + payment.amount, 0),
+                  ),
+                },
+                {
+                  label: "Total processor fees",
+                  value: formatCurrency(
+                    report.payments.reduce((sum, payment) => sum + payment.processorFeeAmount, 0),
+                  ),
+                },
+              ]}
+            />
             <div className="space-y-4">
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">
@@ -347,24 +394,6 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
                 />
               </div>
             </div>
-            <StatGrid
-              columns={2}
-              items={[
-                { label: "Transactions", value: String(report.payments.length) },
-                {
-                  label: "Total processed",
-                  value: formatCurrency(
-                    report.payments.reduce((sum, payment) => sum + payment.amount, 0),
-                  ),
-                },
-                {
-                  label: "Total processor fees",
-                  value: formatCurrency(
-                    report.payments.reduce((sum, payment) => sum + payment.processorFeeAmount, 0),
-                  ),
-                },
-              ]}
-            />
           </div>
 
           <div className="mt-5 max-h-[320px] space-y-2 overflow-y-auto pr-1">
@@ -580,15 +609,15 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
         <SectionCard
           compact
           title="Customer experience"
-          description="Returns, reviews, and support workload"
+          description="Returns, reviews, and support workload across the marketplace"
           action={
             <Button variant="ghost" onClick={() => navigate("/support-chats")}>
               Support inbox
             </Button>
           }
         >
-          <StatGrid
-            items={[
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {[
               { label: "Return requests", value: String(report.returns.length) },
               { label: "Reviews", value: String(report.reviews.length) },
               {
@@ -597,18 +626,34 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
               },
               { label: "Hidden reviews", value: String(report.hiddenReviewCount) },
               { label: "Support threads", value: String(report.supportThreads.length) },
-              { label: "Open support threads", value: String(openSupportThreads) },
-            ]}
-          />
+              { label: "Open support", value: String(openSupportThreads) },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-xl border border-line bg-surface px-4 py-3 shadow-sm"
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-textSubtle">
+                  {item.label}
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-textStrong">{item.value}</p>
+              </div>
+            ))}
+          </div>
 
-          <div className="mt-5 grid gap-5 xl:grid-cols-3">
-            <DistributionBlock title="Return status" items={breakdowns.returnStatus} tone="amber" />
-            <DistributionBlock title="Support status" items={breakdowns.supportStatus} tone="sky" />
-            <DistributionBlock
-              title="Notification types"
-              items={breakdowns.notificationTypes}
-              tone="fuchsia"
-            />
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-2xl border border-line bg-surfaceMuted/50 p-4">
+              <DistributionBlock title="Return status" items={breakdowns.returnStatus} tone="amber" />
+            </div>
+            <div className="rounded-2xl border border-line bg-surfaceMuted/50 p-4">
+              <DistributionBlock title="Support status" items={breakdowns.supportStatus} tone="sky" />
+            </div>
+            <div className="rounded-2xl border border-line bg-surfaceMuted/50 p-4">
+              <DistributionBlock
+                title="Notification types"
+                items={breakdowns.notificationTypes}
+                tone="fuchsia"
+              />
+            </div>
           </div>
 
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -864,7 +909,7 @@ function DistributionBlock({
 
 function PaymentRow({ payment }: { payment: AdminPaymentTransaction }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5">
+    <div className="rounded-xl border border-line bg-surfaceMuted px-3 py-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-textStrong">{payment.orderNumber}</p>
@@ -886,7 +931,7 @@ function PaymentRow({ payment }: { payment: AdminPaymentTransaction }) {
 
 function NotificationRow({ notification }: { notification: NotificationItem }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5">
+    <div className="rounded-xl border border-line bg-surfaceMuted px-3 py-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-textStrong">{notification.title}</p>

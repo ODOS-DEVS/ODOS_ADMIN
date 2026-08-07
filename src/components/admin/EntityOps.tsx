@@ -41,7 +41,7 @@ function TimelineEvent({ event }: { event: SystemEventLog }) {
   return (
     <li className="relative pl-6">
       <span className="absolute left-[5px] top-2 size-2.5 rounded-full bg-accent shadow-[0_0_0_3px_rgba(249,115,22,0.18)]" />
-      <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-3">
+      <div className="rounded-xl border border-line bg-surfaceMuted px-3.5 py-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-sm font-medium text-textStrong">{event.action}</p>
@@ -158,7 +158,7 @@ export function EntityTimeline({
           description="Status changes and admin actions will appear here as they happen."
         />
       ) : (
-        <ol className="relative space-y-3 border-l border-white/10 pl-1">
+        <ol className="relative space-y-3 border-l border-line pl-1">
           {filtered.map((event) => (
             <TimelineEvent key={event.id} event={event} />
           ))}
@@ -200,17 +200,17 @@ export function RelatedRecordsCard({
               key={record.id}
               type="button"
               onClick={() => navigate(record.href)}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-3 text-left transition hover:border-accent/30 hover:bg-white/[0.04]"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-surfaceMuted px-4 py-3.5 text-left transition hover:border-accent/30 hover:bg-surface"
             >
               <span className="min-w-0">
-                <span className="block truncate text-sm font-medium text-textStrong">
+                <span className="block truncate text-sm font-semibold text-textStrong">
                   {record.label}
                 </span>
                 {record.meta ? (
                   <span className="mt-0.5 block truncate text-xs text-textMuted">{record.meta}</span>
                 ) : null}
               </span>
-              <span className="shrink-0 text-xs font-medium text-accentSoft">Open →</span>
+              <span className="shrink-0 text-xs font-semibold text-accent">Open</span>
             </button>
           ))}
         </div>

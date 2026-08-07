@@ -21,7 +21,7 @@ export function NotificationsPage() {
             <SectionCard compact title="Signal mix" description="Open the full feed to browse by type and mark items read.">
               <div className="flex flex-wrap gap-2">
                 {Object.entries(s.byType).slice(0, 6).map(([type, count]) => (
-                  <span key={type} className="rounded-full border border-white/10 px-3 py-1 text-xs text-textMuted">
+                  <span key={type} className="rounded-full border border-line px-3 py-1 text-xs text-textMuted">
                     {type.replace(/_/g, " ")} · {count}
                   </span>
                 ))}

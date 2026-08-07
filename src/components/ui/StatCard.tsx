@@ -12,11 +12,11 @@ type StatCardProps = {
   onClick?: () => void;
 };
 
-const toneStyles = {
-  default: "border-white/10 hover:border-white/20",
-  warning: "border-warning/35 bg-warning/[0.06] hover:border-warning/50",
-  success: "border-success/30 bg-success/[0.05] hover:border-success/45",
-  info: "border-info/30 bg-info/[0.05] hover:border-info/45",
+const iconToneStyles = {
+  default: "bg-accentSoft text-accent",
+  warning: "bg-warning-soft text-warning",
+  success: "bg-success-soft text-success",
+  info: "bg-info-soft text-info",
 };
 
 export function StatCard({
@@ -40,13 +40,12 @@ export function StatCard({
         style={{ animationDelay: `${animationDelay}ms` }}
         className={clsx(
           "animate-fade-up opacity-0",
-          "flex items-center justify-between gap-3 rounded-2xl border bg-white/[0.02] px-3.5 py-2.5 text-left transition",
-          toneStyles[tone],
-          interactive && "cursor-pointer hover:bg-white/[0.04]",
+          "flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5 text-left shadow-card transition",
+          interactive && "cursor-pointer hover:border-accent/25",
         )}
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="rounded-xl border border-accent/20 bg-panel-gradient p-1.5 text-accent">
+          <span className={clsx("rounded-full p-1.5", iconToneStyles[tone])}>
             <Icon className="size-3.5 shrink-0" />
           </span>
           <span className="truncate text-xs text-textMuted">{label}</span>
@@ -63,19 +62,18 @@ export function StatCard({
       style={{ animationDelay: `${animationDelay}ms` }}
       className={clsx(
         "animate-fade-up opacity-0",
-        "rounded-2xl border bg-panel/80 p-4 shadow-glow text-left transition",
-        toneStyles[tone],
-        interactive && "cursor-pointer hover:bg-panel/90 hover:shadow-lg",
+        "rounded-2xl border border-line bg-surface p-5 text-left shadow-card transition",
+        interactive && "cursor-pointer hover:border-accent/25 hover:shadow-soft",
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-textMuted">{label}</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-textStrong">{value}</p>
-          {hint ? <p className="mt-2 line-clamp-1 text-xs text-textMuted">{hint}</p> : null}
+          <p className="text-sm font-medium text-textMuted">{label}</p>
+          <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-textStrong">{value}</p>
+          {hint ? <p className="mt-2 text-xs text-textMuted">{hint}</p> : null}
         </div>
-        <div className="rounded-xl border border-accent/20 bg-panel-gradient p-2.5 text-accent">
-          <Icon className="size-4" />
+        <div className={clsx("rounded-full p-3", iconToneStyles[tone])}>
+          <Icon className="size-5" />
         </div>
       </div>
     </Wrapper>

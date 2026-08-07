@@ -2,20 +2,19 @@ import clsx from "clsx";
 import type { ReactNode } from "react";
 
 import { InsightPill } from "@/components/analytics/AnalyticsUi";
+import { SkeletonBlock, SkeletonGrid } from "@/components/ui/Skeleton";
 
 export function UsersBriefSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-14 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={`users-kpi-${index}`}
-            className="h-24 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
-          />
-        ))}
-      </div>
-      <div className="h-56 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
+      <SkeletonBlock className="h-14 rounded-2xl" />
+      <SkeletonGrid
+        count={4}
+        className="grid grid-cols-2 gap-3 xl:grid-cols-4"
+        tileClassName="h-28 rounded-2xl"
+        variant="surface"
+      />
+      <SkeletonBlock variant="surface" className="h-56 rounded-2xl" />
     </div>
   );
 }
@@ -23,19 +22,20 @@ export function UsersBriefSkeleton() {
 export function UserDirectorySkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-20 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
-      <div className="h-10 animate-pulse rounded-xl border border-white/10 bg-white/[0.03]" />
-      <div className="h-96 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
+      <SkeletonBlock className="h-20 rounded-2xl" />
+      <SkeletonBlock className="h-10 rounded-xl" />
+      <SkeletonBlock variant="surface" className="h-96 rounded-2xl" />
     </div>
   );
 }
 
 export function UserProfileSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="h-32 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
-      <div className="h-10 animate-pulse rounded-xl border border-white/10 bg-white/[0.03]" />
-      <div className="h-72 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
+    <div className="space-y-5">
+      <SkeletonBlock className="h-56 rounded-panel" />
+      <SkeletonBlock className="h-10 rounded-xl" />
+      <SkeletonGrid count={4} className="grid grid-cols-2 gap-3 xl:grid-cols-4" tileClassName="h-28 rounded-2xl" />
+      <SkeletonBlock className="h-72 rounded-2xl" />
     </div>
   );
 }
@@ -65,17 +65,17 @@ export function UserSectionNav({
 }) {
   return (
     <div className="overflow-x-auto pb-1">
-      <div className="flex min-w-max gap-1 rounded-xl border border-white/10 bg-surface/95 p-1 backdrop-blur-md">
+      <div className="flex min-w-max gap-1 rounded-2xl border border-line/80 bg-surfaceMuted/80 p-1.5 shadow-sm">
         {sections.map((section) => (
           <button
             key={section.id}
             type="button"
             onClick={() => onSelect(section.id)}
             className={clsx(
-              "rounded-lg px-3 py-2 text-xs font-medium transition",
+              "shrink-0 rounded-xl px-3.5 py-2 text-xs font-medium transition",
               activeId === section.id
-                ? "bg-accent/15 text-accentSoft"
-                : "text-textMuted hover:bg-white/[0.04] hover:text-textStrong",
+                ? "bg-accent text-accentForeground shadow-sm"
+                : "text-textMuted hover:bg-surface hover:text-textStrong",
             )}
           >
             {section.label}
@@ -85,14 +85,10 @@ export function UserSectionNav({
     </div>
   );
 }
+import { DetailField } from "@/components/ui/DetailList";
 
 export function DetailTile({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-textMuted">{label}</p>
-      <div className="mt-1 text-sm text-textStrong">{value}</div>
-    </div>
-  );
+  return <DetailField label={label} value={value} />;
 }
 
 export function getUserInitials(name: string) {

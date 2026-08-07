@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Ticket, UserRound } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -8,12 +9,14 @@ import {
   AdminPageSkeleton,
   AdminTabNav,
   AdminTabPanel,
+  HeaderActionButton,
 } from "@/components/admin/AdminShell";
 import { EntityTimeline, RelatedRecordsCard } from "@/components/admin/EntityOps";
 import { getOrder, updateOrderStatus } from "@/api/ordersApi";
 import { DataTable } from "@/components/tables/DataTable";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { DetailFields, DetailStack } from "@/components/ui/DetailList";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -92,16 +95,21 @@ export function OrderDetailPage() {
         refreshing={isRefreshing}
         actions={
           <>
-            <Button variant="secondary" onClick={() => navigate(`/users/full/${order.customerId}`)}>
-              View customer
-            </Button>
+            <HeaderActionButton
+              variant="secondary"
+              leftIcon={<UserRound className="size-4" />}
+              onClick={() => navigate(`/users/full/${order.customerId}`)}
+            >
+              Customer
+            </HeaderActionButton>
             {order.voucherId ? (
-              <Button
+              <HeaderActionButton
                 variant="secondary"
+                leftIcon={<Ticket className="size-4" />}
                 onClick={() => navigate(`/vouchers/full/${order.voucherId}`)}
               >
-                View voucher
-              </Button>
+                Voucher
+              </HeaderActionButton>
             ) : null}
           </>
         }
@@ -113,6 +121,7 @@ export function OrderDetailPage() {
       />
       <AdminTabPanel activeSection={activeSection} sectionId="overview">
         <SectionCard compact title="Order snapshot">
+          <DetailStack className="gap-6">
           <AdminKpiGrid
             items={[
               { label: "Total", value: formatCurrency(order.totalAmount) },
@@ -130,7 +139,7 @@ export function OrderDetailPage() {
             <StatusBadge status={order.paymentStatus} />
             <StatusBadge status={String(order.vendorStatus)} />
           </div>
-          <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <DetailFields columns={2} className="mt-4">
             <AdminDetailTile label="Source" value={order.source} />
             <AdminDetailTile label="Internal status" value={order.internalStatus} />
             <AdminDetailTile
@@ -146,12 +155,13 @@ export function OrderDetailPage() {
               value={order.refundedAt ? formatDateTime(order.refundedAt) : "—"}
             />
             <AdminDetailTile label="Cancellation reason" value={order.cancellationReason ?? "—"} />
-          </div>
+          </DetailFields>
+          </DetailStack>
         </SectionCard>
       </AdminTabPanel>
       <AdminTabPanel activeSection={activeSection} sectionId="customer">
         <SectionCard compact title="Customer & delivery">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <DetailFields columns={2}>
             <AdminDetailTile label="Customer" value={order.customerName} />
             <AdminDetailTile label="Email" value={order.customerEmail} />
             <AdminDetailTile label="Phone" value={order.customerPhoneNumber ?? "—"} />
@@ -163,7 +173,7 @@ export function OrderDetailPage() {
               label="Address"
               value={`${order.addressStreet}, ${order.addressCity}, ${order.addressRegion}`}
             />
-          </div>
+          </DetailFields>
         </SectionCard>
       </AdminTabPanel>
       <AdminTabPanel activeSection={activeSection} sectionId="items">
@@ -213,7 +223,7 @@ export function OrderDetailPage() {
       </AdminTabPanel>
       <AdminTabPanel activeSection={activeSection} sectionId="payment">
         <SectionCard compact title="Payment details">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <DetailFields columns={2}>
             <AdminDetailTile label="Provider" value={order.paymentProvider} />
             <AdminDetailTile label="Method" value={order.paymentLabel} />
             <AdminDetailTile label="Reference" value={order.paymentReference ?? "—"} />
@@ -236,7 +246,7 @@ export function OrderDetailPage() {
               label="Cancelled"
               value={order.cancelledAt ? formatDateTime(order.cancelledAt) : "—"}
             />
-          </div>
+          </DetailFields>
         </SectionCard>
       </AdminTabPanel>
       <AdminTabPanel activeSection={activeSection} sectionId="returns">
@@ -249,7 +259,7 @@ export function OrderDetailPage() {
                 key={request.id}
                 type="button"
                 onClick={() => navigate(`/returns/full/${request.id}`)}
-                className="mb-2 w-full rounded-xl border border-white/10 p-3 text-left transition hover:border-accent/30"
+                className="mb-2 w-full rounded-xl border border-line p-3 text-left transition hover:border-accent/30"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium">{request.productTitle}</p>

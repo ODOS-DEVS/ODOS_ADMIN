@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { InfiniteDataTable } from "@/components/admin/InfiniteDataTable";
+import { PaginatedDataTable } from "@/components/admin/PaginatedDataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -18,14 +18,17 @@ type AdminInfiniteListProps<T> = {
   keyExtractor: (row: T) => string;
   rowClassName?: string;
   compact?: boolean;
+  page: number;
+  pageSize: number;
   isLoading: boolean;
-  isLoadingMore: boolean;
+  isLoadingPage: boolean;
   hasMore: boolean;
   error: string | null;
-  onLoadMore: () => void;
+  onPageChange: (page: number) => void;
   onRetry: () => void;
   emptyTitle: string;
   emptyDescription?: string;
+  listSummary?: string;
 };
 
 export function AdminInfiniteList<T>({
@@ -34,14 +37,17 @@ export function AdminInfiniteList<T>({
   keyExtractor,
   rowClassName,
   compact,
+  page,
+  pageSize,
   isLoading,
-  isLoadingMore,
+  isLoadingPage,
   hasMore,
   error,
-  onLoadMore,
+  onPageChange,
   onRetry,
   emptyTitle,
   emptyDescription,
+  listSummary,
 }: AdminInfiniteListProps<T>) {
   if (isLoading) {
     return <LoadingState label="Loading records..." />;
@@ -61,15 +67,18 @@ export function AdminInfiniteList<T>({
   }
 
   return (
-    <InfiniteDataTable
+    <PaginatedDataTable
       columns={columns}
       data={data}
       keyExtractor={keyExtractor}
       rowClassName={rowClassName}
       compact={compact}
+      page={page}
+      pageSize={pageSize}
       hasMore={hasMore}
-      isLoadingMore={isLoadingMore}
-      onLoadMore={onLoadMore}
+      isLoadingPage={isLoadingPage}
+      onPageChange={onPageChange}
+      listSummary={listSummary}
     />
   );
 }

@@ -251,7 +251,7 @@ function VoucherEditorSection({
   children,
 }: VoucherEditorSectionProps) {
   return (
-    <div className="rounded-[30px] border border-white/10 bg-white/[0.03] p-5">
+    <div className="rounded-[30px] border border-line bg-surfaceMuted p-5">
       <div className="mb-5">
         <p className="text-sm font-semibold text-textStrong">{title}</p>
         <p className="mt-1 text-sm leading-6 text-textMuted">{description}</p>
@@ -287,7 +287,7 @@ function VoucherDateTimeField({
           <button
             type="button"
             onClick={() => onChange("")}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-textMuted transition hover:text-textStrong"
+            className="rounded-full border border-line bg-surfaceMuted px-3 py-1.5 text-xs font-medium text-textMuted transition hover:text-textStrong"
           >
             Clear date
           </button>
@@ -306,10 +306,12 @@ export function FullVouchersPage() {
   const {
     items: vouchers,
     isLoading,
-    isLoadingMore,
+    page,
+    pageSize,
+    isLoadingPage,
     hasMore,
     error,
-    loadMore,
+    goToPage,
     refresh,
     replaceItem,
     setItems,
@@ -796,28 +798,28 @@ export function FullVouchersPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
             Live campaigns
           </p>
           <p className="mt-4 text-3xl font-semibold text-textStrong">{summary.activeCount}</p>
           <p className="mt-2 text-sm text-textMuted">Vouchers that can be redeemed right now.</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
             Scheduled
           </p>
           <p className="mt-4 text-3xl font-semibold text-textStrong">{summary.scheduledCount}</p>
           <p className="mt-2 text-sm text-textMuted">Campaigns queued to start later.</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
             Redemptions
           </p>
           <p className="mt-4 text-3xl font-semibold text-textStrong">{summary.totalRedemptions}</p>
           <p className="mt-2 text-sm text-textMuted">Successful voucher uses across all orders.</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-panel/80 p-5 shadow-glow">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
             Shopper savings
           </p>
@@ -837,10 +839,10 @@ export function FullVouchersPage() {
             {analytics.topCampaigns.slice(0, 6).map((campaign) => (
               <div
                 key={campaign.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                className="rounded-2xl border border-line bg-surfaceMuted p-4"
               >
                 <p className="font-medium text-textStrong">{campaign.title}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.22em] text-accentSoft">{campaign.code}</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.22em] text-textSubtle">{campaign.code}</p>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-textMuted">
                   <span>{campaign.redemptionCount} redemptions</span>
                   <span>{formatCurrency(campaign.totalDiscountAmount)} saved</span>
@@ -881,7 +883,7 @@ export function FullVouchersPage() {
                 render: (voucher) => (
                   <div>
                     <p className="font-medium text-textStrong">{voucher.title}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.22em] text-accentSoft">
+                    <p className="mt-1 text-xs uppercase tracking-[0.22em] text-textSubtle">
                       {voucher.code}
                     </p>
                     <p className="mt-2 text-xs text-textMuted">
@@ -924,7 +926,7 @@ export function FullVouchersPage() {
                   <div>
                     <StatusBadge status={voucher.status} />
                     {voucher.approvalStatus && voucher.approvalStatus !== "approved" ? (
-                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-amber-300">
+                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-warning">
                         {voucher.approvalStatus}
                       </p>
                     ) : null}
@@ -1039,10 +1041,12 @@ export function FullVouchersPage() {
             data={filteredVouchers}
             keyExtractor={(voucher) => voucher.id}
             isLoading={isLoading}
-            isLoadingMore={isLoadingMore}
+            page={page}
+            pageSize={pageSize}
+            isLoadingPage={isLoadingPage}
             hasMore={hasMore}
             error={error}
-            onLoadMore={() => void loadMore()}
+            onPageChange={goToPage}
             onRetry={() => void refresh()}
             emptyTitle="No vouchers found"
             emptyDescription="Create a new campaign or broaden the current filters."
@@ -1077,8 +1081,8 @@ export function FullVouchersPage() {
         }
       >
         <div className="space-y-5">
-          <div className="flex items-start gap-3 rounded-[28px] border border-accent/15 bg-accent/8 px-4 py-4 text-sm text-textMuted">
-            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accentSoft">
+          <div className="flex items-start gap-3 rounded-panel border border-accent/15 bg-accent/8 px-4 py-4 text-sm text-textMuted">
+            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent">
               <Info className="size-4" />
             </div>
             <p className="leading-6">
@@ -1505,7 +1509,7 @@ export function FullVouchersPage() {
                   ) : null}
 
                   <div className="grid gap-3">
-                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                    <label className="flex items-center gap-3 rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-sm text-textStrong">
                       <input
                         type="checkbox"
                         checked={voucherForm.stackable}
@@ -1514,7 +1518,7 @@ export function FullVouchersPage() {
                       Stackable with other eligible promotions
                     </label>
 
-                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                    <label className="flex items-center gap-3 rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-sm text-textStrong">
                       <input
                         type="checkbox"
                         checked={voucherForm.autoApply}
@@ -1523,7 +1527,7 @@ export function FullVouchersPage() {
                       Auto-apply when eligible (no code required)
                     </label>
 
-                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                    <label className="flex items-center gap-3 rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-sm text-textStrong">
                       <input
                         type="checkbox"
                         checked={voucherForm.firstOrderOnly}
@@ -1532,7 +1536,7 @@ export function FullVouchersPage() {
                       First order only
                     </label>
 
-                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                    <label className="flex items-center gap-3 rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-sm text-textStrong">
                       <input
                         type="checkbox"
                         checked={voucherForm.newUserOnly}
@@ -1597,7 +1601,7 @@ export function FullVouchersPage() {
                 </div>
               </VoucherEditorSection>
 
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
+              <div className="rounded-panel border border-line bg-surfaceMuted p-5">
                 <div className="flex flex-col gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
@@ -1612,7 +1616,7 @@ export function FullVouchersPage() {
                     </p>
                   </div>
 
-                  <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-textStrong">
+                  <label className="flex items-center gap-3 rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-sm text-textStrong">
                     <input
                       type="checkbox"
                       checked={voucherForm.isActive}
@@ -1644,7 +1648,7 @@ export function FullVouchersPage() {
         }
       >
         <div className="space-y-5">
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+          <div className="rounded-2xl border border-info/20 bg-info-soft p-4 text-sm leading-6 text-info">
             Configure discount rules in the create voucher form first, then generate a batch using those settings.
             Open create voucher, set your template, and return here — or edit the form below before generating.
           </div>
@@ -1676,7 +1680,7 @@ export function FullVouchersPage() {
             </VoucherEditorField>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-textMuted">
+          <div className="rounded-2xl border border-line bg-surfaceMuted p-4 text-sm text-textMuted">
             <p className="font-medium text-textStrong">Template preview</p>
             <p className="mt-2">
               {buildRewardPreview(

@@ -72,7 +72,7 @@ export function ImageCropModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
-      <div className="w-full max-w-6xl rounded-[28px] border border-white/10 bg-panel p-6 shadow-2xl">
+      <div className="w-full max-w-6xl rounded-panel border border-line bg-panel p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-textMuted">{eyebrow}</p>
@@ -81,7 +81,7 @@ export function ImageCropModal({
           </div>
           <button
             type="button"
-            className="rounded-full border border-white/10 px-4 py-2 text-sm text-textStrong transition hover:border-white/20 hover:bg-white/5"
+            className="rounded-full border border-line px-4 py-2 text-sm text-textStrong transition hover:border-accent/30 hover:bg-surfaceMuted"
             onClick={onClose}
             disabled={isSaving}
           >
@@ -90,7 +90,7 @@ export function ImageCropModal({
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="relative h-[560px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950">
+          <div className="relative h-[560px] overflow-hidden rounded-3xl border border-line bg-slate-950">
             <Cropper
               image={imageUrl}
               crop={crop}
@@ -103,7 +103,7 @@ export function ImageCropModal({
             />
           </div>
 
-          <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
             <label className="block text-sm font-medium text-textStrong">Zoom</label>
             <input
               className="mt-3 w-full accent-accent"
@@ -116,7 +116,7 @@ export function ImageCropModal({
             />
             <p className="mt-2 text-xs text-textMuted">Use the slider to tighten or relax the crop.</p>
 
-            <div className="mt-8 rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+            <div className="mt-8 rounded-2xl border border-line bg-slate-950/50 p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-textMuted">Output</p>
               <p className="mt-3 text-sm text-textStrong">{outputLabel}</p>
               <p className="mt-2 text-sm text-textMuted">
@@ -127,7 +127,7 @@ export function ImageCropModal({
             <div className="mt-8 flex gap-3">
               <button
                 type="button"
-                className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-sm text-textStrong transition hover:border-white/20 hover:bg-white/5"
+                className="flex-1 rounded-2xl border border-line px-4 py-3 text-sm text-textStrong transition hover:border-accent/30 hover:bg-surfaceMuted"
                 onClick={onClose}
                 disabled={isSaving}
               >

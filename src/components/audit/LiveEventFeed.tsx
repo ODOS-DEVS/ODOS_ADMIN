@@ -60,7 +60,7 @@ export function LiveEventFeed({ compact = false }: LiveEventFeedProps) {
 
   if (!canAccess("audit_log")) {
     return (
-      <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-xs text-textMuted">
+      <p className="rounded-xl border border-dashed border-line px-3 py-6 text-center text-xs text-textMuted">
         Audit log access is not enabled for your admin role.
       </p>
     );
@@ -72,7 +72,7 @@ export function LiveEventFeed({ compact = false }: LiveEventFeedProps) {
 
   if (events.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-xs text-textMuted">
+      <p className="rounded-xl border border-dashed border-line px-3 py-6 text-center text-xs text-textMuted">
         No audit events yet. Actions across the platform will stream here in real time.
       </p>
     );
@@ -87,7 +87,7 @@ export function LiveEventFeed({ compact = false }: LiveEventFeedProps) {
         {events.map((event) => (
           <div
             key={event.id}
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5"
+            className="rounded-xl border border-line bg-surfaceMuted px-3 py-2.5"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -96,7 +96,7 @@ export function LiveEventFeed({ compact = false }: LiveEventFeedProps) {
                   {summarizeEvent(event)}
                 </p>
               </div>
-              <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-textMuted">
+              <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-textMuted">
                 {event.actorType}
               </span>
             </div>

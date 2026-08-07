@@ -1,8 +1,9 @@
-import { ShieldPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { getAdminBootstrapStatus } from "@/api/adminAuthApi";
+import { AuthPasswordInput } from "@/components/auth/AuthPasswordInput";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -60,8 +61,8 @@ export function BootstrapAdminPage() {
     try {
       await bootstrapSignup({ fullName, email, password, phoneNumber });
       showToast({
-        title: "Admin account created",
-        description: "Your first ODOS admin account is ready.",
+        title: "Super admin created",
+        description: "You can now invite staff and assign permission bands in Settings.",
         tone: "success",
       });
       navigate("/dashboard", { replace: true });
@@ -79,7 +80,7 @@ export function BootstrapAdminPage() {
 
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-canvas p-6">
+      <div className="flex min-h-screen items-center justify-center bg-canvas p-6">
         <LoadingState label="Checking bootstrap availability..." />
       </div>
     );
@@ -87,147 +88,156 @@ export function BootstrapAdminPage() {
 
   if (!bootstrapEnabled) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-canvas px-4 py-10 text-textStrong">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.10),transparent_25%),radial-gradient(circle_at_bottom_right,rgba(249,115,22,0.14),transparent_30%)]" />
-        <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center">
-          <div className="w-full rounded-[28px] border border-white/10 bg-panel/90 p-8 shadow-glow backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accentSoft">
-              Admin Setup Closed
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold text-textStrong">
-              An admin already exists for ODOS
-            </h1>
-            <p className="mt-3 text-sm text-textMuted">
-              {error
-                ? `The admin setup flow could not contact the backend: ${error}`
-                : "The first-admin bootstrap flow is only available once. Sign in with an existing admin account instead."}
-            </p>
-            <div className="mt-6">
-              <Link to="/login" className="text-sm font-medium text-accentSoft hover:text-textStrong">
-                Back to admin sign in
-              </Link>
-            </div>
-          </div>
+      <AuthShell
+        brandLinkTo="/login"
+        showcase={{
+          tagline: "Secure workspace",
+          title: "Your ODOS admin team is already live",
+          description:
+            "Bootstrap is a one-time flow. Sign in with your staff credentials, or ask a super admin to invite you from Settings.",
+        }}
+        footer={
+          <Link to="/login" className="font-semibold text-accent hover:underline">
+            Back to sign in
+          </Link>
+        }
+      >
+        <div className="mb-9">
+          <h1 className="font-display text-[1.75rem] font-semibold tracking-tight text-textStrong">Setup closed</h1>
+          <p className="mt-2.5 text-[15px] leading-relaxed text-textMuted">
+            {error
+              ? `We could not reach the backend: ${error}`
+              : "An admin account already exists on this environment."}
+          </p>
         </div>
-      </div>
+        <p className="text-sm leading-relaxed text-textMuted">
+          Platform owners should use their saved credentials. New teammates need an invite from a
+          super admin under Settings → Admin team.
+        </p>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-canvas px-4 py-10 text-textStrong">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.10),transparent_25%),radial-gradient(circle_at_bottom_right,rgba(249,115,22,0.14),transparent_30%)]" />
-      <div className="relative mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-        <section className="space-y-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accentSoft">
-            First Admin Setup
-          </p>
-          <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-textStrong">
-            Create the very first ODOS admin account.
-          </h1>
-          <p className="max-w-2xl text-lg text-textMuted">
-            This setup screen is only available while the platform has no admin users. Once your
-            first admin is created, this route closes automatically.
-          </p>
-        </section>
-
-        <section className="rounded-[28px] border border-white/10 bg-panel/90 p-6 shadow-glow backdrop-blur sm:p-8">
-          <div className="flex items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-accent/15 text-accentSoft">
-              <ShieldPlus className="size-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accentSoft">
-                Bootstrap Admin
-              </p>
-              <h2 className="mt-1 text-2xl font-semibold text-textStrong">
-                Register first admin
-              </h2>
-            </div>
-          </div>
-
-          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-textStrong">Full name</label>
-              <input
-                className="app-input"
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                placeholder="ODOS Administrator"
-                autoComplete="name"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-textStrong">Email address</label>
-              <input
-                type="email"
-                className="app-input"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="admin@odos.app"
-                autoComplete="email"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-textStrong">Phone number</label>
-              <input
-                className="app-input"
-                value={phoneNumber}
-                onChange={(event) => setPhoneNumber(event.target.value)}
-                placeholder="+233..."
-                autoComplete="tel"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-textStrong">Password</label>
-              <input
-                type="password"
-                className="app-input"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Create a strong password"
-                autoComplete="new-password"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-textStrong">Confirm password</label>
-              <input
-                type="password"
-                className="app-input"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Repeat the password"
-                autoComplete="new-password"
-              />
-            </div>
-
-            {error ? (
-              <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                {error}
-              </div>
-            ) : null}
-
-            <Button
-              type="submit"
-              className="w-full"
-              isLoading={isSigningUp}
-              disabled={
-                !fullName.trim() ||
-                !email.trim() ||
-                !password.trim() ||
-                !confirmPassword.trim()
-              }
-            >
-              Create first admin
-            </Button>
-          </form>
-
-          <div className="mt-6">
-            <Link to="/login" className="text-sm font-medium text-accentSoft hover:text-textStrong">
-              Back to admin sign in
-            </Link>
-          </div>
-        </section>
+    <AuthShell
+      brandLinkTo="/login"
+      showcase={{
+        tagline: "One-time setup",
+        title: "Stand up the ODOS super admin",
+        description:
+          "Full access to every desk plus staff invites and permission bands. This path closes once the first account exists.",
+      }}
+      footer={
+        <p>
+          Already have access?{" "}
+          <Link to="/login" className="font-semibold text-accent hover:underline">
+            Sign in
+          </Link>
+        </p>
+      }
+    >
+      <div className="mb-9">
+        <h1 className="font-display text-[1.75rem] font-semibold tracking-tight text-textStrong">Super admin setup</h1>
+        <p className="mt-2.5 text-[15px] leading-relaxed text-textMuted">
+          Register the platform owner. You can add finance, support, and ops staff next.
+        </p>
       </div>
-    </div>
+
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="bootstrap-name" className="mb-2 block text-sm font-medium text-textStrong">
+            Full name
+          </label>
+          <input
+            id="bootstrap-name"
+            className="app-input auth-input-muted"
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            placeholder="Platform owner"
+            autoComplete="name"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="bootstrap-email" className="mb-2 block text-sm font-medium text-textStrong">
+            Email
+          </label>
+          <input
+            id="bootstrap-email"
+            type="email"
+            className="app-input auth-input-muted"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="owner@odos.app"
+            autoComplete="email"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="bootstrap-phone" className="mb-2 block text-sm font-medium text-textStrong">
+            Phone <span className="text-textSubtle">(optional)</span>
+          </label>
+          <input
+            id="bootstrap-phone"
+            className="app-input auth-input-muted"
+            value={phoneNumber}
+            onChange={(event) => setPhoneNumber(event.target.value)}
+            placeholder="+233..."
+            autoComplete="tel"
+          />
+        </div>
+        <div>
+          <label htmlFor="bootstrap-password" className="mb-2 block text-sm font-medium text-textStrong">
+            Password
+          </label>
+          <AuthPasswordInput
+            id="bootstrap-password"
+            value={password}
+            onChange={setPassword}
+            placeholder="Minimum 8 characters"
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="bootstrap-confirm"
+            className="mb-2 block text-sm font-medium text-textStrong"
+          >
+            Confirm password
+          </label>
+          <AuthPasswordInput
+            id="bootstrap-confirm"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            placeholder="Repeat password"
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
+        </div>
+
+        {error ? (
+          <div className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
+            {error}
+          </div>
+        ) : null}
+
+        <Button
+          type="submit"
+          className="w-full py-3 text-[15px]"
+          isLoading={isSigningUp}
+          disabled={
+            !fullName.trim() ||
+            !email.trim() ||
+            password.length < 8 ||
+            confirmPassword.length < 8
+          }
+        >
+          Create super admin
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

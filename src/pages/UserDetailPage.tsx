@@ -1,15 +1,16 @@
-import { ArrowLeft, Ban, RefreshCw } from "lucide-react";
+import { Ban } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { loadUserProfile } from "@/api/userProfileApi";
 import { updateUserStatus } from "@/api/usersApi";
+import { AdminDetailHeader, HeaderActionButton } from "@/components/admin/AdminShell";
 import { UserDetailView } from "@/components/users/UserDetailView";
 import { UserProfileSkeleton } from "@/components/users/UsersUi";
 import type { UserProfileReport } from "@/api/userProfileApi";
-import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useToast } from "@/hooks/useToast";
 import { formatDateTime } from "@/utils/format";
@@ -18,7 +19,6 @@ export function UserDetailPage() {
   const { userId = "" } = useParams();
   const { token } = useAdminAuth();
   const { showToast } = useToast();
-  const navigate = useNavigate();
   const [report, setReport] = useState<UserProfileReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -86,44 +86,34 @@ export function UserDetailPage() {
   const isAdmin = user.roles.includes("admin");
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">
-            User profile
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">{user.fullName}</h1>
-          <p className="mt-1 text-sm text-textMuted">
-            Complete account dossier · refreshed {formatDateTime(report.loadedAt)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            leftIcon={<ArrowLeft className="size-4" />}
-            onClick={() => navigate("/users/full")}
-          >
-            Back to directory
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />}
-            onClick={() => void loadProfile(true)}
-            disabled={isRefreshing}
-          >
-            Refresh profile
-          </Button>
-          {!isAdmin ? (
-            <Button
+    <div className="space-y-6">
+      <AdminDetailHeader
+        eyebrow="Users"
+        title={user.fullName}
+        description={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span>{user.email}</span>
+            <StatusBadge status={user.accountStatus} />
+            {user.roles.includes("vendor") ? <StatusBadge status="vendor" /> : null}
+            <span className="text-textSubtle">·</span>
+            <span>Refreshed {formatDateTime(report.loadedAt)}</span>
+          </span>
+        }
+        backRoute="/users/full"
+        onRefresh={() => void loadProfile(true)}
+        refreshing={isRefreshing}
+        actions={
+          !isAdmin ? (
+            <HeaderActionButton
               variant={user.accountStatus === "blocked" ? "primary" : "danger"}
               leftIcon={<Ban className="size-4" />}
               onClick={() => setConfirmBlock(true)}
             >
-              {user.accountStatus === "blocked" ? "Unblock user" : "Block user"}
-            </Button>
-          ) : null}
-        </div>
-      </div>
+              {user.accountStatus === "blocked" ? "Unblock" : "Block"}
+            </HeaderActionButton>
+          ) : null
+        }
+      />
 
       <UserDetailView report={report} />
 

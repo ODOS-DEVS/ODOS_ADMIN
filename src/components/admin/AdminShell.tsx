@@ -1,11 +1,38 @@
 import clsx from "clsx";
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { InsightPill } from "@/components/analytics/AnalyticsUi";
 import { Button } from "@/components/ui/Button";
+import { DetailField } from "@/components/ui/DetailList";
 import { SectionCard } from "@/components/ui/SectionCard";
+import { SkeletonBlock, SkeletonGrid } from "@/components/ui/Skeleton";
+
+export const HEADER_ACTION_BUTTON_CLASS =
+  "min-h-10 w-full shrink-0 justify-center whitespace-nowrap px-3 text-[13px] font-medium sm:w-[var(--admin-header-action-width)] sm:min-w-[var(--admin-header-action-width)] sm:max-w-[var(--admin-header-action-width)]";
+
+export function AdminHeaderActions({ children }: { children: ReactNode }) {
+  return <div className="admin-header-actions">{children}</div>;
+}
+
+/** @deprecated Use AdminHeaderActions */
+export const DetailHeaderActions = AdminHeaderActions;
+
+export function HeaderActionButton({
+  children,
+  className,
+  ...rest
+}: ComponentProps<typeof Button>) {
+  return (
+    <Button className={clsx(HEADER_ACTION_BUTTON_CLASS, className)} {...rest}>
+      {children}
+    </Button>
+  );
+}
+
+/** @deprecated Use HeaderActionButton */
+export const DetailHeaderActionButton = HeaderActionButton;
 
 export function AdminBriefHeader({
   eyebrow,
@@ -26,27 +53,27 @@ export function AdminBriefHeader({
 }) {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">{eyebrow}</p>
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-textMuted">{eyebrow}</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">{title}</h1>
         <p className="mt-1 max-w-2xl text-sm text-textMuted">{description}</p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <AdminHeaderActions>
         {onRefresh ? (
-          <Button
+          <HeaderActionButton
             variant="secondary"
             leftIcon={<RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />}
             onClick={onRefresh}
             disabled={refreshing}
           >
             Refresh
-          </Button>
+          </HeaderActionButton>
         ) : null}
-        <Button leftIcon={<ArrowRight className="size-4" />} onClick={() => navigate(fullRoute)}>
+        <HeaderActionButton leftIcon={<ArrowRight className="size-4" />} onClick={() => navigate(fullRoute)}>
           {fullLabel}
-        </Button>
-      </div>
+        </HeaderActionButton>
+      </AdminHeaderActions>
     </div>
   );
 }
@@ -72,28 +99,32 @@ export function AdminFullHeader({
 }) {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">{eyebrow}</p>
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-textMuted">{eyebrow}</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">{title}</h1>
         <p className="mt-1 max-w-3xl text-sm text-textMuted">{description}</p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" leftIcon={<ArrowLeft className="size-4" />} onClick={() => navigate(backRoute)}>
+      <AdminHeaderActions>
+        <HeaderActionButton
+          variant="secondary"
+          leftIcon={<ArrowLeft className="size-4" />}
+          onClick={() => navigate(backRoute)}
+        >
           {backLabel}
-        </Button>
+        </HeaderActionButton>
         {onRefresh ? (
-          <Button
+          <HeaderActionButton
             variant="secondary"
             leftIcon={<RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />}
             onClick={onRefresh}
             disabled={refreshing}
           >
             Refresh
-          </Button>
+          </HeaderActionButton>
         ) : null}
         {actions}
-      </div>
+      </AdminHeaderActions>
     </div>
   );
 }
@@ -103,14 +134,14 @@ export function AdminDetailHeader({
   title,
   description,
   backRoute,
-  backLabel = "Back to directory",
+  backLabel = "Directory",
   onRefresh,
   refreshing = false,
   actions,
 }: {
   eyebrow: string;
   title: string;
-  description: string;
+  description?: ReactNode;
   backRoute: string;
   backLabel?: string;
   onRefresh?: () => void;
@@ -119,28 +150,33 @@ export function AdminDetailHeader({
 }) {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accentSoft">{eyebrow}</p>
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-textMuted">{eyebrow}</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-textStrong">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-textMuted">{description}</p> : null}
+        {description ? <div className="mt-2 text-sm text-textMuted">{description}</div> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" leftIcon={<ArrowLeft className="size-4" />} onClick={() => navigate(backRoute)}>
+      <AdminHeaderActions>
+        <HeaderActionButton
+          variant="secondary"
+          leftIcon={<ArrowLeft className="size-4" />}
+          onClick={() => navigate(backRoute)}
+          title="Back to directory"
+        >
           {backLabel}
-        </Button>
+        </HeaderActionButton>
         {onRefresh ? (
-          <Button
+          <HeaderActionButton
             variant="secondary"
             leftIcon={<RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />}
             onClick={onRefresh}
             disabled={refreshing}
           >
             Refresh
-          </Button>
+          </HeaderActionButton>
         ) : null}
         {actions}
-      </div>
+      </AdminHeaderActions>
     </div>
   );
 }
@@ -156,7 +192,7 @@ export function AdminTabNav({
 }) {
   return (
     <div className="overflow-x-auto pb-1">
-      <div className="flex min-w-max gap-1 rounded-xl border border-white/10 bg-surface/95 p-1 backdrop-blur-md">
+      <div className="flex min-w-max gap-1 rounded-xl border border-line bg-surfaceMuted p-1">
         {sections.map((section) => (
           <button
             key={section.id}
@@ -165,8 +201,8 @@ export function AdminTabNav({
             className={clsx(
               "rounded-lg px-3 py-2 text-xs font-medium transition",
               activeId === section.id
-                ? "bg-accent/15 text-accentSoft"
-                : "text-textMuted hover:bg-white/[0.04] hover:text-textStrong",
+                ? "bg-accent text-accentForeground shadow-sm"
+                : "text-textMuted hover:bg-surface hover:text-textStrong",
             )}
           >
             {section.label}
@@ -206,7 +242,9 @@ export function AdminKpiGrid({
   return (
     <div className={clsx("grid grid-cols-2 gap-2", columnClass)}>
       {items.map((item) => (
-        <InsightPill key={item.label} label={item.label} value={item.value} hint={item.hint} />
+        <div key={item.label} className="border-b border-line/60 pb-3">
+          <InsightPill label={item.label} value={item.value} hint={item.hint} />
+        </div>
       ))}
     </div>
   );
@@ -241,24 +279,16 @@ export function AdminCallout({
 export function AdminPageSkeleton({ blocks = 3 }: { blocks?: number }) {
   return (
     <div className="space-y-4">
-      <div className="h-14 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={`sk-kpi-${index}`} className="h-24 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
-        ))}
-      </div>
+      <SkeletonBlock className="h-14 rounded-2xl" />
+      <SkeletonGrid count={4} className="grid grid-cols-2 gap-3 xl:grid-cols-4" tileClassName="h-24 rounded-2xl" />
       {Array.from({ length: blocks }).map((_, index) => (
-        <div key={`sk-block-${index}`} className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
+        <SkeletonBlock key={`sk-block-${index}`} className="h-40 rounded-2xl" />
       ))}
     </div>
   );
 }
 
 export function AdminDetailTile({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-textMuted">{label}</p>
-      <div className="mt-1 text-sm text-textStrong">{value}</div>
-    </div>
-  );
+  return <DetailField label={label} value={value} />;
 }
+

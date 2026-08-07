@@ -53,11 +53,11 @@ export function ProductShopperPreview({
     parsedOldPrice !== null && Number.isFinite(parsedOldPrice) && parsedOldPrice > parsedPrice;
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-white/10 bg-panel/90 shadow-glow">
-      <div className="border-b border-white/10 px-4 py-3">
+    <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-card">
+      <div className="border-b border-line px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="rounded-xl bg-accent/15 p-2 text-accentSoft">
+            <div className="rounded-xl bg-accent/15 p-2 text-accent">
               <Smartphone className="size-4" />
             </div>
             <div>
@@ -78,7 +78,7 @@ export function ProductShopperPreview({
             </span>
           </div>
 
-          <div className="space-y-3 rounded-[24px] bg-[#f8fafc] p-3 text-[#0f172a]">
+          <div className="space-y-3 rounded-3xl bg-[#f8fafc] p-3 text-[#0f172a]">
             <div className="overflow-hidden rounded-[20px] border border-[#e5e7eb] bg-white">
               <div className="relative aspect-[4/5] bg-[#f3f4f6]">
                 {imageUrl ? (
