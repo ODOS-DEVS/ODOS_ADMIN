@@ -364,7 +364,7 @@ export function FullOrdersPage() {
 
             <div className="grid gap-8 xl:grid-cols-2">
               <DetailSection title="Customer">
-                <DetailFields columns={2}>
+                <DetailFields columns={1}>
                   <DetailField label="Customer name" value={selectedOrder.customerName} />
                   <DetailField label="Email" value={selectedOrder.customerEmail} />
                   <DetailField
@@ -376,7 +376,7 @@ export function FullOrdersPage() {
               </DetailSection>
 
               <DetailSection title="Order state">
-                <DetailFields columns={2}>
+                <DetailFields columns={1}>
                   <DetailField label="Store-facing status" value={selectedOrder.status} />
                   <DetailField label="Internal status" value={selectedOrder.internalStatus} />
                   <DetailField label="Vendor status" value={selectedOrder.vendorStatus} />
@@ -426,7 +426,7 @@ export function FullOrdersPage() {
 
             <div className="grid gap-8 xl:grid-cols-2">
               <DetailSection title="Payment">
-                <DetailFields columns={2}>
+                <DetailFields columns={1}>
                   <DetailField label="Payment status" value={selectedOrder.paymentStatus} />
                   <DetailField label="Payment type" value={selectedOrder.paymentType} />
                   <DetailField label="Provider" value={selectedOrder.paymentProvider} />
@@ -451,7 +451,7 @@ export function FullOrdersPage() {
               </DetailSection>
 
               <DetailSection title="Voucher">
-                <DetailFields columns={2}>
+                <DetailFields columns={1}>
                   <DetailField label="Voucher code" value={selectedOrder.voucherCode ?? "No voucher"} />
                   <DetailField
                     label="Voucher title"

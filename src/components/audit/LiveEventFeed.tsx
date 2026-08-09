@@ -4,14 +4,24 @@ import { listEventLogs, mapEventLog, type SystemEventLog } from "@/api/auditApi"
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useAdminRealtime } from "@/hooks/useAdminRealtime";
+import {
+  humanizeActorId,
+  humanizeActorLabel,
+  humanizeActorPhrase,
+  humanizeAuditAction,
+} from "@/utils/auditEvents";
 import { formatDateTime } from "@/utils/format";
 
 const MAX_LIVE_EVENTS = 25;
 
 function summarizeEvent(event: SystemEventLog) {
-  const actor = event.actorId ? `${event.actorType}:${event.actorId.slice(0, 8)}` : event.actorType;
-  const target = event.entityType && event.entityId ? `${event.entityType} ${event.entityId}` : "";
-  return `${event.action} · ${actor}${target ? ` · ${target}` : ""}`;
+  const actorId = humanizeActorId(event.actorId);
+  const actor = actorId ? `${humanizeActorPhrase(event.actorType)} (${actorId})` : humanizeActorPhrase(event.actorType);
+  const target =
+    event.entityType && event.entityId
+      ? ` on ${humanizeActorLabel(event.entityType).toLowerCase()} ${event.entityId.slice(0, 8)}`
+      : "";
+  return `${actor}${target}`;
 }
 
 type LiveEventFeedProps = {
@@ -91,13 +101,15 @@ export function LiveEventFeed({ compact = false }: LiveEventFeedProps) {
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-textStrong">{event.eventType}</p>
+                <p className="truncate text-sm font-medium text-textStrong">
+                  {humanizeAuditAction(event.action, event.eventType)}
+                </p>
                 <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-textMuted">
                   {summarizeEvent(event)}
                 </p>
               </div>
               <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-textMuted">
-                {event.actorType}
+                {humanizeActorLabel(event.actorType)}
               </span>
             </div>
             <p className="mt-1.5 text-[11px] text-textMuted">{formatDateTime(event.createdAt)}</p>

@@ -9,6 +9,12 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import {
+  humanizeActorId,
+  humanizeActorLabel,
+  humanizeAuditAction,
+  humanizeFieldName,
+} from "@/utils/auditEvents";
 import { formatDateTime } from "@/utils/format";
 
 type EntityTimelineProps = {
@@ -24,7 +30,7 @@ function summarizeState(state: Record<string, unknown> | null) {
   if (!state || Object.keys(state).length === 0) return null;
   return Object.entries(state)
     .slice(0, 6)
-    .map(([key, value]) => `${key}: ${String(value)}`)
+    .map(([key, value]) => `${humanizeFieldName(key)}: ${String(value)}`)
     .join(" · ");
 }
 
@@ -37,6 +43,7 @@ function TimelineEvent({ event }: { event: SystemEventLog }) {
       : typeof event.metadata?.note === "string"
         ? event.metadata.note
         : null;
+  const actorId = humanizeActorId(event.actorId);
 
   return (
     <li className="relative pl-6">
@@ -44,11 +51,12 @@ function TimelineEvent({ event }: { event: SystemEventLog }) {
       <div className="rounded-xl border border-line bg-surfaceMuted px-3.5 py-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-textStrong">{event.action}</p>
+            <p className="text-sm font-medium text-textStrong">
+              {humanizeAuditAction(event.action, event.eventType)}
+            </p>
             <p className="mt-0.5 text-xs text-textMuted">
-              {event.eventType}
-              {event.actorType ? ` · ${event.actorType}` : ""}
-              {event.actorId ? ` · ${event.actorId.slice(0, 8)}…` : ""}
+              {event.actorType ? humanizeActorLabel(event.actorType) : "Unknown actor"}
+              {actorId ? ` · ${actorId}` : ""}
             </p>
           </div>
           <p className="shrink-0 text-[11px] tabular-nums text-textMuted">

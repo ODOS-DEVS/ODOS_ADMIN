@@ -10,6 +10,7 @@ import { SectionCard } from "@/components/ui/SectionCard";
 import { StatCard } from "@/components/ui/StatCard";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { humanizeActorId, humanizeActorLabel, humanizeAuditAction } from "@/utils/auditEvents";
 import { formatDateTime } from "@/utils/format";
 
 export function AuditLogPage() {
@@ -146,29 +147,30 @@ export function AuditLogPage() {
                 },
                 {
                   key: "event",
-                  header: "Event",
+                  header: "What happened",
                   render: (row) => (
-                    <div>
-                      <p className="font-medium text-textStrong">{row.eventType}</p>
-                      <p className="text-xs text-textMuted">{row.action}</p>
-                    </div>
+                    <p className="font-medium text-textStrong">
+                      {humanizeAuditAction(row.action, row.eventType)}
+                    </p>
                   ),
                 },
                 {
                   key: "actor",
-                  header: "Actor",
+                  header: "Who",
                   render: (row) => (
                     <div>
-                      <p>{row.actorType}</p>
-                      <p className="text-xs text-textMuted">{row.actorId ?? "—"}</p>
+                      <p>{humanizeActorLabel(row.actorType)}</p>
+                      <p className="text-xs text-textMuted">{humanizeActorId(row.actorId) ?? "—"}</p>
                     </div>
                   ),
                 },
                 {
                   key: "entity",
-                  header: "Entity",
+                  header: "On",
                   render: (row) =>
-                    row.entityType ? `${row.entityType} · ${row.entityId ?? "—"}` : "—",
+                    row.entityType
+                      ? `${humanizeActorLabel(row.entityType)}${row.entityId ? ` · ${row.entityId.slice(0, 8)}` : ""}`
+                      : "—",
                 },
               ]}
               data={events}
