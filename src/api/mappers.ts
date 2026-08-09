@@ -386,6 +386,13 @@ type BackendOrderDetail = BackendOrder & {
   progress?: number | null;
   tracking_eta?: string | null;
   cancellation_reason?: string | null;
+  delivery_status: string;
+  dispatched_at?: string | null;
+  confirmation_method?: string | null;
+  delivery_problem_reason?: string | null;
+  delivery_problem_reported_at?: string | null;
+  auto_release_at?: string | null;
+  settlement_status: string;
   address_full_name: string;
   address_phone: string;
   address_street: string;
@@ -421,6 +428,15 @@ type BackendOrderDetail = BackendOrder & {
     selected_size?: string | null;
   }>;
   return_requests: BackendAdminReturnRequest[];
+  timeline?: Array<{
+    id: string;
+    status: string;
+    actor_role: string;
+    actor_id?: string | null;
+    note?: string | null;
+    event_metadata?: Record<string, unknown> | null;
+    occurred_at: string;
+  }>;
 };
 
 type BackendAdminReturnRequest = {
@@ -1160,6 +1176,22 @@ export function mapOrderDetail(order: BackendOrderDetail): AdminOrderDetail {
     progress: order.progress ?? null,
     trackingEta: order.tracking_eta ?? null,
     cancellationReason: order.cancellation_reason ?? null,
+    deliveryStatus: order.delivery_status,
+    dispatchedAt: order.dispatched_at ?? null,
+    confirmationMethod: order.confirmation_method ?? null,
+    deliveryProblemReason: order.delivery_problem_reason ?? null,
+    deliveryProblemReportedAt: order.delivery_problem_reported_at ?? null,
+    autoReleaseAt: order.auto_release_at ?? null,
+    settlementStatus: order.settlement_status,
+    timeline: (order.timeline ?? []).map((event) => ({
+      id: event.id,
+      status: event.status,
+      actorRole: event.actor_role,
+      actorId: event.actor_id ?? null,
+      note: event.note ?? null,
+      eventMetadata: event.event_metadata ?? null,
+      occurredAt: event.occurred_at,
+    })),
     addressFullName: order.address_full_name,
     addressPhone: order.address_phone,
     addressStreet: order.address_street,

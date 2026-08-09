@@ -29,11 +29,13 @@ React admin dashboard for operating the ODOS marketplace — catalog, users, ven
 - **Merchandising campaigns** (opt-in targeting for seller participation) with a **vendor opt-in review queue** showing units sold since approval
 - Full analytics reports and section-level metrics
 - Review moderation with **seller reply** visibility on admin review detail
-- **Delivery ops** dashboard — live view of every active delivery with SLA breach flags
+- **Delivery ops** dashboard — live view of every active delivery, with SLA breach flags and **customer-reported problems surfaced first** as exceptions
+- **Order dossier "Delivery" tab** — delivery status, settlement status, completion method (customer / auto-release / admin override), and the full delivery event timeline (dispatched, rescheduled, problem reported, auto-released, etc.)
+- **Delivery override**: force-completing a delivery from the order screen always requires a typed reason, which is permanently recorded against the order
 
 **Operational alerts**
 
-- Feature-scoped email alerts fire automatically for vendor applications, withdrawal requests, and voucher submissions — only admins whose permission band covers that area are notified
+- Feature-scoped email alerts fire automatically for vendor applications, withdrawal requests, voucher submissions, and **customer-reported delivery problems** — only admins whose permission band covers that area are notified
 
 **UX patterns**
 

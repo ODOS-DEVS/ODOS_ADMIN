@@ -1,4 +1,4 @@
-import { AlertTriangle, Bike, PackageCheck, Timer } from "lucide-react";
+import { AlertTriangle, Bike, PackageCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -33,10 +33,17 @@ function DeliveryOpsRow({
   return (
     <tr
       onClick={onOpen}
-      className="cursor-pointer border-b border-line/70 last:border-b-0 hover:bg-surfaceMuted/60"
+      className={
+        order.isException
+          ? "cursor-pointer border-b border-line/70 bg-danger-soft/30 last:border-b-0 hover:bg-danger-soft/50"
+          : "cursor-pointer border-b border-line/70 last:border-b-0 hover:bg-surfaceMuted/60"
+      }
     >
       <td className="min-w-[140px] px-4 py-3">
-        <p className="font-medium text-textStrong">{order.orderNumber}</p>
+        <div className="flex items-center gap-1.5">
+          {order.isException ? <AlertTriangle className="size-3.5 shrink-0 text-danger" /> : null}
+          <p className="font-medium text-textStrong">{order.orderNumber}</p>
+        </div>
         <p className="truncate text-xs text-textMuted">{order.customerName}</p>
       </td>
       <td className="min-w-[120px] max-w-[180px] px-4 py-3">
@@ -44,6 +51,12 @@ function DeliveryOpsRow({
       </td>
       <td className="w-[8.5rem] px-4 py-3">
         <StatusBadge status={order.vendorStatus} />
+      </td>
+      <td className="w-[9rem] px-4 py-3">
+        <StatusBadge status={order.deliveryStatus} />
+      </td>
+      <td className="w-[7.5rem] px-4 py-3">
+        <StatusBadge status={order.settlementStatus} />
       </td>
       <td className="min-w-[7rem] px-4 py-3">
         <span
@@ -59,9 +72,6 @@ function DeliveryOpsRow({
       </td>
       <td className="min-w-[10rem] px-4 py-3 text-sm text-textMuted">
         {order.deliveryMethod.replace(/_/g, " ")} · {order.addressCity || order.addressRegion}
-      </td>
-      <td className="min-w-[6rem] px-4 py-3 font-mono text-sm text-textStrong">
-        {order.deliveryCode ?? "—"}
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold tabular-nums text-textStrong">
         {formatCurrency(order.totalAmount)}
@@ -142,9 +152,11 @@ export function FullDeliveryOpsPage() {
           animationDelay={80}
         />
         <StatCard
-          label="Preparing"
-          value={String(stageCounts.processing ?? 0)}
-          icon={Timer}
+          label="Exceptions"
+          value={String(snapshot?.exceptionsCount ?? 0)}
+          hint="Customer reported a delivery problem"
+          icon={AlertTriangle}
+          tone={snapshot?.exceptionsCount ? "warning" : "default"}
           animationDelay={120}
         />
         <StatCard
@@ -164,9 +176,10 @@ export function FullDeliveryOpsPage() {
                 <th className="px-4 py-3 font-medium">Order</th>
                 <th className="px-4 py-3 font-medium">Store</th>
                 <th className="px-4 py-3 font-medium">Stage</th>
+                <th className="px-4 py-3 font-medium">Delivery status</th>
+                <th className="px-4 py-3 font-medium">Settlement</th>
                 <th className="px-4 py-3 font-medium">Time in stage</th>
                 <th className="px-4 py-3 font-medium">Delivery</th>
-                <th className="px-4 py-3 font-medium">Code</th>
                 <th className="px-4 py-3 text-right font-medium">Total</th>
               </tr>
             </thead>

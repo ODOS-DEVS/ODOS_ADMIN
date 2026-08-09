@@ -55,6 +55,13 @@ export async function getOrder(
     progress?: number | null;
     tracking_eta?: string | null;
     cancellation_reason?: string | null;
+    delivery_status: string;
+    dispatched_at?: string | null;
+    confirmation_method?: string | null;
+    delivery_problem_reason?: string | null;
+    delivery_problem_reported_at?: string | null;
+    auto_release_at?: string | null;
+    settlement_status: string;
     address_full_name: string;
     address_phone: string;
     address_street: string;
@@ -117,6 +124,15 @@ export async function getOrder(
       created_at: string;
       updated_at: string;
     }>;
+    timeline?: Array<{
+      id: string;
+      status: string;
+      actor_role: string;
+      actor_id?: string | null;
+      note?: string | null;
+      event_metadata?: Record<string, unknown> | null;
+      occurred_at: string;
+    }>;
   }>(`/admin/orders/${orderId}`, { token });
   return mapOrderDetail(order);
 }
@@ -125,6 +141,7 @@ export async function updateOrderStatus(
   token: string,
   orderId: string,
   status: OrderStatus,
+  note?: string,
 ) {
   const order = await requestJson<{
     id: string;
@@ -138,7 +155,7 @@ export async function updateOrderStatus(
   }>(`/admin/orders/${orderId}/status`, {
     method: "PATCH",
     token,
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(note ? { status, note } : { status }),
   });
   return mapOrder(order);
 }

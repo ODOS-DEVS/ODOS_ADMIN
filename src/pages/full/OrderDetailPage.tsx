@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { DetailFields, DetailStack } from "@/components/ui/DetailList";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { FormField } from "@/components/ui/FormField";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -33,11 +34,30 @@ const TABS = [
   { id: "customer", label: "Customer" },
   { id: "items", label: "Items" },
   { id: "payment", label: "Payment" },
+  { id: "delivery", label: "Delivery" },
   { id: "returns", label: "Returns" },
   { id: "actions", label: "Actions" },
   { id: "relationships", label: "Relationships" },
   { id: "timeline", label: "Timeline" },
 ] as const;
+
+const DELIVERY_EVENT_LABELS: Record<string, string> = {
+  DISPATCHED: "Dispatched",
+  REDISPATCHED: "Redispatched",
+  CUSTOMER_CONFIRMED: "Customer confirmed delivery",
+  CUSTOMER_REPORTED_PROBLEM: "Customer reported a problem",
+  RESCHEDULED: "Reschedule requested",
+  AUTO_RELEASE_REMINDER: "Auto-release reminder sent",
+  AUTO_RELEASED: "Auto-released (no customer response)",
+  ADMIN_OVERRIDE: "Admin override",
+};
+
+function formatDeliveryEventLabel(eventType: string | undefined, status: string) {
+  if (eventType && DELIVERY_EVENT_LABELS[eventType]) {
+    return DELIVERY_EVENT_LABELS[eventType];
+  }
+  return status.replace(/_/g, " ");
+}
 
 export function OrderDetailPage() {
   const navigate = useNavigate();
@@ -50,19 +70,26 @@ export function OrderDetailPage() {
   });
   const { activeSection, setActiveSection } = useTabSection<(typeof TABS)[number]["id"]>("overview");
   const [pendingStatus, setPendingStatus] = useState<OrderStatus>("pending");
+  const [overrideNote, setOverrideNote] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (order) setPendingStatus(order.status);
   }, [order]);
 
+  // The backend always requires a reason to force-complete delivery from
+  // here — the customer normally confirms it themselves — regardless of
+  // whether the order was already out for delivery.
+  const requiresOverrideReason = pendingStatus === "delivered";
+
   async function handleStatusUpdate() {
     if (!token || !order) return;
     setActionLoading(true);
     try {
-      await updateOrderStatus(token, order.id, pendingStatus);
+      await updateOrderStatus(token, order.id, pendingStatus, overrideNote.trim() || undefined);
       const refreshed = await getOrder(token, order.id);
       setRecord(refreshed);
+      setOverrideNote("");
       showToast({
         title: "Order status updated",
         description: `${refreshed.orderNumber} is now ${refreshed.status}.`,
@@ -138,6 +165,8 @@ export function OrderDetailPage() {
             <StatusBadge status={order.status} />
             <StatusBadge status={order.paymentStatus} />
             <StatusBadge status={String(order.vendorStatus)} />
+            <StatusBadge status={order.deliveryStatus} />
+            <StatusBadge status={order.settlementStatus} />
           </div>
           <DetailFields columns={2} className="mt-4">
             <AdminDetailTile label="Source" value={order.source} />
@@ -249,6 +278,57 @@ export function OrderDetailPage() {
           </DetailFields>
         </SectionCard>
       </AdminTabPanel>
+      <AdminTabPanel activeSection={activeSection} sectionId="delivery">
+        <SectionCard compact title="Delivery & settlement">
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge status={order.deliveryStatus} />
+            <StatusBadge status={order.settlementStatus} />
+          </div>
+          <DetailFields columns={2} className="mt-4">
+            <AdminDetailTile
+              label="Dispatched at"
+              value={order.dispatchedAt ? formatDateTime(order.dispatchedAt) : "—"}
+            />
+            <AdminDetailTile
+              label="Auto-release scheduled"
+              value={order.autoReleaseAt ? formatDateTime(order.autoReleaseAt) : "—"}
+            />
+            <AdminDetailTile
+              label="Completion method"
+              value={order.confirmationMethod ? order.confirmationMethod.replace(/_/g, " ") : "—"}
+            />
+            <AdminDetailTile
+              label="Delivered at"
+              value={order.deliveredAt ? formatDateTime(order.deliveredAt) : "—"}
+            />
+            <AdminDetailTile
+              label="Problem reported at"
+              value={order.deliveryProblemReportedAt ? formatDateTime(order.deliveryProblemReportedAt) : "—"}
+            />
+            <AdminDetailTile label="Problem reason" value={order.deliveryProblemReason ?? "—"} />
+          </DetailFields>
+          <div className="mt-6">
+            <p className="mb-3 text-sm font-medium text-textStrong">Delivery timeline</p>
+            {order.timeline.length === 0 ? (
+              <p className="text-sm text-textMuted">No delivery events recorded yet.</p>
+            ) : (
+              <ol className="space-y-3 border-l border-line pl-4">
+                {[...order.timeline].reverse().map((event) => (
+                  <li key={event.id}>
+                    <p className="text-sm font-medium text-textStrong">
+                      {formatDeliveryEventLabel(event.eventMetadata?.event_type, event.status)}
+                    </p>
+                    <p className="text-xs text-textMuted">
+                      {formatDateTime(event.occurredAt)} · {event.actorRole}
+                      {event.note ? ` · ${event.note}` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </SectionCard>
+      </AdminTabPanel>
       <AdminTabPanel activeSection={activeSection} sectionId="returns">
         <SectionCard compact title="Return requests">
           {order.returnRequests.length === 0 ? (
@@ -293,10 +373,30 @@ export function OrderDetailPage() {
                 ]}
               />
             </div>
-            <Button isLoading={actionLoading} onClick={() => void handleStatusUpdate()}>
+            <Button
+              isLoading={actionLoading}
+              disabled={requiresOverrideReason && !overrideNote.trim()}
+              onClick={() => void handleStatusUpdate()}
+            >
               Save status
             </Button>
           </div>
+          {requiresOverrideReason ? (
+            <FormField
+              label="Override reason"
+              required
+              helper="The customer normally confirms delivery themselves (or it auto-releases after 48h) — explain why you're force-completing it here instead."
+              className="mt-3"
+            >
+              <textarea
+                className="app-textarea"
+                rows={2}
+                value={overrideNote}
+                onChange={(event) => setOverrideNote(event.target.value)}
+                placeholder="e.g. Customer called support and confirmed receipt over the phone"
+              />
+            </FormField>
+          ) : null}
           <p className="mt-3 text-xs text-textMuted">Current status: {order.status}</p>
         </SectionCard>
       </AdminTabPanel>

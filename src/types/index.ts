@@ -616,6 +616,16 @@ export type AdminVendorWithdrawalRequest = {
   updatedAt: string;
 };
 
+export type AdminOrderTimelineEvent = {
+  id: string;
+  status: string;
+  actorRole: string;
+  actorId?: string | null;
+  note?: string | null;
+  eventMetadata?: { event_type?: string; [key: string]: unknown } | null;
+  occurredAt: string;
+};
+
 export type AdminOrderDetail = Order & {
   customerId: string;
   customerEmail: string;
@@ -632,6 +642,14 @@ export type AdminOrderDetail = Order & {
   progress?: number | null;
   trackingEta?: string | null;
   cancellationReason?: string | null;
+  deliveryStatus: string;
+  dispatchedAt?: string | null;
+  confirmationMethod?: string | null;
+  deliveryProblemReason?: string | null;
+  deliveryProblemReportedAt?: string | null;
+  autoReleaseAt?: string | null;
+  settlementStatus: string;
+  timeline: AdminOrderTimelineEvent[];
   addressFullName: string;
   addressPhone: string;
   addressStreet: string;

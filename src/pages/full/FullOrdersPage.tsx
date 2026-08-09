@@ -13,6 +13,7 @@ import {
 } from "@/components/orders/OrdersDirectoryUi";
 import { DetailField, DetailFields, DetailHero, DetailSection, DetailStack } from "@/components/ui/DetailList";
 import { FilterSelect } from "@/components/ui/FilterSelect";
+import { FormField } from "@/components/ui/FormField";
 import { TABLE_ACTIONS_COLUMN_CLASS_WIDE } from "@/components/ui/IconButton";
 import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { Button } from "@/components/ui/Button";
@@ -87,6 +88,7 @@ export function FullOrdersPage() {
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [pendingStatus, setPendingStatus] = useState<OrderStatus>("pending");
+  const [overrideNote, setOverrideNote] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
   const filteredOrders = useMemo(() => {
@@ -141,7 +143,12 @@ export function FullOrdersPage() {
     if (!token || !editingOrder) return;
     setActionLoading(true);
     try {
-      const updated = await updateOrderStatus(token, editingOrder.id, pendingStatus);
+      const updated = await updateOrderStatus(
+        token,
+        editingOrder.id,
+        pendingStatus,
+        overrideNote.trim() || undefined,
+      );
       replaceItem(updated);
       showToast({
         title: "Order updated",
@@ -149,6 +156,7 @@ export function FullOrdersPage() {
         tone: "success",
       });
       setEditingOrder(null);
+      setOverrideNote("");
     } catch (updateError) {
       showToast({
         title: "Unable to update order",
@@ -568,6 +576,7 @@ export function FullOrdersPage() {
         onClose={() => {
           if (!actionLoading) {
             setEditingOrder(null);
+            setOverrideNote("");
           }
         }}
         title={editingOrder ? `Update ${editingOrder.orderNumber}` : "Update order"}
@@ -577,7 +586,11 @@ export function FullOrdersPage() {
             <Button variant="ghost" onClick={() => setEditingOrder(null)} disabled={actionLoading}>
               Cancel
             </Button>
-            <Button onClick={() => void handleStatusUpdate()} isLoading={actionLoading}>
+            <Button
+              onClick={() => void handleStatusUpdate()}
+              isLoading={actionLoading}
+              disabled={pendingStatus === "delivered" && !overrideNote.trim()}
+            >
               Save status
             </Button>
           </div>
@@ -596,6 +609,21 @@ export function FullOrdersPage() {
               </option>
             ))}
           </select>
+          {pendingStatus === "delivered" ? (
+            <FormField
+              label="Override reason"
+              required
+              helper="The customer normally confirms delivery themselves (or it auto-releases after 48h) — explain why you're force-completing it here instead."
+            >
+              <textarea
+                className="app-textarea"
+                rows={2}
+                value={overrideNote}
+                onChange={(event) => setOverrideNote(event.target.value)}
+                placeholder="e.g. Customer called support and confirmed receipt over the phone"
+              />
+            </FormField>
+          ) : null}
         </div>
       </Modal>
     </div>
