@@ -5,10 +5,11 @@ import {
   Store,
   UserCheck,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getVendorsPage, updateVendorStatus } from "@/api/vendorsApi";
+import { ADMIN_PAGE_SIZE } from "@/api/adminPagination";
+import { getVendors, updateVendorStatus } from "@/api/vendorsApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { MetricBar } from "@/components/analytics/AnalyticsUi";
@@ -30,7 +31,6 @@ import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TABLE_ACTIONS_COLUMN_CLASS } from "@/components/ui/IconButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { Vendor } from "@/types";
@@ -55,21 +55,34 @@ export function FullVendorsPage() {
   const { token } = useAdminAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const {
-    items: vendors,
-    isLoading,
-    page,
-    pageSize,
-    isLoadingPage,
-    hasMore,
-    error,
-    goToPage,
-    refresh,
-    replaceItem,
-  } = useInfiniteAdminList({
-    loadPage: getVendorsPage,
-    getId: (vendor) => vendor.id,
-  });
+
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadVendors = useCallback(
+    async (background = false) => {
+      if (!token) return;
+      if (background) setIsRefreshing(true);
+      else setIsLoading(true);
+      setError(null);
+      try {
+        setVendors(await getVendors(token));
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load vendors.");
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [token],
+  );
+
+  useEffect(() => {
+    void loadVendors();
+  }, [loadVendors]);
+
   const {
     query,
     setQuery,
@@ -79,10 +92,13 @@ export function FullVendorsPage() {
     statusValues: ["active", "suspended"],
   });
   const [activeTab, setActiveTab] = useState<VendorDirectoryTab>("all");
+  const [page, setPage] = useState(1);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [statusTarget, setStatusTarget] = useState<Vendor | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Computed over the FULL vendor list (fetched once above), not just the
+  // rows currently on screen — otherwise counts undercount past one page.
   const snapshot = useMemo(() => buildVendorDirectorySnapshot(vendors), [vendors]);
 
   const filteredVendors = useMemo(() => {
@@ -102,12 +118,25 @@ export function FullVendorsPage() {
     });
   }, [activeTab, query, statusFilter, vendors]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, query, statusFilter]);
+
+  const pageSize = ADMIN_PAGE_SIZE;
+  const pagedVendors = useMemo(
+    () => filteredVendors.slice((page - 1) * pageSize, page * pageSize),
+    [filteredVendors, page, pageSize],
+  );
+  const hasMore = page * pageSize < filteredVendors.length;
+
   async function handleStatusUpdate(nextStatus: Vendor["status"]) {
     if (!token || !statusTarget) return;
     setActionLoading(true);
     try {
       const updated = await updateVendorStatus(token, statusTarget.id, nextStatus);
-      replaceItem(updated);
+      setVendors((current) =>
+        current.map((vendor) => (vendor.id === updated.id ? updated : vendor)),
+      );
       showToast({
         title: nextStatus === "suspended" ? "Vendor suspended" : "Vendor reactivated",
         description: `${statusTarget.businessName} has been updated successfully.`,
@@ -125,9 +154,7 @@ export function FullVendorsPage() {
     }
   }
 
-  const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredVendors.length })}${
-    hasMore ? " · more pages available" : ""
-  }`;
+  const listSummary = formatPaginationRange({ page, pageSize, itemCount: filteredVendors.length });
 
   const activeTabLabel = DIRECTORY_TABS.find((tab) => tab.id === activeTab)?.label ?? "All";
 
@@ -136,10 +163,10 @@ export function FullVendorsPage() {
       <AdminFullHeader
         eyebrow="Vendors"
         title="Complete vendor directory"
-        description={`${snapshot.totalVendors} on this page · open any dossier for stores, products, payouts, and moderation history.`}
+        description={`${snapshot.totalVendors} vendors · open any dossier for stores, products, payouts, and moderation history.`}
         backRoute="/vendors"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
+        onRefresh={() => void loadVendors(true)}
+        refreshing={isRefreshing}
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] xl:items-start">
@@ -147,7 +174,7 @@ export function FullVendorsPage() {
           <StatCard
             label="Vendors"
             value={String(snapshot.totalVendors)}
-            hint="On this page"
+            hint="Across the platform"
             icon={Store}
             animationDelay={40}
           />
@@ -177,7 +204,7 @@ export function FullVendorsPage() {
         </div>
 
         {snapshot.totalVendors > 0 ? (
-          <SectionCard compact title="Status mix" description="Active vs suspended on this page">
+          <SectionCard compact title="Status mix" description="Active vs suspended across all vendors">
             <div className="space-y-4">
               <MetricBar
                 label="Active"
@@ -308,16 +335,16 @@ export function FullVendorsPage() {
               ),
             },
           ]}
-          data={filteredVendors}
+          data={pagedVendors}
           keyExtractor={(vendor) => vendor.id}
           isLoading={isLoading}
           page={page}
           pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
+          isLoadingPage={false}
           hasMore={hasMore}
           error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
+          onPageChange={setPage}
+          onRetry={() => void loadVendors()}
           emptyTitle="No vendors found"
           emptyDescription="Try another tab, search term, or status filter."
         />

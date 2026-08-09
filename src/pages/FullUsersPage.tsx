@@ -1,8 +1,9 @@
 import { ArrowRight, Ban, Shield, UserCheck, Users as UsersIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getUsersPage, updateUserStatus } from "@/api/usersApi";
+import { ADMIN_PAGE_SIZE } from "@/api/adminPagination";
+import { getUsers, updateUserStatus } from "@/api/usersApi";
 import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { UserSectionNav } from "@/components/users/UsersUi";
@@ -15,7 +16,6 @@ import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { AccountStatus, AdminUser } from "@/types";
@@ -39,21 +39,34 @@ export function FullUsersPage() {
   const { token } = useAdminAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const {
-    items: users,
-    isLoading,
-    page,
-    pageSize,
-    isLoadingPage,
-    hasMore,
-    error,
-    goToPage,
-    refresh,
-    replaceItem,
-  } = useInfiniteAdminList({
-    loadPage: getUsersPage,
-    getId: (user) => user.id,
-  });
+
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadUsers = useCallback(
+    async (background = false) => {
+      if (!token) return;
+      if (background) setIsRefreshing(true);
+      else setIsLoading(true);
+      setError(null);
+      try {
+        setUsers(await getUsers(token));
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load users.");
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [token],
+  );
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
   const {
     query,
     setQuery,
@@ -63,9 +76,13 @@ export function FullUsersPage() {
     statusValues: ["active", "blocked", "inactive"],
   });
   const [activeTab, setActiveTab] = useState<UserDirectoryTab>("all");
+  const [page, setPage] = useState(1);
   const [statusTarget, setStatusTarget] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // These run over the FULL account list (fetched once above), not just the
+  // rows currently visible on screen — otherwise tab/stat counts silently
+  // undercount as soon as there's more than one page of users.
   const snapshot = useMemo(() => buildUserDirectorySnapshot(users), [users]);
 
   const filteredUsers = useMemo(() => {
@@ -78,12 +95,23 @@ export function FullUsersPage() {
     });
   }, [activeTab, query, statusFilter, users]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, query, statusFilter]);
+
+  const pageSize = ADMIN_PAGE_SIZE;
+  const pagedUsers = useMemo(
+    () => filteredUsers.slice((page - 1) * pageSize, page * pageSize),
+    [filteredUsers, page, pageSize],
+  );
+  const hasMore = page * pageSize < filteredUsers.length;
+
   async function handleStatusUpdate(nextStatus: AccountStatus) {
     if (!token || !statusTarget) return;
     setActionLoading(true);
     try {
       const updated = await updateUserStatus(token, statusTarget.id, nextStatus);
-      replaceItem(updated);
+      setUsers((current) => current.map((user) => (user.id === updated.id ? updated : user)));
       showToast({
         title: nextStatus === "blocked" ? "User blocked" : "User reactivated",
         description: `${statusTarget.fullName} has been updated.`,
@@ -101,9 +129,7 @@ export function FullUsersPage() {
     }
   }
 
-  const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredUsers.length })}${
-    hasMore ? " · more pages available" : ""
-  }`;
+  const listSummary = formatPaginationRange({ page, pageSize, itemCount: filteredUsers.length });
 
   return (
     <div className="space-y-5">
@@ -112,8 +138,8 @@ export function FullUsersPage() {
         title="Complete account registry"
         description={`${snapshot.totalUsers} accounts · open any user for orders, payments, reviews, returns, cart, wishlist, vendor record, wallet, and support threads.`}
         backRoute="/users"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
+        onRefresh={() => void loadUsers(true)}
+        refreshing={isRefreshing}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -259,16 +285,16 @@ export function FullUsersPage() {
               ),
             },
           ]}
-          data={filteredUsers}
+          data={pagedUsers}
           keyExtractor={(user) => user.id}
           isLoading={isLoading}
           page={page}
           pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
+          isLoadingPage={false}
           hasMore={hasMore}
           error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
+          onPageChange={setPage}
+          onRetry={() => void loadUsers()}
           emptyTitle="No users found"
           emptyDescription="Try adjusting your search or filters."
         />
