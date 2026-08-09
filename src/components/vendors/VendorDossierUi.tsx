@@ -1,9 +1,11 @@
 import {
   ArrowRight,
   CircleDollarSign,
+  Layers,
   Package,
   ShoppingBag,
   Store,
+  TrendingUp,
   UserRound,
   Wallet,
 } from "lucide-react";
@@ -159,7 +161,7 @@ export function VendorDossier360Overview({ vendor }: { vendor: Vendor }) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard compact title="Business profile" description="How this seller is classified on ODOS">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
             <VendorDetailRow label="Category" value={vendor.businessCategory} />
             <VendorDetailRow label="Account status" value={vendor.status === "active" ? "Active" : "Suspended"} />
             <VendorDetailRow label="Joined" value={formatDateTime(vendor.joinedAt)} />
@@ -171,7 +173,7 @@ export function VendorDossier360Overview({ vendor }: { vendor: Vendor }) {
         </SectionCard>
 
         <SectionCard compact title="Contact & ownership" description="Primary reach and linked user account">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
             <VendorDetailRow label="Email" value={vendor.email} />
             <VendorDetailRow label="Phone" value={vendor.phoneNumber ?? "Not provided"} />
             <VendorDetailRow label="Owner user ID" value={vendor.userId.slice(0, 8) + "…"} />
@@ -215,22 +217,38 @@ export function VendorDossierPerformancePanel({ vendor }: { vendor: Vendor }) {
 
   return (
     <SectionCard compact title="Commerce performance" description="Aggregated metrics from ODOS marketplace activity">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <VendorDetailRow label="Stores" value={String(vendor.totalStores)} />
-        <VendorDetailRow label="Products" value={String(vendor.totalProducts)} />
-        <VendorDetailRow label="Orders fulfilled" value={String(vendor.totalOrders)} />
-        <VendorDetailRow label="Lifetime GMV" value={formatCurrency(vendor.totalSales)} />
-        <VendorDetailRow
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard variant="compact" label="Stores" value={String(vendor.totalStores)} icon={Store} />
+        <StatCard variant="compact" label="Products" value={String(vendor.totalProducts)} icon={Package} />
+        <StatCard
+          variant="compact"
+          label="Orders fulfilled"
+          value={String(vendor.totalOrders)}
+          icon={ShoppingBag}
+          tone="success"
+        />
+        <StatCard
+          variant="compact"
+          label="Lifetime GMV"
+          value={formatCurrency(vendor.totalSales)}
+          icon={CircleDollarSign}
+          tone="info"
+        />
+        <StatCard
+          variant="compact"
           label="Average order value"
           value={vendor.totalOrders > 0 ? formatCurrency(avgOrderValue) : "—"}
+          icon={TrendingUp}
         />
-        <VendorDetailRow
+        <StatCard
+          variant="compact"
           label="Products per store"
           value={
             vendor.totalStores > 0
               ? (vendor.totalProducts / vendor.totalStores).toFixed(1)
               : "—"
           }
+          icon={Layers}
         />
       </div>
     </SectionCard>
