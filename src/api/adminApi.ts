@@ -15,8 +15,8 @@ export interface PaymentMetrics extends AdminMetrics {
   suspiciousActivities: number;
 }
 
-// Admin Dashboard APIs
-export const adminApi = {
+// Admin Dashboard APIs - methods for convenience
+export const adminApiMethods = {
   async getMetrics(): Promise<AdminMetrics> {
     const response = await apiClient.get('/admin/metrics');
     return response.data;
@@ -52,4 +52,5 @@ export const adminApi = {
   },
 };
 
-export default adminApi;
+// Export apiClient as default for use in AdminDashboardPage
+export default apiClient;
