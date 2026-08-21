@@ -130,14 +130,14 @@ export function AdvancedAnalyticsDashboardPage() {
         getChurnRiskUsers(),
       ]);
 
-      setCustomerMetrics(customers);
-      setRevenueMetrics(revenue);
-      setProductMetrics(products);
-      setInventoryMetrics(inventory);
-      setCategoryData(categories);
-      setVendorMetrics(vendors);
-      setSegments(segmentsData.segments || []);
-      setChurnRiskUsers(churnRisk.users || []);
+      setCustomerMetrics(customers.data);
+      setRevenueMetrics(revenue.data);
+      setProductMetrics(products.data);
+      setInventoryMetrics(inventory.data);
+      setCategoryData(categories.data);
+      setVendorMetrics(vendors.data);
+      setSegments(segmentsData.data?.segments || []);
+      setChurnRiskUsers(churnRisk.data?.users || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
     } finally {
