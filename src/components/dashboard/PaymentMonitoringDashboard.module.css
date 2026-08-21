@@ -1,0 +1,258 @@
+.container {
+  padding: 24px;
+  min-height: 100vh;
+  transition: background-color 0.3s ease;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
+.headerMeta {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* Metrics Grid */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.metricCard {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.metricHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.metricIcon {
+  font-size: 20px;
+}
+
+.metricLabel {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.metricValue {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.metricTrend {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Sections */
+.section {
+  border-radius: 12px;
+  border: 1px solid;
+  padding: 24px;
+  margin-bottom: 24px;
+  transition: background-color 0.3s ease;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+}
+
+/* Table */
+.table {
+  overflow-x: auto;
+}
+
+.tableHeader,
+.tableRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid;
+  opacity: 0.8;
+}
+
+.tableHeader {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  padding: 12px 0;
+}
+
+.tableRow {
+  padding: 12px 0;
+}
+
+.tableCell {
+  padding: 8px 0;
+}
+
+/* Withdrawals */
+.withdrawalsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.emptyState {
+  padding: 32px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.withdrawalCard {
+  border-radius: 12px;
+  border: 1px solid;
+  padding: 16px;
+  transition: transform 0.2s ease;
+}
+
+.withdrawalCard:hover {
+  transform: translateY(-1px);
+}
+
+.withdrawalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid;
+  opacity: 0.8;
+}
+
+.vendorName {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.vendorId {
+  font-size: 12px;
+  margin: 0;
+}
+
+.withdrawalAmount {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.withdrawalDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.withdrawalActions {
+  display: flex;
+  gap: 12px;
+}
+
+.approveButton,
+.rejectButton {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.approveButton:hover:not(:disabled),
+.rejectButton:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.approveButton:disabled,
+.rejectButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Security Grid */
+.securityGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.securityItem {
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.securityIcon {
+  font-size: 16px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+
+  .metricsGrid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .section {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .tableHeader,
+  .tableRow {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .withdrawalActions {
+    flex-direction: column;
+  }
+
+  .securityGrid {
+    grid-template-columns: 1fr;
+  }
+}
