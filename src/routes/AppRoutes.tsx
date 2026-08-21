@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { AdminDashboardPage } from "@/pages/AdminDashboardPage";
+import AdminDashboardPage from "@/pages/AdminDashboardPage";
 import { AuditLogPage } from "@/pages/AuditLogPage";
 import { AnalyticsPage } from "@/pages/AnalyticsPage";
 import { CategoriesPage } from "@/pages/CategoriesPage";

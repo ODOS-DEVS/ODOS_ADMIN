@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { adminApi } from '../api/adminApi';
+import adminApi from '../api/adminApi';
 
 interface SalesData {
   date: string;

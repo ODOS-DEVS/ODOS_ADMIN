@@ -1,4 +1,4 @@
-import { apiClient } from '@/utils/apiClient';
+import apiClient from '@/utils/apiClient';
 
 export interface CustomerMetrics {
   total_customers: number;
