@@ -785,6 +785,7 @@ export function ReturnDetailPage() {
   const [draftNote, setDraftNote] = useState("");
   const [draftRefund, setDraftRefund] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
 
   useEffect(() => {
     if (!record) return;
@@ -803,6 +804,7 @@ export function ReturnDetailPage() {
         refundAmount: draftRefund.trim() ? Number(draftRefund) : null,
       });
       setRecord(updated);
+      setConfirmSaveOpen(false);
       showToast({ title: "Return updated", description: updated.orderNumber, tone: "success" });
     } catch (updateError) {
       showToast({
@@ -858,6 +860,11 @@ export function ReturnDetailPage() {
                     { label: "Type", value: item.requestType },
                     { label: "Status", value: item.status },
                     { label: "Quantity", value: String(item.quantity) },
+                    {
+                      label: "Variant",
+                      value:
+                        [item.selectedColor, item.selectedSize].filter(Boolean).join(" · ") || "—",
+                    },
                     { label: "Store", value: item.storeName },
                     { label: "Created", value: formatDateTime(item.createdAt) },
                   ]}
@@ -913,10 +920,26 @@ export function ReturnDetailPage() {
                   onChange={(event) => setDraftNote(event.target.value)}
                 />
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button isLoading={actionLoading} onClick={() => void handleSave()}>
+                  <Button isLoading={actionLoading} onClick={() => setConfirmSaveOpen(true)}>
                     Save resolution
                   </Button>
                 </div>
+                <ConfirmDialog
+                  open={confirmSaveOpen}
+                  onClose={() => setConfirmSaveOpen(false)}
+                  onConfirm={() => void handleSave()}
+                  title="Confirm return update"
+                  description={
+                    `Mark ${item.orderNumber} as "${draftStatus.replace(/_/g, " ")}"` +
+                    (draftRefund.trim()
+                      ? ` with a refund of ${formatCurrency(Number(draftRefund) || 0)}. ` +
+                        "This moves money and can't be reversed from here."
+                      : ". Terminal statuses (refunded, rejected, exchanged) can't be changed again once saved.")
+                  }
+                  confirmLabel="Save resolution"
+                  confirmVariant={draftStatus === "rejected" ? "danger" : "primary"}
+                  isLoading={actionLoading}
+                />
                 <DetailFields columns={2} className="mt-6 border-t border-line/80 pt-6">
                   <AdminDetailTile label="Reviewed by" value={item.reviewedByName ?? "—"} />
                   <AdminDetailTile

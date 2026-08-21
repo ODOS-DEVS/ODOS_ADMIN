@@ -559,6 +559,8 @@ export type AdminReturnRequest = {
   productTitle: string;
   productImageUrl?: string | null;
   productImageKey?: string | null;
+  selectedColor?: string | null;
+  selectedSize?: string | null;
   storeName: string;
   userId: string;
   customerName: string;

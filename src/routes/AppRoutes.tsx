@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { AdminDashboardPage } from "@/pages/AdminDashboardPage";
 import { AuditLogPage } from "@/pages/AuditLogPage";
 import { AnalyticsPage } from "@/pages/AnalyticsPage";
 import { CategoriesPage } from "@/pages/CategoriesPage";
@@ -53,6 +54,7 @@ export function AppRoutes() {
       >
         <Route index element={<LandingRedirect />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/analytics-dashboard" element={<AdminDashboardPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/audit" element={<AuditLogPage />} />
         <Route path="/users" element={<UsersPage />} />

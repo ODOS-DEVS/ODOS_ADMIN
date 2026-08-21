@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { getReturnRequestsPage, updateReturnRequest } from "@/api/ordersApi";
 import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
 import { Modal } from "@/components/ui/Modal";
@@ -78,6 +79,7 @@ export function FullReturnsPage() {
   const [draftAdminNote, setDraftAdminNote] = useState("");
   const [draftRefundAmount, setDraftRefundAmount] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
 
   const filteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -142,8 +144,8 @@ export function FullReturnsPage() {
     );
   }
 
-  async function handleSave() {
-    if (!token || !selectedRequest) {
+  function requestSave() {
+    if (!selectedRequest) {
       return;
     }
 
@@ -158,6 +160,17 @@ export function FullReturnsPage() {
       return;
     }
 
+    setConfirmSaveOpen(true);
+  }
+
+  async function handleSave() {
+    if (!token || !selectedRequest) {
+      return;
+    }
+
+    const nextRefundAmount =
+      draftRefundAmount.trim().length > 0 ? Number(draftRefundAmount) : null;
+
     setActionLoading(true);
     try {
       const updated = await updateReturnRequest(token, selectedRequest.id, {
@@ -167,6 +180,7 @@ export function FullReturnsPage() {
       });
       replaceItem(updated);
       setSelectedRequest(updated);
+      setConfirmSaveOpen(false);
       showToast({
         title: "Return request updated",
         description: `${updated.productTitle} is now marked ${updated.status.replace(/_/g, " ")}.`,
@@ -243,14 +257,20 @@ export function FullReturnsPage() {
               {
                 key: "request",
                 header: "Request",
-                render: (request) => (
-                  <div>
-                    <p className="font-medium">{request.productTitle}</p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      {request.orderNumber} · {request.requestType} · Qty {request.quantity}
-                    </p>
-                  </div>
-                ),
+                render: (request) => {
+                  const variant = [request.selectedColor, request.selectedSize]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <div>
+                      <p className="font-medium">{request.productTitle}</p>
+                      <p className="mt-1 text-xs text-textMuted">
+                        {request.orderNumber} · {request.requestType} · Qty {request.quantity}
+                        {variant ? ` · ${variant}` : ""}
+                      </p>
+                    </div>
+                  );
+                },
               },
               {
                 key: "customer",
@@ -335,7 +355,7 @@ export function FullReturnsPage() {
             </Button>
             <Button
               leftIcon={<RefreshCcw className="size-4" />}
-              onClick={() => void handleSave()}
+              onClick={requestSave}
               isLoading={actionLoading}
             >
               Save update
@@ -348,6 +368,14 @@ export function FullReturnsPage() {
             <DetailSection title="Request summary">
               <DetailFields columns={2}>
                 <DetailField label="Product" value={selectedRequest.productTitle} />
+                <DetailField
+                  label="Variant"
+                  value={
+                    [selectedRequest.selectedColor, selectedRequest.selectedSize]
+                      .filter(Boolean)
+                      .join(" · ") || "—"
+                  }
+                />
                 <DetailField label="Store" value={selectedRequest.storeName} />
                 <DetailField label="Customer" value={selectedRequest.customerName} />
                 <DetailField label="Email" value={selectedRequest.customerEmail} />
@@ -454,6 +482,25 @@ export function FullReturnsPage() {
           </DetailStack>
         ) : null}
       </Modal>
+
+      <ConfirmDialog
+        open={confirmSaveOpen}
+        onClose={() => setConfirmSaveOpen(false)}
+        onConfirm={() => void handleSave()}
+        title="Confirm return update"
+        description={
+          selectedRequest
+            ? `Mark ${selectedRequest.orderNumber} as "${draftStatus.replace(/_/g, " ")}"` +
+              (draftRefundAmount.trim()
+                ? ` with a refund of ${formatCurrency(Number(draftRefundAmount))}. ` +
+                  "This moves money and can't be reversed from here."
+                : ". Terminal statuses (refunded, rejected, exchanged) can't be changed again once saved.")
+            : ""
+        }
+        confirmLabel="Save update"
+        confirmVariant={draftStatus === "rejected" ? "danger" : "primary"}
+        isLoading={actionLoading}
+      />
     </div>
   );
 }

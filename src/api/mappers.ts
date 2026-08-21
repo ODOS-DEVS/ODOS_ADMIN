@@ -448,6 +448,8 @@ type BackendAdminReturnRequest = {
   product_title: string;
   product_image_url?: string | null;
   product_image_key?: string | null;
+  selected_color?: string | null;
+  selected_size?: string | null;
   store_name: string;
   user_id: string;
   customer_name: string;
@@ -1103,6 +1105,8 @@ export function mapAdminReturnRequest(request: BackendAdminReturnRequest): Admin
     productTitle: request.product_title,
     productImageUrl: request.product_image_url ?? null,
     productImageKey: request.product_image_key ?? null,
+    selectedColor: request.selected_color ?? null,
+    selectedSize: request.selected_size ?? null,
     storeName: request.store_name,
     userId: request.user_id,
     customerName: request.customer_name,
