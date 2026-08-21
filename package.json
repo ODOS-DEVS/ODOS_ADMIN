@@ -10,12 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@mui/material": "^5.14.20",
+    "axios": "^1.6.5",
     "clsx": "^2.1.1",
     "lucide-react": "^0.511.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-easy-crop": "^5.5.7",
-    "react-router-dom": "^7.6.1"
+    "react-router-dom": "^7.6.1",
+    "recharts": "^2.10.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
