@@ -17,10 +17,21 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { LiveEventFeed } from "@/components/audit/LiveEventFeed";
-import { getDashboardOverview } from "@/api/dashboardApi";
+import {
+  getDashboardOverview,
+  getSalesChart,
+  getTopVendors,
+  type SalesChart,
+  type TopVendor,
+} from "@/api/dashboardApi";
 import { getVendorWithdrawalRequests } from "@/api/payoutsApi";
 import { AdminPageIntro } from "@/components/admin/PageIntro";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { ChartCard, ChartLegend, RangeControl } from "@/components/charts/ChartCard";
+import { CATEGORICAL } from "@/components/charts/chartPalette";
+import { RankedBars } from "@/components/charts/RankedBars";
+import { TrendChart } from "@/components/charts/TrendChart";
+import { MetricStat } from "@/components/directory/MetricStat";
 import { DataTable } from "@/components/tables/DataTable";
 import { AdminHeaderActions, HeaderActionButton } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +49,27 @@ import type {
   VendorApplication,
 } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
+
+const DASHBOARD_RANGES = [
+  { value: 7, label: "7d" },
+  { value: 30, label: "30d" },
+  { value: 90, label: "90d" },
+];
+
+/** Axis ticks: GH₵6k rather than GH₵6,000, so the plot keeps its width. */
+function formatCompactGhs(value: number) {
+  if (Math.abs(value) >= 1000) {
+    return `GH₵${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
+  }
+  return `GH₵${Math.round(value)}`;
+}
+
+/** Axis/tooltip label for a daily bucket. */
+function formatDashboardDay(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(parsed);
+}
 
 const heroStats = [
   {
@@ -100,6 +132,9 @@ export function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedTab, setFeedTab] = useState<FeedTab>("applications");
+  const [rangeDays, setRangeDays] = useState(30);
+  const [sales, setSales] = useState<SalesChart | null>(null);
+  const [topVendors, setTopVendors] = useState<TopVendor[]>([]);
 
   const loadOverview = useCallback(
     async (background = false) => {
@@ -114,6 +149,15 @@ export function DashboardPage() {
       const partialErrors: string[] = [];
       let payload: DashboardPayload | null = null;
       let withdrawals: AdminVendorWithdrawalRequest[] = [];
+
+      // Charts are supporting detail: if either call fails the dashboard still
+      // renders, with an empty-state in the plot rather than an error page.
+      void getSalesChart(token, rangeDays)
+        .then(setSales)
+        .catch(() => setSales(null));
+      void getTopVendors(token, { limit: 5, days: rangeDays })
+        .then(setTopVendors)
+        .catch(() => setTopVendors([]));
 
       try {
         payload = await getDashboardOverview(token);
@@ -151,7 +195,7 @@ export function DashboardPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     },
-    [canAccess, token],
+    [canAccess, rangeDays, token],
   );
 
   useEffect(() => {
@@ -321,15 +365,14 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {heroStats.map((item, index) => (
-          <StatCard
+          <MetricStat
             key={item.key}
             label={item.label}
             value={formatStatValue(item.key, data.stats[item.key])}
-            hint={item.hint}
+            caption={item.hint}
             icon={item.icon}
             tone={item.tone}
             animationDelay={60 + index * 50}
-            onClick={() => canAccessRoute(item.route) && navigate(item.route)}
           />
         ))}
       </div>
@@ -351,6 +394,64 @@ export function DashboardPage() {
             />
           ))}
         </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard
+          className="xl:col-span-2"
+          title="Revenue"
+          description="Paid and delivered orders per day."
+          animationDelay={340}
+          control={
+            <RangeControl
+              ariaLabel="Revenue period"
+              options={DASHBOARD_RANGES}
+              value={rangeDays}
+              onChange={setRangeDays}
+            />
+          }
+          legend={
+            sales ? (
+              <ChartLegend
+                items={[
+                  {
+                    label: "Revenue",
+                    color: CATEGORICAL[0],
+                    value: formatCurrency(Math.round(sales.totalRevenue)),
+                  },
+                ]}
+              />
+            ) : undefined
+          }
+        >
+          <TrendChart
+            data={sales?.data ?? []}
+            xKey="date"
+            series={[{ key: "revenue", label: "Revenue", colorIndex: 0 }]}
+            formatValue={(value) => formatCurrency(Math.round(value))}
+            formatTick={formatCompactGhs}
+            formatX={formatDashboardDay}
+            height={300}
+            emptyMessage="No paid orders in this period yet."
+          />
+        </ChartCard>
+
+        <ChartCard
+          title="Top stores"
+          description={`By gross merchandise value, last ${rangeDays} days.`}
+          animationDelay={380}
+        >
+          <RankedBars
+            rows={topVendors.map((vendor) => ({
+              id: vendor.storeId,
+              label: vendor.storeName,
+              caption: `${vendor.orders} order${vendor.orders === 1 ? "" : "s"}`,
+              value: vendor.gmv,
+              valueLabel: formatCurrency(Math.round(vendor.gmv)),
+            }))}
+            emptyMessage="No store has recorded a paid order in this period."
+          />
+        </ChartCard>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">

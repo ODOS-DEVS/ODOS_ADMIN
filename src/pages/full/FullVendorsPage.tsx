@@ -10,10 +10,12 @@ import { useNavigate } from "react-router-dom";
 
 import { ADMIN_PAGE_SIZE } from "@/api/adminPagination";
 import { getVendors, updateVendorStatus } from "@/api/vendorsApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { SegmentedTabs } from "@/components/directory/SegmentedTabs";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { MetricBar } from "@/components/analytics/AnalyticsUi";
-import { UserSectionNav } from "@/components/users/UsersUi";
 import {
   VendorDetailRow,
   VendorMark,
@@ -23,12 +25,9 @@ import {
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
-import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TABLE_ACTIONS_COLUMN_CLASS } from "@/components/ui/IconButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
@@ -158,198 +157,175 @@ export function FullVendorsPage() {
 
   const activeTabLabel = DIRECTORY_TABS.find((tab) => tab.id === activeTab)?.label ?? "All";
 
-  return (
-    <div className="space-y-6">
-      <AdminFullHeader
-        eyebrow="Vendors"
-        title="Complete vendor directory"
-        description={`${snapshot.totalVendors} vendors · open any dossier for stores, products, payouts, and moderation history.`}
-        backRoute="/vendors"
-        onRefresh={() => void loadVendors(true)}
-        refreshing={isRefreshing}
-      />
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] xl:items-start">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <StatCard
-            label="Vendors"
-            value={String(snapshot.totalVendors)}
-            hint="Across the platform"
-            icon={Store}
-            animationDelay={40}
-          />
-          <StatCard
-            label="Active"
-            value={String(snapshot.active)}
-            hint={`${snapshot.suspended} suspended`}
-            icon={UserCheck}
-            tone="success"
-            animationDelay={80}
-          />
-          <StatCard
-            label="Products"
-            value={String(snapshot.totalProducts)}
-            hint={`${snapshot.totalStores} stores`}
-            icon={Package}
-            animationDelay={120}
-          />
-          <StatCard
-            label="Sales"
-            value={formatCurrency(snapshot.totalSales)}
-            hint={`${snapshot.totalOrders} orders`}
-            icon={CircleDollarSign}
-            tone="info"
-            animationDelay={160}
-          />
-        </div>
-
-        {snapshot.totalVendors > 0 ? (
-          <SectionCard compact title="Status mix" description="Active vs suspended across all vendors">
-            <div className="space-y-4">
-              <MetricBar
-                label="Active"
-                value={snapshot.active}
-                max={snapshot.totalVendors}
-                displayValue={String(snapshot.active)}
-                tone="emerald"
-              />
-              <MetricBar
-                label="Suspended"
-                value={snapshot.suspended}
-                max={snapshot.totalVendors}
-                displayValue={String(snapshot.suspended)}
-                tone="amber"
-              />
+  const columns = useMemo<Array<DirectoryColumn<Vendor>>>(
+    () => [
+      {
+        key: "vendor",
+        header: "Vendor",
+        sortable: true,
+        className: "min-w-[14rem]",
+        render: (vendor) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <VendorMark name={vendor.businessName} />
+            <div className="min-w-0">
+              <p className="truncate font-medium text-textStrong">{vendor.businessName}</p>
+              <p className="truncate text-xs text-textMuted">{vendor.businessCategory}</p>
             </div>
-          </SectionCard>
-        ) : null}
-      </div>
+          </div>
+        ),
+      },
+      {
+        key: "contact",
+        header: "Contact",
+        className: "min-w-[12rem] max-w-[16rem]",
+        render: (vendor) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm text-textStrong">{vendor.email}</p>
+            <p className="truncate text-xs text-textMuted">
+              {vendor.phoneNumber ?? "No phone on file"}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "performance",
+        header: "Performance",
+        className: "min-w-[15rem]",
+        render: (vendor) => <VendorPerformanceGrid vendor={vendor} />,
+      },
+      {
+        key: "sales",
+        header: "Sales",
+        sortable: true,
+        className: "min-w-[7rem] whitespace-nowrap",
+        render: (vendor) => (
+          <div>
+            <p className="font-semibold tabular-nums text-textStrong">
+              {formatCurrency(vendor.totalSales)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-textSubtle">Lifetime GMV</p>
+          </div>
+        ),
+      },
+      {
+        key: "joined",
+        header: "Joined",
+        sortable: true,
+        className: "w-[8rem] whitespace-nowrap text-sm text-textMuted",
+        render: (vendor) => formatDate(vendor.joinedAt),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[8rem]",
+        render: (vendor) => (
+          <StatePill label={labelForStatus(vendor.status)} tone={toneForStatus(vendor.status)} />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS,
+        render: (vendor) => (
+          <VendorTableActions
+            vendor={vendor}
+            onPreview={() => setSelectedVendor(vendor)}
+            onToggleStatus={() => setStatusTarget(vendor)}
+            onDossier={() => navigate(`/vendors/full/${vendor.id}`)}
+          />
+        ),
+      },
+    ],
+    [navigate],
+  );
 
-      <UserSectionNav
-        sections={DIRECTORY_TABS.map((tab) => ({
-          id: tab.id,
-          label: `${tab.label} (${filterVendorsByTab(vendors, tab.id).length})`,
-        }))}
-        activeId={activeTab}
-        onSelect={(id) => setActiveTab(id as VendorDirectoryTab)}
-      />
-
-      <SectionCard
-        compact
-        title={`${activeTabLabel} vendors`}
-        description="Search and filter the directory, then open a dossier for full context."
-        action={
-          <ListToolbar>
-            <ListToolbarField className="sm:min-w-[16rem]">
-              <SearchInput
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search business, email, phone"
-                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                options={[
-                  { label: "All statuses", value: "all" },
-                  { label: "Active", value: "active" },
-                  { label: "Suspended", value: "suspended" },
-                ]}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-          </ListToolbar>
-        }
-        bodyClassName="p-0"
-      >
-        <AdminInfiniteList
-          compact
-          listSummary={listSummary}
-          columns={[
-            {
-              key: "vendor",
-              header: "Vendor",
-              className: "min-w-[220px]",
-              render: (vendor) => (
-                <div className="flex items-center gap-3">
-                  <VendorMark name={vendor.businessName} />
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="truncate font-semibold text-textStrong">{vendor.businessName}</p>
-                    <p className="truncate text-xs text-textMuted">{vendor.businessCategory}</p>
-                    <p className="text-[11px] text-textSubtle">Joined {formatDate(vendor.joinedAt)}</p>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              key: "contact",
-              header: "Contact",
-              className: "min-w-[180px]",
-              render: (vendor) => (
-                <div className="space-y-0.5">
-                  <p className="truncate text-sm text-textStrong">{vendor.email}</p>
-                  <p className="truncate text-xs text-textMuted">
-                    {vendor.phoneNumber ?? "No phone on file"}
-                  </p>
-                </div>
-              ),
-            },
-            {
-              key: "performance",
-              header: "Performance",
-              className: "min-w-[260px]",
-              render: (vendor) => <VendorPerformanceGrid vendor={vendor} />,
-            },
-            {
-              key: "sales",
-              header: "Sales",
-              className: "min-w-[7rem] whitespace-nowrap",
-              render: (vendor) => (
-                <div className="space-y-0.5">
-                  <p className="text-sm font-bold tabular-nums text-textStrong">
-                    {formatCurrency(vendor.totalSales)}
-                  </p>
-                  <p className="text-[11px] text-textSubtle">Lifetime GMV</p>
-                </div>
-              ),
-            },
-            {
-              key: "status",
-              header: "Status",
-              className: "w-[7.5rem]",
-              render: (vendor) => <StatusBadge status={vendor.status} />,
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              className: TABLE_ACTIONS_COLUMN_CLASS,
-              render: (vendor) => (
-                <VendorTableActions
-                  vendor={vendor}
-                  onPreview={() => setSelectedVendor(vendor)}
-                  onToggleStatus={() => setStatusTarget(vendor)}
-                  onDossier={() => navigate(`/vendors/full/${vendor.id}`)}
-                />
-              ),
-            },
-          ]}
-          data={pagedVendors}
-          keyExtractor={(vendor) => vendor.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={false}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={setPage}
-          onRetry={() => void loadVendors()}
-          emptyTitle="No vendors found"
-          emptyDescription="Try another tab, search term, or status filter."
+  return (
+    <DirectoryPage
+      eyebrow="Vendors"
+      title="Complete vendor directory"
+      description="Every vendor on ODOS, with catalogue size, lifetime sales and account standing."
+      backRoute="/vendors"
+      onRefresh={() => void loadVendors(true)}
+      refreshing={isRefreshing}
+      metrics={[
+        {
+          label: "Vendors",
+          value: snapshot.totalVendors.toLocaleString(),
+          icon: Store,
+          caption: `${snapshot.totalStores} stores`,
+        },
+        {
+          label: "Active",
+          value: snapshot.active.toLocaleString(),
+          icon: UserCheck,
+          tone: "success",
+          caption: `${snapshot.suspended} suspended`,
+        },
+        {
+          label: "Products",
+          value: snapshot.totalProducts.toLocaleString(),
+          icon: Package,
+          caption: "Listed across all stores",
+        },
+        {
+          label: "Lifetime sales",
+          value: formatCurrency(snapshot.totalSales),
+          icon: CircleDollarSign,
+          tone: "info",
+          caption: `${snapshot.totalOrders} orders`,
+        },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Business, email or phone"
+          className="h-10 py-0"
         />
-      </SectionCard>
-
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          options={[
+            { label: "All statuses", value: "all" },
+            { label: "Active", value: "active" },
+            { label: "Suspended", value: "suspended" },
+          ]}
+          className="h-10"
+        />
+      }
+      tabs={
+        <SegmentedTabs
+          ariaLabel="Filter vendors"
+          tabs={DIRECTORY_TABS.map((tab) => ({
+            value: tab.id,
+            label: tab.label,
+            count: filterVendorsByTab(vendors, tab.id).length,
+          }))}
+          value={activeTab}
+          onChange={(value) => setActiveTab(value as VendorDirectoryTab)}
+        />
+      }
+      cardTitle={`${activeTabLabel} vendors`}
+      count={filteredVendors.length}
+      listSummary={listSummary}
+      columns={columns}
+      data={pagedVendors}
+      keyExtractor={(vendor) => vendor.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void loadVendors()}
+      emptyTitle="No vendors found"
+      emptyDescription="Try another tab, search term, or status filter."
+      pagination={{
+        page,
+        pageSize,
+        onPageChange: setPage,
+        hasMore,
+        loadedLabel: `per page · ${filteredVendors.length} matching`,
+      }}
+    >
       <Modal
         open={Boolean(selectedVendor)}
         onClose={() => setSelectedVendor(null)}
@@ -382,7 +358,7 @@ export function FullVendorsPage() {
               <div className="min-w-0 space-y-1">
                 <p className="font-semibold text-textStrong">{selectedVendor.businessName}</p>
                 <p className="text-sm text-textMuted">{selectedVendor.businessCategory}</p>
-                <StatusBadge status={selectedVendor.status} />
+                <StatePill label={labelForStatus(selectedVendor.status)} tone={toneForStatus(selectedVendor.status)} />
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -420,6 +396,6 @@ export function FullVendorsPage() {
         confirmVariant={statusTarget?.status === "active" ? "danger" : "primary"}
         isLoading={actionLoading}
       />
-    </div>
+    </DirectoryPage>
   );
 }

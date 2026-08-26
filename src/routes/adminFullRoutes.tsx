@@ -1,30 +1,6 @@
+import { lazy } from "react";
 import { Route } from "react-router-dom";
 
-import { FullAnalyticsPage } from "@/pages/FullAnalyticsPage";
-import { CategoryStudioPage } from "@/pages/full/CategoryStudioPage";
-import { FullCategoriesPage } from "@/pages/full/FullCategoriesPage";
-import { ProductStudioPage } from "@/pages/full/ProductStudioPage";
-import { FullFinancePage } from "@/pages/full/FullFinancePage";
-import { FullFlashSaleEventsPage } from "@/pages/full/FullFlashSaleEventsPage";
-import { FullMerchandisingCampaignsPage } from "@/pages/full/FullMerchandisingCampaignsPage";
-import { FullMarketsPage } from "@/pages/full/FullMarketsPage";
-import { FullDeliveryOpsPage } from "@/pages/full/FullDeliveryOpsPage";
-import { FullNotificationsPage } from "@/pages/full/FullNotificationsPage";
-import { FullOrdersPage } from "@/pages/full/FullOrdersPage";
-import { FullPayoutsPage } from "@/pages/full/FullPayoutsPage";
-import { FullProductsPage } from "@/pages/full/FullProductsPage";
-import { FullPromoBannersPage } from "@/pages/full/FullPromoBannersPage";
-import { PromoBannerStudioPage } from "@/pages/full/PromoBannerStudioPage";
-import { FullReturnsPage } from "@/pages/full/FullReturnsPage";
-import { FullReviewsPage } from "@/pages/full/FullReviewsPage";
-import { FullStoresPage } from "@/pages/full/FullStoresPage";
-import { FullSupportChatsPage } from "@/pages/full/FullSupportChatsPage";
-import { FullUsersPage } from "@/pages/FullUsersPage";
-import { FullVendorApplicationsPage } from "@/pages/full/FullVendorApplicationsPage";
-import { FullVendorsPage } from "@/pages/full/FullVendorsPage";
-import { FullVouchersPage } from "@/pages/full/FullVouchersPage";
-import { OrderDetailPage } from "@/pages/full/OrderDetailPage";
-import { VendorDetailPage } from "@/pages/full/VendorDetailPage";
 import {
   PayoutDetailPage,
   ProductDetailPage,
@@ -35,7 +11,92 @@ import {
   VendorApplicationDetailPage,
   VoucherDetailPage,
 } from "@/pages/full/entityDetailPages";
-import { UserDetailPage } from "@/pages/UserDetailPage";
+
+
+// Every page behind sign-in is code-split. The login screen no longer
+// downloads the entire admin console just to render a form; DashboardLayout
+// provides the single Suspense boundary these resolve into.
+const FullAnalyticsPage = lazy(() =>
+  import("@/pages/FullAnalyticsPage").then((module) => ({ default: module.FullAnalyticsPage })),
+);
+const CategoryStudioPage = lazy(() =>
+  import("@/pages/full/CategoryStudioPage").then((module) => ({ default: module.CategoryStudioPage })),
+);
+const FullCategoriesPage = lazy(() =>
+  import("@/pages/full/FullCategoriesPage").then((module) => ({ default: module.FullCategoriesPage })),
+);
+const ProductStudioPage = lazy(() =>
+  import("@/pages/full/ProductStudioPage").then((module) => ({ default: module.ProductStudioPage })),
+);
+const FullFinancePage = lazy(() =>
+  import("@/pages/full/FullFinancePage").then((module) => ({ default: module.FullFinancePage })),
+);
+const FullFlashSaleEventsPage = lazy(() =>
+  import("@/pages/full/FullFlashSaleEventsPage").then((module) => ({ default: module.FullFlashSaleEventsPage })),
+);
+const FullMerchandisingCampaignsPage = lazy(() =>
+  import("@/pages/full/FullMerchandisingCampaignsPage").then((module) => ({ default: module.FullMerchandisingCampaignsPage })),
+);
+const FullMarketsPage = lazy(() =>
+  import("@/pages/full/FullMarketsPage").then((module) => ({ default: module.FullMarketsPage })),
+);
+const FullDeliveryOpsPage = lazy(() =>
+  import("@/pages/full/FullDeliveryOpsPage").then((module) => ({ default: module.FullDeliveryOpsPage })),
+);
+const FullNotificationsPage = lazy(() =>
+  import("@/pages/full/FullNotificationsPage").then((module) => ({ default: module.FullNotificationsPage })),
+);
+const FullOrdersPage = lazy(() =>
+  import("@/pages/full/FullOrdersPage").then((module) => ({ default: module.FullOrdersPage })),
+);
+const FullPayoutsPage = lazy(() =>
+  import("@/pages/full/FullPayoutsPage").then((module) => ({ default: module.FullPayoutsPage })),
+);
+const FullProductsPage = lazy(() =>
+  import("@/pages/full/FullProductsPage").then((module) => ({ default: module.FullProductsPage })),
+);
+const FullPromoAnalyticsPage = lazy(() =>
+  import("@/pages/full/FullPromoAnalyticsPage").then((module) => ({ default: module.FullPromoAnalyticsPage })),
+);
+const FullPromoBannersPage = lazy(() =>
+  import("@/pages/full/FullPromoBannersPage").then((module) => ({ default: module.FullPromoBannersPage })),
+);
+const PromoBannerStudioPage = lazy(() =>
+  import("@/pages/full/PromoBannerStudioPage").then((module) => ({ default: module.PromoBannerStudioPage })),
+);
+const FullReturnsPage = lazy(() =>
+  import("@/pages/full/FullReturnsPage").then((module) => ({ default: module.FullReturnsPage })),
+);
+const FullReviewsPage = lazy(() =>
+  import("@/pages/full/FullReviewsPage").then((module) => ({ default: module.FullReviewsPage })),
+);
+const FullStoresPage = lazy(() =>
+  import("@/pages/full/FullStoresPage").then((module) => ({ default: module.FullStoresPage })),
+);
+const FullSupportChatsPage = lazy(() =>
+  import("@/pages/full/FullSupportChatsPage").then((module) => ({ default: module.FullSupportChatsPage })),
+);
+const FullUsersPage = lazy(() =>
+  import("@/pages/FullUsersPage").then((module) => ({ default: module.FullUsersPage })),
+);
+const FullVendorApplicationsPage = lazy(() =>
+  import("@/pages/full/FullVendorApplicationsPage").then((module) => ({ default: module.FullVendorApplicationsPage })),
+);
+const FullVendorsPage = lazy(() =>
+  import("@/pages/full/FullVendorsPage").then((module) => ({ default: module.FullVendorsPage })),
+);
+const FullVouchersPage = lazy(() =>
+  import("@/pages/full/FullVouchersPage").then((module) => ({ default: module.FullVouchersPage })),
+);
+const OrderDetailPage = lazy(() =>
+  import("@/pages/full/OrderDetailPage").then((module) => ({ default: module.OrderDetailPage })),
+);
+const VendorDetailPage = lazy(() =>
+  import("@/pages/full/VendorDetailPage").then((module) => ({ default: module.VendorDetailPage })),
+);
+const UserDetailPage = lazy(() =>
+  import("@/pages/UserDetailPage").then((module) => ({ default: module.UserDetailPage })),
+);
 
 export function AdminFullRoutes() {
   return (
@@ -74,6 +135,7 @@ export function AdminFullRoutes() {
       <Route path="/promo-banners/full/:bannerId/studio" element={<PromoBannerStudioPage />} />
       <Route path="/flash-sale-events/full" element={<FullFlashSaleEventsPage />} />
       <Route path="/merchandising-campaigns/full" element={<FullMerchandisingCampaignsPage />} />
+      <Route path="/promo-analytics/full" element={<FullPromoAnalyticsPage />} />
       <Route path="/support-chats/full" element={<FullSupportChatsPage />} />
       <Route path="/support-chats/full/:threadId" element={<SupportThreadDetailPage />} />
       <Route path="/notifications/full" element={<FullNotificationsPage />} />

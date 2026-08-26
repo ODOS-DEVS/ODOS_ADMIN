@@ -152,7 +152,7 @@ export async function warmBackendIfNeeded() {
 
 function buildNetworkError() {
   return new ApiError(
-    `We couldn't reach the ODOS backend at ${API_BASE_URL}. Render's free tier sleeps when idle — wait about a minute, then tap Try again.`,
+    `We couldn't reach the ODOS backend at ${API_BASE_URL}. Check that the API is running and reachable, then tap Try again.`,
   );
 }
 
@@ -163,7 +163,7 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
 
   if (!API_BASE_URL) {
     throw new ApiError(
-      "Invalid VITE_API_BASE_URL. Use a full URL like https://odos-backend.onrender.com/api",
+      "Invalid VITE_API_BASE_URL. Use a full URL like https://appbe.odos.market/api",
     );
   }
 
@@ -234,7 +234,7 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
       }
       if (error instanceof Error && /expected pattern|invalid url/i.test(error.message)) {
         throw new ApiError(
-          "The admin API URL is invalid. Set VITE_API_BASE_URL to a full URL like https://odos-backend.onrender.com/api",
+          "The admin API URL is invalid. Set VITE_API_BASE_URL to a full URL like https://appbe.odos.market/api",
         );
       }
 
@@ -249,7 +249,7 @@ export async function requestJson<T>(path: string, options: RequestOptions = {})
 
       if (pointsAtLocalApi && runningOnRemoteHost) {
         throw new ApiError(
-          `This admin site is configured with a local API URL (${API_BASE_URL}). Rebuild with VITE_API_BASE_URL=https://odos-backend.onrender.com/api`,
+          `This admin site is configured with a local API URL (${API_BASE_URL}). Rebuild with VITE_API_BASE_URL=https://appbe.odos.market/api`,
         );
       }
 

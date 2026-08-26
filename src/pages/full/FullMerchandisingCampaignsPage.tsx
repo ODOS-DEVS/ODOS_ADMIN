@@ -1,4 +1,4 @@
-import { CheckCircle2, Copy, Edit3, Plus, Trash2, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, Copy, Edit3, Inbox, Megaphone, Plus, Radio, Trash2, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -12,7 +12,11 @@ import {
 } from "@/api/merchandisingCampaignsApi";
 import { getCampaignOptInsPage, reviewCampaignOptIn } from "@/api/campaignOptInsApi";
 import { getProducts } from "@/api/productsApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
+import { DirectorySection } from "@/components/directory/DirectorySection";
+import { MetricStat } from "@/components/directory/MetricStat";
+import { SegmentedTabs } from "@/components/directory/SegmentedTabs";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -393,27 +397,31 @@ export function FullMerchandisingCampaignsPage() {
         }
       />
 
-      <div className="flex gap-2">
-        <Button
-          variant={view === "campaigns" ? "primary" : "secondary"}
-          onClick={() => setView("campaigns")}
-        >
-          Campaigns
-        </Button>
-        <Button
-          variant={view === "opt-ins" ? "primary" : "secondary"}
-          onClick={() => setView("opt-ins")}
-        >
-          Vendor opt-in requests
-          {pendingOptInCount > 0 ? ` (${pendingOptInCount})` : ""}
-        </Button>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricStat label="Campaigns" value={campaigns.length.toLocaleString()} icon={Megaphone} caption="Loaded on this page" animationDelay={40} />
+        <MetricStat label="Live" value={campaigns.filter((campaign) => campaign.status === "active").length.toLocaleString()} icon={Radio} tone="success" caption="Surfacing in the app" animationDelay={80} />
+        <MetricStat label="Scheduled" value={campaigns.filter((campaign) => campaign.status === "scheduled").length.toLocaleString()} icon={CalendarClock} tone="info" caption="Queued to start" animationDelay={120} />
+        <MetricStat label="Opt-ins pending" value={pendingOptInCount.toLocaleString()} icon={Inbox} tone="warning" caption="Vendor requests to review" animationDelay={160} />
+      </div>
+
+      <div className="flex">
+        <SegmentedTabs
+          ariaLabel="Switch between campaigns and vendor opt-in requests"
+          tabs={[
+            { value: "campaigns", label: "Campaigns", count: campaigns.length },
+            { value: "opt-ins", label: "Vendor opt-ins", count: pendingOptInCount },
+          ]}
+          value={view}
+          onChange={(value) => setView(value as PageView)}
+        />
       </div>
 
       {view === "opt-ins" ? (
-        <SectionCard
-          title="Vendor campaign opt-in requests"
-          description="Approve to add the vendor's product into the campaign's product set, or reject with an optional note."
-          action={
+        <DirectorySection
+          cardTitle="Vendor campaign opt-in requests"
+          count={filteredOptIns.length}
+          listSummary="Approve to add the vendor's product to the campaign, or reject with a note."
+          cardAction={
             <FilterSelect
               value={optInStatusFilter}
               onChange={(event) => setOptInStatusFilter(event.target.value)}
@@ -423,11 +431,10 @@ export function FullMerchandisingCampaignsPage() {
                 { label: "Rejected", value: "rejected" },
                 { label: "All", value: "all" },
               ]}
+              className="h-10"
             />
           }
-        >
-          <AdminInfiniteList
-            columns={[
+          columns={[
               {
                 key: "product",
                 header: "Product",
@@ -458,7 +465,7 @@ export function FullMerchandisingCampaignsPage() {
               {
                 key: "status",
                 header: "Status",
-                render: (optIn) => <StatusBadge status={optIn.status} />,
+                render: (optIn) => <StatePill label={labelForStatus(optIn.status)} tone={toneForStatus(optIn.status)} />,
               },
               {
                 key: "actions",
@@ -486,35 +493,37 @@ export function FullMerchandisingCampaignsPage() {
                   ) : (
                     <span className="text-xs text-textMuted">{optIn.reviewNotes || "Reviewed"}</span>
                   ),
-              },
-            ]}
-            data={filteredOptIns}
-            keyExtractor={(optIn) => optIn.id}
-            isLoading={isLoadingOptIns}
-            page={optInsPage}
-            pageSize={optInsPageSize}
-            isLoadingPage={isLoadingOptInsPage}
-            hasMore={optInsHasMore}
-            error={optInsError}
-            onPageChange={goToOptInsPage}
-            onRetry={() => void refreshOptIns()}
-            emptyTitle="No opt-in requests found"
-            emptyDescription="Vendor campaign opt-in submissions will appear here for review."
-          />
-        </SectionCard>
+              },]}
+          data={filteredOptIns}
+          keyExtractor={(optIn) => optIn.id}
+          isLoading={isLoadingOptIns}
+          error={optInsError}
+          onRetry={() => void refreshOptIns()}
+          emptyTitle="No opt-in requests"
+          emptyDescription="Vendor requests to join a campaign appear here."
+          pagination={{
+            page: optInsPage,
+            pageSize: optInsPageSize,
+            onPageChange: goToOptInsPage,
+            hasMore: optInsHasMore,
+            isLoadingPage: isLoadingOptInsPage,
+            loadedLabel: `per page · ${optIns.length} loaded`,
+          }}
+        />
       ) : null}
 
       {view === "campaigns" ? (
-      <SectionCard
-        title="Campaign library"
-        description="Lower display priority appears first. Only active, scheduled, public campaigns surface in the app."
-        action={
-          <div className="flex flex-col gap-3 sm:flex-row">
+      <DirectorySection
+        cardTitle="Campaign library"
+        count={filteredCampaigns.length}
+        listSummary="Lower display priority appears first. Only active, scheduled, public campaigns surface in the app."
+        cardAction={
+          <div className="flex flex-col gap-2 sm:flex-row">
             <SearchInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search campaigns"
-              className="sm:w-80"
+              className="h-10 py-0 sm:w-64"
             />
             <FilterSelect
               value={statusFilter}
@@ -527,12 +536,11 @@ export function FullMerchandisingCampaignsPage() {
                 { label: "Ended", value: "ended" },
                 { label: "Archived", value: "archived" },
               ]}
+              className="h-10"
             />
           </div>
         }
-      >
-        <AdminInfiniteList
-          columns={[
+        columns={[
             {
               key: "campaign",
               header: "Campaign",
@@ -568,7 +576,7 @@ export function FullMerchandisingCampaignsPage() {
             {
               key: "status",
               header: "Status",
-              render: (campaign) => <StatusBadge status={campaign.status} />,
+              render: (campaign) => <StatePill label={labelForStatus(campaign.status)} tone={toneForStatus(campaign.status)} />,
             },
             {
               key: "actions",
@@ -598,22 +606,23 @@ export function FullMerchandisingCampaignsPage() {
                   </Button>
                 </div>
               ),
-            },
-          ]}
-          data={filteredCampaigns}
-          keyExtractor={(campaign) => campaign.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
-          emptyTitle="No campaigns found"
-          emptyDescription="Create a campaign or adjust the filters."
-        />
-      </SectionCard>
+            },]}
+        data={filteredCampaigns}
+        keyExtractor={(campaign) => campaign.id}
+        isLoading={isLoading}
+        error={error}
+        onRetry={() => void refresh()}
+        emptyTitle="No campaigns found"
+        emptyDescription="Create a campaign or adjust the filters."
+        pagination={{
+          page,
+          pageSize,
+          onPageChange: goToPage,
+          hasMore,
+          isLoadingPage,
+          loadedLabel: `per page · ${campaigns.length} loaded`,
+        }}
+      />
       ) : null}
 
       <Modal

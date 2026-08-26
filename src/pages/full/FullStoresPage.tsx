@@ -21,8 +21,12 @@ import {
   updateStoreStatus,
   type CreateStoreInput,
 } from "@/api/storesApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
-import { AdminHeaderActions, AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
+import { AdminHeaderActions, HeaderActionButton } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { SegmentedTabs } from "@/components/directory/SegmentedTabs";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
 import {
   StoreLocationCell,
@@ -32,18 +36,14 @@ import {
   StoreTableActions,
 } from "@/components/stores/StoresDirectoryUi";
 import { TABLE_ACTIONS_COLUMN_CLASS } from "@/components/ui/IconButton";
-import { UserSectionNav } from "@/components/users/UsersUi";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Modal } from "@/components/ui/Modal";
-import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
@@ -336,165 +336,165 @@ export function FullStoresPage() {
     return <StoresDirectorySkeleton />;
   }
 
+  const columns = useMemo<Array<DirectoryColumn<Store>>>(
+    () => [
+      {
+        key: "store",
+        header: "Store",
+        sortable: true,
+        className: "min-w-[14rem]",
+        render: (store) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <StoreMark name={store.name} logoUrl={store.logoImage} />
+            <div className="min-w-0">
+              <p className="truncate font-medium text-textStrong">{store.name}</p>
+              <p className="truncate text-xs text-textMuted">{store.category}</p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "location",
+        header: "Location",
+        className: "min-w-[10rem]",
+        render: (store) => <StoreLocationCell store={store} />,
+      },
+      {
+        key: "market",
+        header: "Market",
+        className: "min-w-[9rem]",
+        render: (store) => (
+          <StoreMarketBadge
+            name={markets.find((market) => market.id === store.marketId)?.name ?? "Unassigned"}
+          />
+        ),
+      },
+      {
+        key: "created",
+        header: "Created",
+        sortable: true,
+        className: "w-[8rem] whitespace-nowrap text-sm text-textMuted",
+        render: (store) => formatDate(store.createdAt),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[8rem]",
+        render: (store) => (
+          <StatePill label={labelForStatus(store.status)} tone={toneForStatus(store.status)} />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS,
+        render: (store) => (
+          <StoreTableActions
+            store={store}
+            onPreview={() => void handleViewStore(store)}
+            onDossier={() => navigate(`/stores/full/${store.id}`)}
+            onToggleStatus={() => setStatusTarget(store)}
+          />
+        ),
+      },
+    ],
+    [handleViewStore, markets, navigate],
+  );
+
   return (
-    <div className="space-y-5">
-      <AdminFullHeader
-        eyebrow="Stores"
-        title="Store directory"
-        description={`${snapshot.total} on this page · ${marketLinkedCount} linked to a market · search, filter, and open a store to edit details or status.`}
-        backRoute="/stores"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-        actions={
-          <HeaderActionButton leftIcon={<Plus className="size-4" />} onClick={() => setIsCreateOpen(true)}>
-            Create store
-          </HeaderActionButton>
-        }
-      />
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label="On this page"
-          value={String(snapshot.total)}
-          hint="Loaded storefronts"
-          icon={StoreIcon}
-          animationDelay={40}
+    <DirectoryPage
+      eyebrow="Stores"
+      title="Store directory"
+      description="Every storefront on ODOS, with location, market and visibility status."
+      backRoute="/stores"
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      headerActions={
+        <HeaderActionButton leftIcon={<Plus className="size-4" />} onClick={() => setIsCreateOpen(true)}>
+          Create store
+        </HeaderActionButton>
+      }
+      metrics={[
+        {
+          label: "Stores",
+          value: snapshot.total.toLocaleString(),
+          icon: StoreIcon,
+          caption: `${marketLinkedCount} linked to a market`,
+        },
+        {
+          label: "Live shops",
+          value: snapshot.active.toLocaleString(),
+          icon: StoreIcon,
+          tone: "success",
+          caption: "Visible to shoppers",
+        },
+        {
+          label: "Draft",
+          value: snapshot.draft.toLocaleString(),
+          icon: Warehouse,
+          caption: "Not customer-visible",
+        },
+        {
+          label: "Suspended",
+          value: snapshot.suspended.toLocaleString(),
+          icon: PauseCircle,
+          tone: "warning",
+          caption: "Needs review",
+        },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Store, city or category"
+          className="h-10 py-0"
         />
-        <StatCard
-          label="Live shops"
-          value={String(snapshot.active)}
-          hint={`${snapshot.draft} in draft`}
-          icon={StoreIcon}
-          tone="success"
-          animationDelay={80}
-        />
-        <StatCard
-          label="Draft"
-          value={String(snapshot.draft)}
-          hint="Not customer-visible"
-          icon={Warehouse}
-          animationDelay={120}
-        />
-        <StatCard
-          label="Suspended"
-          value={String(snapshot.suspended)}
-          hint="Needs review"
-          icon={PauseCircle}
-          tone="warning"
-          animationDelay={160}
-        />
-      </div>
-
-      <UserSectionNav
-        sections={STORE_TABS.map((tab) => ({
-          id: tab.id,
-          label: `${tab.label} (${filterStoresByTab(stores, tab.id).length})`,
-        }))}
-        activeId={activeTab}
-        onSelect={(id) => setActiveTab(id as StoreDirectoryTab)}
-      />
-
-      <SectionCard
-        compact
-        title={`${activeTabLabel} stores`}
-        description="Search, filter, and open a store dossier for products and vendor context."
-        action={
-          <ListToolbar>
-            <ListToolbarField className="sm:min-w-[16rem]">
-              <SearchInput
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search store, city, category"
-                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                options={[
-                  { label: "All statuses", value: "all" },
-                  { label: "Active", value: "active" },
-                  { label: "Draft", value: "draft" },
-                  { label: "Suspended", value: "suspended" },
-                ]}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-          </ListToolbar>
-        }
-        bodyClassName="p-0"
-      >
-        <AdminInfiniteList
-          compact
-          listSummary={listSummary}
-          columns={[
-            {
-              key: "store",
-              header: "Store",
-              className: "min-w-[220px]",
-              render: (store) => (
-                <div className="flex items-center gap-3">
-                  <StoreMark name={store.name} logoUrl={store.logoImage} />
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="truncate font-semibold text-textStrong">{store.name}</p>
-                    <p className="truncate text-xs text-textMuted">{store.category}</p>
-                    <p className="text-[11px] text-textSubtle">Created {formatDate(store.createdAt)}</p>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              key: "location",
-              header: "Location",
-              className: "min-w-[140px]",
-              render: (store) => <StoreLocationCell store={store} />,
-            },
-            {
-              key: "market",
-              header: "Market",
-              className: "min-w-[120px]",
-              render: (store) => {
-                const marketName =
-                  markets.find((market) => market.id === store.marketId)?.name ?? "Unassigned";
-                return <StoreMarketBadge name={marketName} />;
-              },
-            },
-            {
-              key: "status",
-              header: "Status",
-              className: "w-[7.5rem]",
-              render: (store) => <StatusBadge status={store.status} />,
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              className: TABLE_ACTIONS_COLUMN_CLASS,
-              render: (store) => (
-                <StoreTableActions
-                  store={store}
-                  onPreview={() => void handleViewStore(store)}
-                  onDossier={() => navigate(`/stores/full/${store.id}`)}
-                  onToggleStatus={() => setStatusTarget(store)}
-                />
-              ),
-            },
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          options={[
+            { label: "All statuses", value: "all" },
+            { label: "Active", value: "active" },
+            { label: "Draft", value: "draft" },
+            { label: "Suspended", value: "suspended" },
           ]}
-          data={filteredStores}
-          keyExtractor={(store) => store.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
-          emptyTitle="No stores found"
-          emptyDescription="Try another tab or create a new ODOS storefront."
+          className="h-10"
         />
-      </SectionCard>
-
+      }
+      tabs={
+        <SegmentedTabs
+          ariaLabel="Filter stores"
+          tabs={STORE_TABS.map((tab) => ({
+            value: tab.id,
+            label: tab.label,
+            count: filterStoresByTab(stores, tab.id).length,
+          }))}
+          value={activeTab}
+          onChange={(value) => setActiveTab(value as StoreDirectoryTab)}
+        />
+      }
+      cardTitle={`${activeTabLabel} stores`}
+      count={filteredStores.length}
+      listSummary={listSummary}
+      columns={columns}
+      data={filteredStores}
+      keyExtractor={(store) => store.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No stores found"
+      emptyDescription="Clear the filters or create a store."
+      pagination={{
+        page,
+        pageSize,
+        onPageChange: goToPage,
+        hasMore,
+        isLoadingPage,
+        loadedLabel: `per page · ${stores.length} loaded`,
+      }}
+    >
       <Modal
         open={isCreateOpen}
         onClose={() => {
@@ -798,7 +798,7 @@ export function FullStoresPage() {
                   <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold text-textStrong">{selectedStore.name}</h3>
-                      <StatusBadge status={selectedStore.status} />
+                      <StatePill label={labelForStatus(selectedStore.status)} tone={toneForStatus(selectedStore.status)} />
                     </div>
                     <p className="text-sm text-textMuted">{selectedStore.category}</p>
                     <p className="text-sm text-textMuted">
@@ -893,7 +893,7 @@ export function FullStoresPage() {
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <StatusBadge status={product.status} />
+                            <StatePill label={labelForStatus(product.status)} tone={toneForStatus(product.status)} />
                             <span className="text-sm font-semibold tabular-nums text-textStrong">
                               {formatCurrency(product.price)}
                             </span>
@@ -930,6 +930,6 @@ export function FullStoresPage() {
         confirmVariant={statusTarget?.status === "suspended" ? "primary" : "danger"}
         isLoading={actionLoading}
       />
-    </div>
+    </DirectoryPage>
   );
 }

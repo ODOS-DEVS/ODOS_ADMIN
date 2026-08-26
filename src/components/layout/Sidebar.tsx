@@ -105,6 +105,7 @@ const navGroups: NavGroup[] = [
       { to: "/promo-banners/full", label: "Promo banners", icon: Megaphone },
       { to: "/merchandising-campaigns/full", label: "Campaigns", icon: Tags },
       { to: "/flash-sale-events/full", label: "Flash sale events", icon: Zap },
+      { to: "/promo-analytics/full", label: "Promo performance", icon: BarChart3 },
     ],
   },
   {

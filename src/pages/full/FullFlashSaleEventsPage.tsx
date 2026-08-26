@@ -1,4 +1,4 @@
-import { CheckCircle2, Edit3, Plus, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Edit3, Inbox, Package, Plus, Radio, Trash2, XCircle, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -13,7 +13,11 @@ import {
   type FlashSaleNomination,
 } from "@/api/flashSaleNominationsApi";
 import { getProducts } from "@/api/productsApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
+import { DirectorySection } from "@/components/directory/DirectorySection";
+import { MetricStat } from "@/components/directory/MetricStat";
+import { SegmentedTabs } from "@/components/directory/SegmentedTabs";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
@@ -411,41 +415,41 @@ export function FullFlashSaleEventsPage() {
         }
       />
 
-      <div className="flex gap-2">
-        <Button
-          variant={view === "events" ? "primary" : "secondary"}
-          onClick={() => setView("events")}
-        >
-          Events
-        </Button>
-        <Button
-          variant={view === "nominations" ? "primary" : "secondary"}
-          onClick={() => setView("nominations")}
-        >
-          Vendor nominations
-          {pendingNominationCount > 0 ? ` (${pendingNominationCount})` : ""}
-        </Button>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricStat label="Events" value={events.length.toLocaleString()} icon={Zap} caption="Loaded on this page" animationDelay={40} />
+        <MetricStat label="Live now" value={events.filter((event) => event.status === "active").length.toLocaleString()} icon={Radio} tone="success" caption="Running in the app" animationDelay={80} />
+        <MetricStat label="Featured products" value={events.reduce((total, event) => total + event.productIds.length, 0).toLocaleString()} icon={Package} tone="info" caption="Across every event" animationDelay={120} />
+        <MetricStat label="Nominations pending" value={pendingNominationCount.toLocaleString()} icon={Inbox} tone="warning" caption="Vendor prices to review" animationDelay={160} />
+      </div>
+
+      <div className="flex">
+        <SegmentedTabs
+          ariaLabel="Switch between events and vendor nominations"
+          tabs={[
+            { value: "events", label: "Events", count: events.length },
+            { value: "nominations", label: "Vendor nominations", count: pendingNominationCount },
+          ]}
+          value={view}
+          onChange={(value) => setView(value as PageView)}
+        />
       </div>
 
       {view === "nominations" ? (
-        <SectionCard
-          title="Vendor flash sale nominations"
-          description="Approve to publish the vendor's flash price into an event, or reject with an optional note."
-          action={
-            <FilterSelect
-              value={nominationStatusFilter}
-              onChange={(event) => setNominationStatusFilter(event.target.value)}
-              options={[
-                { label: "Pending", value: "pending" },
-                { label: "Approved", value: "approved" },
-                { label: "Rejected", value: "rejected" },
-                { label: "All", value: "all" },
-              ]}
-            />
-          }
-        >
-          <AdminInfiniteList
-            columns={[
+        <DirectorySection
+          cardTitle="Vendor flash sale nominations"
+          count={filteredNominations.length}
+          listSummary="Approve to publish the vendor's flash price into an event, or reject with a note."
+          cardAction={<FilterSelect
+                value={nominationStatusFilter}
+                onChange={(event) => setNominationStatusFilter(event.target.value)}
+                options={[
+                  { label: "Pending", value: "pending" },
+                  { label: "Approved", value: "approved" },
+                  { label: "Rejected", value: "rejected" },
+                  { label: "All", value: "all" },
+                ]}
+              />}
+          columns={[
               {
                 key: "product",
                 header: "Product",
@@ -501,7 +505,7 @@ export function FullFlashSaleEventsPage() {
               {
                 key: "status",
                 header: "Status",
-                render: (nomination) => <StatusBadge status={nomination.status} />,
+                render: (nomination) => <StatePill label={labelForStatus(nomination.status)} tone={toneForStatus(nomination.status)} />,
               },
               {
                 key: "actions",
@@ -529,30 +533,31 @@ export function FullFlashSaleEventsPage() {
                       {nomination.reviewNotes || "Reviewed"}
                     </span>
                   ),
-              },
-            ]}
-            data={filteredNominations}
-            keyExtractor={(nomination) => nomination.id}
-            isLoading={isLoadingNominations}
-            page={nominationsPage}
-            pageSize={nominationsPageSize}
-            isLoadingPage={isLoadingNominationsPage}
-            hasMore={nominationsHasMore}
-            error={nominationsError}
-            onPageChange={goToNominationsPage}
-            onRetry={() => void refreshNominations()}
-            emptyTitle="No nominations found"
-            emptyDescription="Vendor flash sale submissions will appear here for review."
-          />
-        </SectionCard>
+              },]}
+          data={filteredNominations}
+          keyExtractor={(nomination) => nomination.id}
+          isLoading={isLoadingNominations}
+          error={nominationsError}
+          onRetry={() => void refreshNominations()}
+          emptyTitle="No nominations"
+          emptyDescription="Vendor flash-price submissions appear here."
+          pagination={{
+            page: nominationsPage,
+            pageSize: nominationsPageSize,
+            onPageChange: goToNominationsPage,
+            hasMore: nominationsHasMore,
+            isLoadingPage: isLoadingNominationsPage,
+            loadedLabel: `per page · ${nominations.length} loaded`,
+          }}
+        />
       ) : null}
 
       {view === "events" ? (
-      <SectionCard
-        title="Event library"
-        description="Lower sort order values appear first. Products only surface while the event window is live."
-        action={
-          <div className="flex flex-col gap-3 sm:flex-row">
+      <DirectorySection
+        cardTitle="Flash sale calendar"
+        count={filteredEvents.length}
+        listSummary="Each event runs to its end time, then drops out of the app automatically."
+        cardAction={<div className="flex flex-col gap-3 sm:flex-row">
             <SearchInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -568,11 +573,8 @@ export function FullFlashSaleEventsPage() {
                 { label: "Disabled", value: "disabled" },
               ]}
             />
-          </div>
-        }
-      >
-        <AdminInfiniteList
-            columns={[
+          </div>}
+        columns={[
               {
                 key: "event",
                 header: "Event",
@@ -605,7 +607,7 @@ export function FullFlashSaleEventsPage() {
               {
                 key: "status",
                 header: "Status",
-                render: (event) => <StatusBadge status={event.status} />,
+                render: (event) => <StatePill label={labelForStatus(event.status)} tone={toneForStatus(event.status)} />,
               },
               {
                 key: "actions",
@@ -628,22 +630,23 @@ export function FullFlashSaleEventsPage() {
                     </Button>
                   </div>
                 ),
-              },
-            ]}
-            data={filteredEvents}
-            keyExtractor={(event) => event.id}
-            isLoading={isLoading}
-            page={page}
-            pageSize={pageSize}
-            isLoadingPage={isLoadingPage}
-            hasMore={hasMore}
-            error={error}
-            onPageChange={goToPage}
-            onRetry={() => void refresh()}
-            emptyTitle="No flash sale events found"
-            emptyDescription="Create an event or adjust the filters."
-          />
-      </SectionCard>
+              },]}
+        data={filteredEvents}
+        keyExtractor={(event) => event.id}
+        isLoading={isLoading}
+        error={error}
+        onRetry={() => void refresh()}
+        emptyTitle="No flash sale events"
+        emptyDescription="Create an event or adjust the filters."
+        pagination={{
+          page,
+          pageSize,
+          onPageChange: goToPage,
+          hasMore,
+          isLoadingPage,
+          loadedLabel: `per page · ${events.length} loaded`,
+        }}
+      />
       ) : null}
 
       <Modal

@@ -46,8 +46,8 @@ React admin dashboard for operating the ODOS marketplace — catalog, users, ven
 ## Requirements
 
 - Node.js 18+
-- Running ODOS backend (local or Render)
-- Admin user seeded or bootstrapped on the API
+- A reachable ODOS backend (the hosted API, or one running locally on :8000)
+- An admin user seeded or bootstrapped on the API
 
 ## Local setup
 
@@ -55,10 +55,10 @@ React admin dashboard for operating the ODOS marketplace — catalog, users, ven
 npm install
 ```
 
-Create `.env` in the project root:
+`.env` holds the API the built app talks to:
 
 ```env
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
+VITE_API_BASE_URL=https://appbe.odos.market/api
 ```
 
 Start the dev server:
@@ -69,11 +69,28 @@ npm run dev
 
 Open the URL Vite prints (usually `http://localhost:5173`).
 
-Production / staging API:
+### Why dev goes through a proxy
+
+`.env.development` points the dev server at itself:
 
 ```env
-VITE_API_BASE_URL=https://odos-backend.onrender.com/api
+VITE_API_BASE_URL=http://localhost:5173/api
 ```
+
+The hosted backend does not list `http://localhost:5173` as a CORS origin, so the browser
+blocks direct calls from the dev server. Vite proxies `/api` to the backend from Node instead,
+which is not subject to CORS at all — the browser only ever makes a same-origin request.
+
+Pointing at the dev server also keeps `client.ts` from treating the API as remote and running
+its cold-start warm-up sequence.
+
+To work against a local backend instead:
+
+```bash
+DEV_API_PROXY_TARGET=http://localhost:8000 npm run dev
+```
+
+Or add `http://localhost:5173` to `CORS_ORIGINS` on the server and call it directly.
 
 ## Scripts
 
@@ -84,17 +101,23 @@ npm run build      # Production build to dist/
 npm run preview    # Serve dist/ locally
 ```
 
-## Deployment (Render)
+## Deployment
 
-`render.yaml` configures a static site with SPA fallback for React Router.
+Any static host with SPA fallback for React Router works; `render.yaml` and `vercel.json` are
+both present.
 
 | Setting | Value |
 |---------|--------|
 | Build command | `npm install && npm run build` |
 | Publish directory | `dist` |
-| Env | `VITE_API_BASE_URL=https://odos-backend.onrender.com/api` |
+| Env | `VITE_API_BASE_URL=https://appbe.odos.market/api` |
 
-After deploy, add the admin site origin to backend `CORS_ORIGINS` and redeploy the API if needed.
+The deployed origin has to be in the backend's `CORS_ORIGINS`, or every request fails in the
+browser even though the API is healthy.
+
+Every page behind sign-in is code-split, so the login screen does not download the console it
+has not authenticated into yet — the initial bundle is ~118 KB gzipped, with charts and the
+heavier pages pulled in on demand.
 
 ## Routes
 
@@ -112,8 +135,30 @@ After deploy, add the admin site origin to backend `CORS_ORIGINS` and redeploy t
 - `/full/categories/studio/:id` — category studio
 - `/full/users/:id` · `/full/orders/:id` · `/full/vendors/:id` — record detail pages
 - `/full/analytics` — full analytics report
+- `/full/promo-analytics` — campaign, voucher and banner performance
 - `/full/delivery-ops` — live delivery operations dashboard
 - `/full/flash-sale-events` and `/full/merchandising-campaigns` — each include a review-queue tab for vendor nominations / opt-ins
+
+## Design system
+
+Every list screen — orders, products, users, vendors, stores, payouts, vouchers and the rest —
+is built from one shell rather than hand-assembled, so they cannot drift apart:
+
+| Piece | Role |
+|-------|------|
+| `DirectoryPage` | Header → KPI strip → filter bar → table card → pagination |
+| `DirectorySection` | Just the table card, for screens with two legitimate lists |
+| `DirectoryTable` | Selection, sortable headers, empty state |
+| `MetricStat` | A KPI figure, with a delta only when there is a real comparison |
+| `StatePill` | Status chip with a leading dot |
+| `SelectionBar` | Bulk actions, only present while rows are selected |
+
+Charts live in `src/components/charts`. The categorical palette in `chartPalette.ts` is
+validated, not chosen by eye — it passes lightness, chroma, colour-vision separation and
+contrast checks against the card surface. Assign hues in the order given: adjacent pairs were
+checked as neighbours, so reordering can break separation that currently holds. A seventh
+series folds into "Other" rather than inventing a colour, and the reserved status colours
+never stand in for a category.
 
 ## Project structure
 

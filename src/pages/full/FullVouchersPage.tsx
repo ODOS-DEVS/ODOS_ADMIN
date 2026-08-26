@@ -1,4 +1,4 @@
-import { Copy, Edit3, Hash, Info, Pause, Play, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, Copy, Edit3, Hash, Info, Pause, PiggyBank, Play, Plus, Ticket, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -18,12 +18,15 @@ import {
 } from "@/api/vouchersApi";
 import type { PromotionAnalytics, PromotionType } from "@/types";
 import { getStores } from "@/api/storesApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Modal } from "@/components/ui/Modal";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
+import { TableActionBar, TableActionBarItem } from "@/components/ui/IconButton";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -776,283 +779,209 @@ export function FullVouchersPage() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <AdminFullHeader
-        eyebrow="Vouchers"
-        title="Complete voucher campaigns"
-        description="Create, edit, and audit every promo code and campaign."
-        backRoute="/vouchers"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-        actions={
-          <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" leftIcon={<Hash className="size-4" />} onClick={() => setIsBulkOpen(true)}>
-              Bulk generate
-            </Button>
-            <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
-              Create voucher
-            </Button>
+  const columns = useMemo<Array<DirectoryColumn<VoucherCampaign>>>(
+    () => [
+      {
+        key: "campaign",
+        header: "Campaign",
+        sortable: true,
+        className: "min-w-[15rem] max-w-[20rem]",
+        render: (voucher) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-textStrong">{voucher.title}</p>
+            <p className="truncate font-mono text-[13px] text-textMuted">{voucher.code}</p>
+            <p className="truncate text-xs text-textSubtle">
+              {(voucher.scope === "store"
+                ? voucher.storeName || voucher.issuerName
+                : voucher.issuerName) ?? "ODOS"}
+              {" · "}
+              {voucher.availability === "auto"
+                ? "Auto"
+                : voucher.availability === "claim"
+                  ? "Claimable"
+                  : "Gifted"}
+            </p>
           </div>
-        }
-      />
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
-            Live campaigns
-          </p>
-          <p className="mt-4 text-3xl font-semibold text-textStrong">{summary.activeCount}</p>
-          <p className="mt-2 text-sm text-textMuted">Vouchers that can be redeemed right now.</p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
-            Scheduled
-          </p>
-          <p className="mt-4 text-3xl font-semibold text-textStrong">{summary.scheduledCount}</p>
-          <p className="mt-2 text-sm text-textMuted">Campaigns queued to start later.</p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
-            Redemptions
-          </p>
-          <p className="mt-4 text-3xl font-semibold text-textStrong">{summary.totalRedemptions}</p>
-          <p className="mt-2 text-sm text-textMuted">Successful voucher uses across all orders.</p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
-            Shopper savings
-          </p>
-          <p className="mt-4 text-3xl font-semibold text-textStrong">
-            {formatCurrency(summary.totalSavings)}
-          </p>
-          <p className="mt-2 text-sm text-textMuted">Value already returned to customers.</p>
-        </div>
-      </div>
-
-      {analytics?.topCampaigns.length ? (
-        <SectionCard
-          title="Top performing campaigns"
-          description="Ranked by redemptions and discount value returned to shoppers."
-        >
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {analytics.topCampaigns.slice(0, 6).map((campaign) => (
-              <div
-                key={campaign.id}
-                className="rounded-2xl border border-line bg-surfaceMuted p-4"
+        ),
+      },
+      {
+        key: "reward",
+        header: "Reward",
+        className: "min-w-[11rem]",
+        render: (voucher) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-textStrong">{voucher.rewardText}</p>
+            <p className="truncate text-xs text-textMuted">
+              Min spend {formatCurrency(voucher.minSubtotal)}
+              {voucher.maxDiscount ? ` · Cap ${formatCurrency(voucher.maxDiscount)}` : ""}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "usage",
+        header: "Usage",
+        sortable: true,
+        className: "w-[9rem]",
+        render: (voucher) => (
+          <div>
+            <p className="font-semibold tabular-nums text-textStrong">
+              {voucher.redemptionCount}
+              {voucher.usageLimit != null ? ` / ${voucher.usageLimit}` : ""}
+            </p>
+            <p className="text-xs text-textMuted">
+              {voucher.uniqueUserCount} shopper{voucher.uniqueUserCount === 1 ? "" : "s"}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "impact",
+        header: "Discount given",
+        sortable: true,
+        className: "w-[9.5rem] whitespace-nowrap",
+        render: (voucher) => (
+          <div>
+            <p className="font-semibold tabular-nums text-textStrong">
+              {formatCurrency(voucher.totalDiscountAmount)}
+            </p>
+            <p className="text-xs text-textMuted">Since {formatDate(voucher.createdAt)}</p>
+          </div>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[10rem]",
+        render: (voucher) => (
+          <div className="space-y-1">
+            <StatePill
+              label={labelForStatus(voucher.status)}
+              tone={toneForStatus(voucher.status)}
+            />
+            {voucher.approvalStatus && voucher.approvalStatus !== "approved" ? (
+              <StatePill label={labelForStatus(voucher.approvalStatus)} tone="warning" />
+            ) : null}
+            <p className="text-[11px] text-textSubtle">{describeWindow(voucher)}</p>
+          </div>
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: "w-[13rem] text-right",
+        render: (voucher) => (
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            {voucher.approvalStatus === "pending" ? (
+              <>
+                <Button
+                  variant="primary"
+                  className="h-9 px-2.5 py-0 text-[13px]"
+                  onClick={() => void handleReview(voucher, "approved")}
+                  disabled={actionLoading}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="h-9 px-2.5 py-0 text-[13px]"
+                  onClick={() => void handleReview(voucher, "rejected")}
+                  disabled={actionLoading}
+                >
+                  Reject
+                </Button>
+              </>
+            ) : null}
+            <TableActionBar>
+              <TableActionBarItem label="Edit voucher" onClick={() => openEditModal(voucher)}>
+                <Edit3 className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+              <TableActionBarItem
+                label="Duplicate voucher"
+                onClick={() => void handleDuplicate(voucher)}
               >
-                <p className="font-medium text-textStrong">{campaign.title}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.22em] text-textSubtle">{campaign.code}</p>
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-textMuted">
-                  <span>{campaign.redemptionCount} redemptions</span>
-                  <span>{formatCurrency(campaign.totalDiscountAmount)} saved</span>
-                  <span>{campaign.uniqueUserCount} shoppers</span>
-                </div>
-              </div>
-            ))}
+                <Copy className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+              <TableActionBarItem
+                label={voucher.isActive ? "Pause voucher" : "Resume voucher"}
+                onClick={() => void handlePauseResume(voucher)}
+              >
+                {voucher.isActive ? (
+                  <Pause className="size-4 shrink-0" strokeWidth={2} />
+                ) : (
+                  <Play className="size-4 shrink-0" strokeWidth={2} />
+                )}
+              </TableActionBarItem>
+              <TableActionBarItem
+                label="Open dossier"
+                onClick={() => navigate(`/vouchers/full/${voucher.id}`)}
+              >
+                <ArrowRight className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+            </TableActionBar>
           </div>
-        </SectionCard>
-      ) : null}
+        ),
+      },
+    ],
+    [actionLoading, navigate],
+  );
 
-      <SectionCard
-        title="Campaign library"
-        description="Search codes, monitor status, and keep voucher campaigns tidy as promos start, end, or hit their redemption ceiling."
-        action={
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search code, title, or issuer"
-              className="sm:w-80"
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as "all" | VoucherCampaignStatus)
-              }
-              options={statusOptions}
-            />
-          </div>
-        }
-      >
-        <AdminInfiniteList
-            columns={[
-              {
-                key: "campaign",
-                header: "Campaign",
-                render: (voucher) => (
-                  <div>
-                    <p className="font-medium text-textStrong">{voucher.title}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.22em] text-textSubtle">
-                      {voucher.code}
-                    </p>
-                    <p className="mt-2 text-xs text-textMuted">
-                      {(voucher.scope === "store"
-                        ? voucher.storeName || voucher.issuerName
-                        : voucher.issuerName) ?? "ODOS"}
-                    </p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      {voucher.scope === "store" ? "Store promo" : "ODOS promo"} ·{" "}
-                      {voucher.availability === "auto"
-                        ? "Auto"
-                        : voucher.availability === "claim"
-                          ? "Claimable"
-                          : "Gifted"}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "reward",
-                header: "Reward",
-                render: (voucher) => (
-                  <div>
-                    <p className="font-medium text-textStrong">{voucher.rewardText}</p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      Min. spend {formatCurrency(voucher.minSubtotal)}
-                    </p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      {voucher.maxDiscount != null
-                        ? `Max discount ${formatCurrency(voucher.maxDiscount)}`
-                        : "No max discount cap"}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (voucher) => (
-                  <div>
-                    <StatusBadge status={voucher.status} />
-                    {voucher.approvalStatus && voucher.approvalStatus !== "approved" ? (
-                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-warning">
-                        {voucher.approvalStatus}
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-xs text-textMuted">{describeWindow(voucher)}</p>
-                  </div>
-                ),
-              },
-              {
-                key: "usage",
-                header: "Usage",
-                render: (voucher) => (
-                  <div>
-                    <p className="font-medium text-textStrong">
-                      {voucher.redemptionCount}
-                      {voucher.usageLimit != null ? ` / ${voucher.usageLimit}` : ""}
-                    </p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      {voucher.uniqueUserCount} unique shopper(s)
-                    </p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      Per-user limit{" "}
-                      {voucher.perUserLimit != null ? voucher.perUserLimit : "Unlimited"}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "impact",
-                header: "Impact",
-                render: (voucher) => (
-                  <div>
-                    <p className="font-medium text-textStrong">
-                      {formatCurrency(voucher.totalDiscountAmount)}
-                    </p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      Created {formatDate(voucher.createdAt)}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                className: "text-right",
-                render: (voucher) => (
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate(`/vouchers/full/${voucher.id}`)}
-                    >
-                      Open dossier
-                    </Button>
-                    {voucher.approvalStatus === "pending" ? (
-                      <>
-                        <Button
-                          variant="secondary"
-                          onClick={() => void handleReview(voucher, "approved")}
-                          disabled={actionLoading}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="danger"
-                          onClick={() => void handleReview(voucher, "rejected")}
-                          disabled={actionLoading}
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    ) : null}
-                    <Button
-                      variant="ghost"
-                      leftIcon={<Edit3 className="size-4" />}
-                      onClick={() => openEditModal(voucher)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      leftIcon={<Copy className="size-4" />}
-                      onClick={() => void handleDuplicate(voucher)}
-                      disabled={actionLoading}
-                    >
-                      Duplicate
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      leftIcon={
-                        voucher.isActive ? (
-                          <Pause className="size-4" />
-                        ) : (
-                          <Play className="size-4" />
-                        )
-                      }
-                      onClick={() => void handlePauseResume(voucher)}
-                      disabled={actionLoading || voucher.approvalStatus === "pending"}
-                    >
-                      {voucher.isActive ? "Pause" : "Resume"}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      leftIcon={<Trash2 className="size-4" />}
-                      onClick={() => setArchiveTarget(voucher)}
-                      disabled={voucher.status === "disabled"}
-                    >
-                      Archive
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-            data={filteredVouchers}
-            keyExtractor={(voucher) => voucher.id}
-            isLoading={isLoading}
-            page={page}
-            pageSize={pageSize}
-            isLoadingPage={isLoadingPage}
-            hasMore={hasMore}
-            error={error}
-            onPageChange={goToPage}
-            onRetry={() => void refresh()}
-            emptyTitle="No vouchers found"
-            emptyDescription="Create a new campaign or broaden the current filters."
-          />
-      </SectionCard>
-
+  return (
+    <DirectoryPage
+      eyebrow="Vouchers"
+      title="Complete voucher campaigns"
+      description="Create, edit and audit every promo code, with live usage and the discount each one has given away."
+      backRoute="/vouchers"
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      headerActions={
+        <>
+          <Button
+            variant="secondary"
+            leftIcon={<Hash className="size-4" />}
+            onClick={() => setIsBulkOpen(true)}
+          >
+            Bulk generate
+          </Button>
+          <Button leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
+            Create voucher
+          </Button>
+        </>
+      }
+      metrics={[
+        { label: "Live campaigns", value: summary.activeCount.toLocaleString(), icon: Ticket, tone: "success", caption: "Redeemable right now" },
+        { label: "Scheduled", value: summary.scheduledCount.toLocaleString(), icon: CalendarClock, caption: "Queued to start later" },
+        { label: "Redemptions", value: summary.totalRedemptions.toLocaleString(), icon: BadgeCheck, tone: "info", caption: "Successful uses" },
+        { label: "Shopper savings", value: formatCurrency(summary.totalSavings), icon: PiggyBank, tone: "warning", caption: "Value returned to customers" },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Code, title or issuer"
+          className="h-10 py-0"
+        />
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value as "all" | VoucherCampaignStatus)}
+          options={statusOptions}
+          className="h-10"
+        />
+      }
+      cardTitle="Campaign library"
+      count={filteredVouchers.length}
+      columns={columns}
+      data={filteredVouchers}
+      keyExtractor={(voucher) => voucher.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No vouchers found"
+      emptyDescription="Create a campaign or broaden the filters."
+      pagination={{ page, pageSize, onPageChange: goToPage, hasMore, isLoadingPage, loadedLabel: `per page · ${vouchers.length} loaded` }}
+    >
       <Modal
         open={isEditorOpen}
         title={editingVoucher ? "Update voucher campaign" : "Create voucher campaign"}
@@ -1718,6 +1647,6 @@ export function FullVouchersPage() {
         onClose={() => setArchiveTarget(null)}
         onConfirm={() => void handleArchive()}
       />
-    </div>
+    </DirectoryPage>
   );
 }

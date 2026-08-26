@@ -1,9 +1,27 @@
-import { Bike, Clock3, CreditCard, MapPin, Package2, ShoppingCart, UserRound } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import {
+  Bike,
+  Clock3,
+  CreditCard,
+  Download,
+  MapPin,
+  Package2,
+  ShoppingCart,
+  UserRound,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { getKpiMetrics, type AdminKpiMetrics } from "@/api/dashboardApi";
 import { getOrder, getOrdersPage, updateOrderStatus } from "@/api/ordersApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
+import { DirectoryFooter } from "@/components/directory/DirectoryFooter";
+import { DirectoryTable, type DirectoryColumn, type SortState } from "@/components/directory/DirectoryTable";
+import { DirectoryToolbar } from "@/components/directory/DirectoryToolbar";
+import { FulfilmentRail } from "@/components/directory/FulfilmentRail";
+import { MetricStat } from "@/components/directory/MetricStat";
+import { SegmentedTabs, type SegmentedTab } from "@/components/directory/SegmentedTabs";
+import { SelectionAction, SelectionBar } from "@/components/directory/SelectionBar";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
 import {
   OrderAmountCell,
@@ -15,26 +33,21 @@ import { DetailField, DetailFields, DetailHero, DetailSection, DetailStack } fro
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { FormField } from "@/components/ui/FormField";
 import { TABLE_ACTIONS_COLUMN_CLASS_WIDE } from "@/components/ui/IconButton";
-import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { SectionCard } from "@/components/ui/SectionCard";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { AdminOrderDetail, Order, OrderStatus } from "@/types";
 import { formatCurrency, formatDateTime } from "@/utils/format";
+import { exportCsv } from "@/utils/exportCsv";
 import { formatPaginationRange } from "@/utils/paginationUi";
 import { resolveAdminMediaUrl } from "@/utils/media";
-
-const TOOLBAR_CONTROL_CLASS =
-  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
 
 const orderStatusOptions: Array<{ label: string; value: OrderStatus }> = [
   { label: "Pending", value: "pending" },
@@ -113,6 +126,102 @@ export function FullOrdersPage() {
     hasMore ? " · more pages available" : ""
   }`;
 
+  const [metrics, setMetrics] = useState<AdminKpiMetrics | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sort, setSort] = useState<SortState>({ key: "created", direction: "desc" });
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    // Fails soft: the KPI strip drops its deltas rather than blocking the table.
+    void getKpiMetrics(token)
+      .then((result) => {
+        if (!cancelled) setMetrics(result);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const statusTabs = useMemo<Array<SegmentedTab<string>>>(() => {
+    const countFor = (status: string) =>
+      orders.filter((order) => order.status === status).length;
+    return [
+      { value: "all", label: "All", count: orders.length },
+      { value: "pending", label: "Pending", count: countFor("pending") },
+      { value: "confirmed", label: "Confirmed", count: countFor("confirmed") },
+      { value: "processing", label: "Processing", count: countFor("processing") },
+      { value: "ready", label: "Ready", count: countFor("ready") },
+      { value: "out_for_delivery", label: "Delivery", count: countFor("out_for_delivery") },
+      { value: "delivered", label: "Delivered", count: countFor("delivered") },
+      { value: "cancelled", label: "Cancelled", count: countFor("cancelled") },
+    ];
+  }, [orders]);
+
+  const visibleOrders = useMemo(() => {
+    if (!sort) return filteredOrders;
+    const direction = sort.direction === "asc" ? 1 : -1;
+    return [...filteredOrders].sort((left, right) => {
+      switch (sort.key) {
+        case "order":
+          return left.orderNumber.localeCompare(right.orderNumber) * direction;
+        case "customer":
+          return left.customerName.localeCompare(right.customerName) * direction;
+        case "amount":
+          return (left.totalAmount - right.totalAmount) * direction;
+        case "created":
+        default:
+          return (
+            (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()) * direction
+          );
+      }
+    });
+  }, [filteredOrders, sort]);
+
+  const toggleRow = useCallback((id: string) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback((ids: string[]) => {
+    setSelectedIds((previous) => {
+      const allSelected = ids.length > 0 && ids.every((id) => previous.has(id));
+      if (allSelected) {
+        const next = new Set(previous);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      }
+      return new Set([...previous, ...ids]);
+    });
+  }, []);
+
+  const changeSort = useCallback((key: string) => {
+    setSort((previous) => {
+      if (previous?.key === key) {
+        return { key, direction: previous.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  }, []);
+
+  const exportOrders = useCallback((rows: Order[]) => {
+    exportCsv(`odos-orders-${new Date().toISOString().slice(0, 10)}.csv`, rows, [
+      { header: "Order number", value: (order) => order.orderNumber },
+      { header: "Customer", value: (order) => order.customerName },
+      { header: "Store", value: (order) => order.storeName },
+      { header: "Total", value: (order) => order.totalAmount },
+      { header: "Status", value: (order) => order.status },
+      { header: "Payment", value: (order) => order.paymentStatus },
+      { header: "Placed", value: (order) => order.createdAt },
+    ]);
+  }, []);
+
+
   const handleViewOrder = useCallback(
     async (order: Order) => {
       if (!token) return;
@@ -168,16 +277,91 @@ export function FullOrdersPage() {
     }
   }
 
+  const orderColumns = useMemo<Array<DirectoryColumn<Order>>>(
+    () => [
+      {
+        key: "order",
+        header: "Order & date",
+        sortable: true,
+        className: "min-w-[11rem]",
+        render: (order) => (
+          <div className="min-w-0">
+            <p className="truncate font-mono text-[13px] font-semibold text-textStrong">
+              {order.orderNumber}
+            </p>
+            <p className="mt-0.5 text-xs text-textMuted">{formatDateTime(order.createdAt)}</p>
+          </div>
+        ),
+      },
+      {
+        key: "customer",
+        header: "Customer",
+        sortable: true,
+        className: "min-w-[11rem] max-w-[15rem]",
+        render: (order) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-textStrong">{order.customerName}</p>
+            <p className="truncate text-xs text-textMuted">{order.storeName}</p>
+          </div>
+        ),
+      },
+      {
+        key: "amount",
+        header: "Amount",
+        sortable: true,
+        className: "whitespace-nowrap",
+        render: (order) => (
+          <p className="font-semibold tabular-nums text-textStrong">
+            {formatCurrency(order.totalAmount)}
+          </p>
+        ),
+      },
+      {
+        key: "fulfilment",
+        header: "Fulfilment",
+        className: "min-w-[9rem]",
+        render: (order) => <FulfilmentRail status={order.status} />,
+      },
+      {
+        key: "payment",
+        header: "Payment",
+        className: "w-[9rem]",
+        render: (order) => (
+          <StatePill
+            label={labelForStatus(order.paymentStatus)}
+            tone={toneForStatus(order.paymentStatus)}
+          />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
+        render: (order) => (
+          <OrderTableActions
+            onQuickView={() => void handleViewOrder(order)}
+            onOpenDetail={() => navigate(`/orders/full/${order.id}`)}
+            onUpdateStatus={() => {
+              setEditingOrder(order);
+              setPendingStatus(order.status);
+            }}
+          />
+        ),
+      },
+    ],
+    [handleViewOrder, navigate],
+  );
+
   if (isLoading && orders.length === 0) {
     return <OrdersDirectorySkeleton />;
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <AdminFullHeader
         eyebrow="Orders"
         title="Order list"
-        description={`${snapshot.total} loaded · ${snapshot.pending} pending fulfillment · search, filter, and update status.`}
+        description="Track fulfilment, payment and delivery across every store."
         backRoute="/orders"
         onRefresh={() => void refresh()}
         refreshing={isLoading}
@@ -192,137 +376,157 @@ export function FullOrdersPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="On this page" value={String(snapshot.total)} icon={ShoppingCart} animationDelay={40} />
-        <StatCard
-          label="Pending"
-          value={String(snapshot.pending)}
-          hint="Awaiting fulfillment"
-          icon={Clock3}
-          tone="warning"
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricStat
+          label="Orders this month"
+          value={metrics ? metrics.monthOrders.toLocaleString() : "—"}
+          icon={ShoppingCart}
+          delta={
+            metrics
+              ? { percent: metrics.ordersGrowthPercent, label: "vs last month" }
+              : undefined
+          }
+          caption={metrics ? undefined : "Loading month totals"}
+          animationDelay={40}
+        />
+        <MetricStat
+          label="Revenue this month"
+          value={metrics ? formatCurrency(metrics.monthRevenue) : "—"}
+          icon={CreditCard}
+          tone="success"
+          delta={
+            metrics
+              ? { percent: metrics.revenueGrowthPercent, label: "vs last month" }
+              : undefined
+          }
+          caption={metrics ? undefined : "Paid and delivered orders"}
           animationDelay={80}
         />
-        <StatCard
-          label="Unpaid"
-          value={String(snapshot.unpaid)}
-          icon={CreditCard}
+        <MetricStat
+          label="Pending"
+          value={snapshot.pending.toLocaleString()}
+          icon={Clock3}
+          tone="warning"
+          caption="Awaiting fulfilment on this page"
           animationDelay={120}
+        />
+        <MetricStat
+          label="Unpaid"
+          value={snapshot.unpaid.toLocaleString()}
+          icon={Package2}
+          tone="danger"
+          caption="Payment not settled on this page"
+          animationDelay={160}
         />
       </div>
 
-      <SectionCard
-        compact
-        title="All orders"
-        action={
-          <ListToolbar>
-            <ListToolbarField className="sm:min-w-[16rem]">
-              <SearchInput
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Order # or customer"
-                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                options={[{ label: "All statuses", value: "all" }].concat(
-                  orderStatusOptions.map((option) => ({ label: option.label, value: option.value })),
-                )}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={paymentFilter}
-                onChange={(event) => setPaymentFilter(event.target.value)}
-                options={[
-                  { label: "All payments", value: "all" },
-                  { label: "Pending", value: "pending" },
-                  { label: "Paid", value: "paid" },
-                  { label: "Failed", value: "failed" },
-                  { label: "Partially refunded", value: "partially_refunded" },
-                  { label: "Refunded", value: "refunded" },
-                ]}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-          </ListToolbar>
+      <DirectoryToolbar
+        search={
+          <SearchInput
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Order number, customer or store"
+            className="h-10 py-0"
+          />
         }
-        bodyClassName="p-0"
-      >
-        <AdminInfiniteList
-          compact
-          listSummary={listSummary}
-          columns={[
-            {
-              key: "order",
-              header: "Order",
-              className: "min-w-[140px]",
-              render: (order) => <OrderSummaryCell order={order} />,
-            },
-            {
-              key: "store",
-              header: "Store",
-              className: "min-w-[120px] max-w-[200px]",
-              render: (order) => (
-                <p className="truncate text-sm text-textStrong">{order.storeName}</p>
-              ),
-            },
-            {
-              key: "amount",
-              header: "Amount",
-              className: "whitespace-nowrap",
-              render: (order) => <OrderAmountCell order={order} />,
-            },
-            {
-              key: "status",
-              header: "Status",
-              className: "w-[8.5rem]",
-              render: (order) => (
-                <div className="flex flex-wrap gap-1">
-                  <StatusBadge status={order.status} />
-                  <StatusBadge status={order.paymentStatus} />
+        filters={
+          <FilterSelect
+            value={paymentFilter}
+            onChange={(event) => setPaymentFilter(event.target.value)}
+            options={[
+              { label: "All payments", value: "all" },
+              { label: "Paid", value: "paid" },
+              { label: "Pending", value: "pending" },
+              { label: "Failed", value: "failed" },
+              { label: "Part refunded", value: "partially_refunded" },
+              { label: "Refunded", value: "refunded" },
+            ]}
+            className="h-10"
+          />
+        }
+        trailing={
+          <SegmentedTabs
+            ariaLabel="Filter orders by status"
+            tabs={statusTabs}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          />
+        }
+      />
+
+      <section className="animate-fade-up rounded-2xl border border-line bg-surface opacity-0 shadow-card">
+        <header className="flex flex-col gap-3 border-b border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-textStrong">
+              All orders{" "}
+              <span className="tabular-nums font-normal text-textMuted">
+                ({visibleOrders.length})
+              </span>
+            </h2>
+            <p className="mt-0.5 text-xs text-textMuted">{listSummary}</p>
+          </div>
+          <Button
+            variant="secondary"
+            leftIcon={<Download className="size-4" />}
+            onClick={() => exportOrders(visibleOrders)}
+            disabled={visibleOrders.length === 0}
+            className="h-10 py-0"
+          >
+            Export page
+          </Button>
+        </header>
+
+        {error ? (
+          <div className="p-4">
+            <ErrorState description={error} onRetry={() => void refresh()} />
+          </div>
+        ) : isLoading ? (
+          <div className="p-4">
+            <LoadingState label="Loading orders..." />
+          </div>
+        ) : (
+          <>
+            <DirectoryTable
+              columns={orderColumns}
+              data={visibleOrders}
+              keyExtractor={(order) => order.id}
+              selectedIds={selectedIds}
+              onToggleRow={toggleRow}
+              onToggleAll={toggleAll}
+              sort={sort}
+              onSortChange={changeSort}
+              emptyState={
+                <div className="p-4">
+                  <EmptyState
+                    title="No orders found"
+                    description="Clear the filters or try another search."
+                  />
                 </div>
-              ),
-            },
-            {
-              key: "created",
-              header: "Created",
-              className: "min-w-[9rem] whitespace-nowrap text-sm text-textMuted",
-              render: (order) => formatDateTime(order.createdAt),
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
-              render: (order) => (
-                <OrderTableActions
-                  onQuickView={() => void handleViewOrder(order)}
-                  onOpenDetail={() => navigate(`/orders/full/${order.id}`)}
-                  onUpdateStatus={() => {
-                    setEditingOrder(order);
-                    setPendingStatus(order.status);
-                  }}
-                />
-              ),
-            },
-          ]}
-          data={filteredOrders}
-          keyExtractor={(order) => order.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
-          emptyTitle="No orders found"
-          emptyDescription="Clear filters or try another search."
-        />
-      </SectionCard>
+              }
+            />
+            <DirectoryFooter
+              page={page}
+              pageSize={pageSize}
+              onPageChange={goToPage}
+              hasMore={hasMore}
+              isLoading={isLoadingPage}
+              loadedLabel={`per page · ${orders.length} loaded`}
+            />
+          </>
+        )}
+      </section>
+
+      <SelectionBar count={selectedIds.size} noun="order" onClear={() => setSelectedIds(new Set())}>
+        <SelectionAction
+          icon={<Download className="size-4" />}
+          onClick={() => {
+            exportOrders(visibleOrders.filter((order) => selectedIds.has(order.id)));
+            setSelectedIds(new Set());
+          }}
+        >
+          Export
+        </SelectionAction>
+      </SelectionBar>
 
       <Modal
         open={Boolean(selectedOrderSummary)}
@@ -350,8 +554,8 @@ export function FullOrdersPage() {
               meta={`${selectedOrder.storeName} · ${formatDateTime(selectedOrder.placedAt)}`}
               badges={
                 <>
-                  <StatusBadge status={selectedOrder.status} />
-                  <StatusBadge status={selectedOrder.paymentStatus} />
+                  <StatePill label={labelForStatus(selectedOrder.status)} tone={toneForStatus(selectedOrder.status)} />
+                  <StatePill label={labelForStatus(selectedOrder.paymentStatus)} tone={toneForStatus(selectedOrder.paymentStatus)} />
                 </>
               }
             >
@@ -479,7 +683,7 @@ export function FullOrdersPage() {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-medium text-textStrong">{request.productTitle}</p>
-                          <StatusBadge status={request.status} />
+                          <StatePill label={labelForStatus(request.status)} tone={toneForStatus(request.status)} />
                         </div>
                         <p className="text-xs text-textMuted">{formatDateTime(request.createdAt)}</p>
                       </div>

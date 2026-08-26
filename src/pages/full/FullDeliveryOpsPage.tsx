@@ -7,8 +7,9 @@ import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShe
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { SectionCard } from "@/components/ui/SectionCard";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { MetricStat } from "@/components/directory/MetricStat";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { formatCurrency } from "@/utils/format";
 
@@ -50,13 +51,13 @@ function DeliveryOpsRow({
         <p className="truncate text-sm text-textStrong">{order.storeName}</p>
       </td>
       <td className="w-[8.5rem] px-4 py-3">
-        <StatusBadge status={order.vendorStatus} />
+        <StatePill label={labelForStatus(order.vendorStatus)} tone={toneForStatus(order.vendorStatus)} />
       </td>
       <td className="w-[9rem] px-4 py-3">
-        <StatusBadge status={order.deliveryStatus} />
+        <StatePill label={labelForStatus(order.deliveryStatus)} tone={toneForStatus(order.deliveryStatus)} />
       </td>
       <td className="w-[7.5rem] px-4 py-3">
-        <StatusBadge status={order.settlementStatus} />
+        <StatePill label={labelForStatus(order.settlementStatus)} tone={toneForStatus(order.settlementStatus)} />
       </td>
       <td className="min-w-[7rem] px-4 py-3">
         <span
@@ -137,29 +138,29 @@ export function FullDeliveryOpsPage() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
+        <MetricStat
           label="Active orders"
           value={String(snapshot?.totalActive ?? 0)}
           icon={PackageCheck}
           animationDelay={40}
         />
-        <StatCard
+        <MetricStat
           label="Delayed"
           value={String(snapshot?.delayedCount ?? 0)}
-          hint="Past this stage's SLA"
+          caption="Past this stage's SLA"
           icon={AlertTriangle}
           tone={snapshot?.delayedCount ? "warning" : "default"}
           animationDelay={80}
         />
-        <StatCard
+        <MetricStat
           label="Exceptions"
           value={String(snapshot?.exceptionsCount ?? 0)}
-          hint="Customer reported a delivery problem"
+          caption="Customer reported a delivery problem"
           icon={AlertTriangle}
           tone={snapshot?.exceptionsCount ? "warning" : "default"}
           animationDelay={120}
         />
-        <StatCard
+        <MetricStat
           label="Out for delivery"
           value={String(stageCounts.out_for_delivery ?? 0)}
           icon={Bike}

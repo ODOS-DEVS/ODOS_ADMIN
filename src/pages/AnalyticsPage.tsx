@@ -1,6 +1,9 @@
 import {
+  AlertTriangle,
   ArrowRight,
+  CheckCircle2,
   CircleDollarSign,
+  PackageX,
   RefreshCw,
   ShoppingCart,
   TrendingUp,
@@ -9,7 +12,15 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getDashboardOverview } from "@/api/dashboardApi";
+import {
+  getDashboardOverview,
+  getKpiMetrics,
+  getSalesChart,
+  getTopVendors,
+  type AdminKpiMetrics,
+  type SalesChart,
+  type TopVendor,
+} from "@/api/dashboardApi";
 import { getFinanceOverview } from "@/api/financeApi";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsUi";
 import {
@@ -18,18 +29,27 @@ import {
 } from "@/components/admin/AdminShell";
 import { AdminPageIntro } from "@/components/admin/PageIntro";
 import {
-  buildRecentOrderVolumeBars,
-  DonutMixChart,
-  FootprintTiles,
-  MarketplaceHealthGrid,
-  MiniBarTrend,
-  TreasuryHighlightPanel,
-} from "@/components/analytics/MarketplaceAnalyticsUi";
+  getCategoryPerformance,
+  getCustomerMetrics,
+  getProductMetrics,
+  type CategoryPerformance,
+  type CustomerMetrics,
+  type ProductMetrics,
+} from "@/api/marketplaceAnalyticsApi";
+import { BarChart } from "@/components/charts/BarChart";
+import { BreakdownDonut } from "@/components/charts/BreakdownDonut";
+import { StatusBar } from "@/components/charts/StatusBar";
+import { ChartCard, ChartLegend, RangeControl } from "@/components/charts/ChartCard";
+import { CATEGORICAL, withOverflow } from "@/components/charts/chartPalette";
+import { RankedBars } from "@/components/charts/RankedBars";
+import { TrendChart } from "@/components/charts/TrendChart";
+import { MetricStat } from "@/components/directory/MetricStat";
+
 import { DataTable } from "@/components/tables/DataTable";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { SectionCard } from "@/components/ui/SectionCard";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import type { AdminFinanceOverview, DashboardPayload, Order } from "@/types";
 import {
@@ -38,10 +58,37 @@ import {
 } from "@/utils/analyticsMetrics";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 
+/** Axis ticks: GH₵6k rather than GH₵6,000, so the plot keeps its width. */
+function formatCompactGhs(value: number) {
+  if (Math.abs(value) >= 1000) {
+    return `GH₵${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
+  }
+  return `GH₵${Math.round(value)}`;
+}
+
+/** Axis/tooltip label for a daily bucket — "12 Aug", not an ISO timestamp. */
+function formatChartDay(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(parsed);
+}
+
 type BriefAnalyticsState = {
   dashboard: DashboardPayload;
   finance: AdminFinanceOverview | null;
+  kpi: AdminKpiMetrics | null;
+  categories: CategoryPerformance[];
+  products: ProductMetrics | null;
+  customers: CustomerMetrics | null;
+  sales: SalesChart | null;
+  topVendors: TopVendor[];
 };
+
+const RANGE_OPTIONS = [
+  { value: 7, label: "7d" },
+  { value: 30, label: "30d" },
+  { value: 90, label: "90d" },
+];
 
 export function AnalyticsPage() {
   const { token } = useAdminAuth();
@@ -50,6 +97,7 @@ export function AnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rangeDays, setRangeDays] = useState(30);
 
   const loadAnalytics = useCallback(
     async (background = false) => {
@@ -63,9 +111,20 @@ export function AnalyticsPage() {
       setError(null);
 
       try {
+        // The dashboard payload is the only hard requirement — the rest degrade
+        // to an empty chart rather than taking the whole page down with them.
         const dashboard = await getDashboardOverview(token);
-        const finance = await getFinanceOverview(token).catch(() => null);
-        setState({ dashboard, finance });
+        const [finance, kpi, sales, topVendors, categories, products, customers] =
+          await Promise.all([
+            getFinanceOverview(token).catch(() => null),
+            getKpiMetrics(token).catch(() => null),
+            getSalesChart(token, rangeDays).catch(() => null),
+            getTopVendors(token, { limit: 6, days: rangeDays }).catch(() => []),
+            getCategoryPerformance(token, 8).catch(() => []),
+            getProductMetrics(token).catch(() => null),
+            getCustomerMetrics(token).catch(() => null),
+          ]);
+        setState({ dashboard, finance, kpi, sales, topVendors, categories, products, customers });
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Unable to load analytics.");
       } finally {
@@ -73,7 +132,7 @@ export function AnalyticsPage() {
         setIsRefreshing(false);
       }
     },
-    [token],
+    [rangeDays, token],
   );
 
   useEffect(() => {
@@ -90,9 +149,38 @@ export function AnalyticsPage() {
     [state],
   );
 
-  const volumeBars = useMemo(
-    () => (state ? buildRecentOrderVolumeBars(state.dashboard.recentOrders) : []),
-    [state],
+  /**
+   * Which days of the week actually carry the orders.
+   *
+   * Derived from the daily series rather than fetched: the question is about
+   * staffing and dispatch rhythm, and averaging per weekday answers it without
+   * another endpoint. Averages, not totals — a 90-day window contains more
+   * Mondays than a 30-day one, so totals would just track the window length.
+   */
+  const weekdayRows = useMemo(() => {
+    const points = state?.sales?.data ?? [];
+    if (points.length === 0) return [];
+    const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const buckets = names.map((label) => ({ label, total: 0, days: 0 }));
+    for (const point of points) {
+      const parsed = new Date(point.date);
+      if (Number.isNaN(parsed.getTime())) continue;
+      const bucket = buckets[parsed.getDay()];
+      bucket.total += point.orders;
+      bucket.days += 1;
+    }
+    // Monday-first reads better than the JS Sunday-first ordering.
+    const ordered = [...buckets.slice(1), buckets[0]];
+    return ordered.map((bucket) => ({
+      label: bucket.label,
+      value: bucket.days > 0 ? Number((bucket.total / bucket.days).toFixed(1)) : 0,
+      caption: `${bucket.days} day${bucket.days === 1 ? "" : "s"} in range`,
+    }));
+  }, [state?.sales?.data]);
+
+  const pipelineRows = useMemo(
+    () => (state ? withOverflow(orderStatusMix.map((item) => ({ label: item.label, value: item.count }))) : []),
+    [orderStatusMix, state],
   );
 
   if (isLoading) {
@@ -140,81 +228,242 @@ export function AnalyticsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricStat
           label="Gross collected"
           value={formatCurrency(Math.round(grossCollected))}
-          hint="Checkout value processed"
           icon={CircleDollarSign}
           tone="success"
+          delta={
+            state.kpi
+              ? { percent: state.kpi.revenueGrowthPercent, label: "vs last month" }
+              : undefined
+          }
+          caption={state.kpi ? undefined : "Checkout value processed"}
           animationDelay={40}
         />
-        <StatCard
+        <MetricStat
           label="Paid orders"
           value={new Intl.NumberFormat("en-GH").format(paidOrders)}
-          hint={`${stats.ordersToday} today`}
           icon={ShoppingCart}
+          delta={
+            state.kpi
+              ? { percent: state.kpi.ordersGrowthPercent, label: "vs last month" }
+              : undefined
+          }
+          caption={state.kpi ? undefined : `${stats.ordersToday} today`}
           animationDelay={80}
-          onClick={() => navigate("/orders/full")}
         />
-        <StatCard
+        <MetricStat
           label="Avg order value"
           value={formatCurrency(Math.round(snapshot.paidAverageOrderValue))}
-          hint="Per paid checkout"
           icon={TrendingUp}
           tone="info"
+          caption="Per paid checkout"
           animationDelay={120}
         />
-        <StatCard
+        <MetricStat
           label="Commission"
           value={formatCurrency(Math.round(finance?.commissionBalance ?? 0))}
-          hint="ODOS platform share"
           icon={Wallet}
+          caption="ODOS platform share"
           animationDelay={160}
-          onClick={() => navigate("/finance/full")}
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-12">
-        <div className="space-y-4 xl:col-span-8">
-          <div className="grid gap-4 md:grid-cols-2">
-            {volumeBars.length > 0 ? (
-              <MiniBarTrend
-                title="Recent order volume"
-                subtitle="Recent checkouts (GH₵)"
-                bars={volumeBars}
-                tone="accent"
-              />
-            ) : (
-              <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-line bg-surfaceMuted/40 p-6 text-center text-xs text-textMuted">
-                Order volume chart fills in as new marketplace orders arrive.
-              </div>
-            )}
-            <DonutMixChart
-              title="Recent order pipeline"
-              centerValue={String(dashboard.recentOrders.length)}
-              centerLabel="orders"
-              segments={orderStatusMix.slice(0, 4).map((item, index) => ({
-                label: item.label,
-                value: item.count,
-                colorIndex: index,
-              }))}
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard
+          className="xl:col-span-2"
+          title="Revenue"
+          description="Paid and delivered orders per day."
+          animationDelay={200}
+          control={
+            <RangeControl
+              ariaLabel="Revenue period"
+              options={RANGE_OPTIONS}
+              value={rangeDays}
+              onChange={setRangeDays}
             />
-          </div>
+          }
+          legend={
+            state.sales ? (
+              <ChartLegend
+                items={[
+                  {
+                    label: "Revenue",
+                    color: CATEGORICAL[0],
+                    value: formatCurrency(Math.round(state.sales.totalRevenue)),
+                  },
+                ]}
+              />
+            ) : undefined
+          }
+        >
+          <TrendChart
+            data={state.sales?.data ?? []}
+            xKey="date"
+            series={[{ key: "revenue", label: "Revenue", colorIndex: 0 }]}
+            formatValue={(value) => formatCurrency(Math.round(value))}
+            formatTick={formatCompactGhs}
+            formatX={formatChartDay}
+            height={300}
+            emptyMessage="No paid orders in this period yet."
+          />
+        </ChartCard>
 
-          <SectionCard compact title="Catalog" bodyClassName="pt-1">
-            <FootprintTiles stats={stats} />
-          </SectionCard>
-        </div>
+        <ChartCard
+          title="Order pipeline"
+          description="Where recent orders currently sit."
+          animationDelay={240}
+        >
+          <BreakdownDonut
+            rows={pipelineRows}
+            formatValue={(value) => `${value} order${value === 1 ? "" : "s"}`}
+            centerLabel={{
+              value: String(dashboard.recentOrders.length),
+              caption: "recent orders",
+            }}
+            emptyMessage="No recent orders to break down."
+          />
+        </ChartCard>
+      </div>
 
-        <div className="xl:col-span-4">
-          <TreasuryHighlightPanel finance={finance} onOpenFinance={() => navigate("/finance/full")} />
-          <div className="mt-4">
-            <SectionCard compact title="Queues">
-              <MarketplaceHealthGrid snapshot={snapshot} stats={stats} />
-            </SectionCard>
-          </div>
-        </div>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard
+          className="xl:col-span-2"
+          title="Orders per day"
+          description="Volume alongside the revenue above — same period, its own axis so neither scale distorts the other."
+          animationDelay={280}
+        >
+          <TrendChart
+            data={state.sales?.data ?? []}
+            xKey="date"
+            series={[{ key: "orders", label: "Orders", colorIndex: 1 }]}
+            formatValue={(value) => new Intl.NumberFormat("en-GH").format(value)}
+            formatX={formatChartDay}
+            height={200}
+            emptyMessage="No orders in this period yet."
+          />
+        </ChartCard>
+
+        <ChartCard
+          title="Top stores"
+          description={`By gross merchandise value, last ${rangeDays} days.`}
+          animationDelay={320}
+        >
+          <RankedBars
+            rows={(state.topVendors ?? []).map((vendor) => ({
+              id: vendor.storeId,
+              label: vendor.storeName,
+              caption: `${vendor.orders} order${vendor.orders === 1 ? "" : "s"} · ${formatCurrency(
+                Math.round(vendor.avgOrderValue),
+              )} avg`,
+              value: vendor.gmv,
+              valueLabel: formatCurrency(Math.round(vendor.gmv)),
+            }))}
+            emptyMessage="No store has recorded a paid order in this period."
+          />
+        </ChartCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard
+          className="xl:col-span-2"
+          title="Revenue by category"
+          description="Which parts of the catalog actually earn, all time."
+          animationDelay={360}
+        >
+          <BarChart
+            rows={(state.categories ?? []).map((row) => ({
+              label: row.category,
+              value: row.revenue,
+              caption: `${row.orders} order${row.orders === 1 ? "" : "s"}${
+                row.avgRating > 0 ? ` · ${row.avgRating.toFixed(1)}★` : ""
+              }`,
+            }))}
+            orientation="horizontal"
+            formatValue={(value) => formatCurrency(Math.round(value))}
+            formatTick={formatCompactGhs}
+            emptyMessage="No category has recorded revenue yet."
+          />
+        </ChartCard>
+
+        <ChartCard
+          title="Catalog health"
+          description="How much of the catalog is sellable right now."
+          animationDelay={400}
+        >
+          {state.products ? (
+            <StatusBar
+              totalLabel="products listed"
+              segments={[
+                {
+                  label: "In stock",
+                  value: Math.max(
+                    state.products.totalProducts -
+                      state.products.lowStockCount -
+                      state.products.outOfStockCount,
+                    0,
+                  ),
+                  tone: "good",
+                  icon: CheckCircle2,
+                },
+                {
+                  label: "Low stock",
+                  value: state.products.lowStockCount,
+                  tone: "warning",
+                  icon: AlertTriangle,
+                },
+                {
+                  label: "Out of stock",
+                  value: state.products.outOfStockCount,
+                  tone: "critical",
+                  icon: PackageX,
+                },
+              ]}
+            />
+          ) : (
+            <p className="px-2 py-6 text-center text-sm text-textMuted">
+              Catalog metrics are unavailable right now.
+            </p>
+          )}
+        </ChartCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <ChartCard
+          title="Orders by weekday"
+          description="Average orders per day of the week — the dispatch rhythm to staff against."
+          animationDelay={440}
+        >
+          <BarChart
+            rows={weekdayRows}
+            orientation="vertical"
+            color={CATEGORICAL[1]}
+            formatValue={(value) => `${value} order${value === 1 ? "" : "s"} avg`}
+            formatTick={(value) => String(Math.round(value))}
+            height={220}
+            emptyMessage="Not enough history to show a weekday pattern."
+          />
+        </ChartCard>
+
+        <ChartCard
+          className="xl:col-span-2"
+          title="Best-selling products"
+          description="By revenue, all time."
+          animationDelay={480}
+        >
+          <RankedBars
+            rows={(state.products?.topProducts ?? []).map((product) => ({
+              id: product.id,
+              label: product.title,
+              caption: `${product.sales} sold`,
+              value: product.revenue,
+              valueLabel: formatCurrency(Math.round(product.revenue)),
+            }))}
+            emptyMessage="No product has recorded a sale yet."
+          />
+        </ChartCard>
       </div>
 
       <SectionCard
@@ -257,8 +506,8 @@ export function AnalyticsPage() {
               header: "Status",
               render: (order) => (
                 <div className="flex flex-wrap gap-1">
-                  <StatusBadge status={order.status} />
-                  <StatusBadge status={order.paymentStatus} />
+                  <StatePill label={labelForStatus(order.status)} tone={toneForStatus(order.status)} />
+                  <StatePill label={labelForStatus(order.paymentStatus)} tone={toneForStatus(order.paymentStatus)} />
                 </div>
               ),
             },

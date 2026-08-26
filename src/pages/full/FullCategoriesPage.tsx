@@ -3,8 +3,11 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { deleteCategory, getCategoriesPage, updateCategory } from "@/api/categoriesApi";
-import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
+import { HeaderActionButton } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import {
   CategoryNameCell,
   CategoryTableActions,
@@ -13,11 +16,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { TABLE_ACTIONS_COLUMN_CLASS_WIDE } from "@/components/ui/IconButton";
-import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { SectionCard } from "@/components/ui/SectionCard";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useToast } from "@/hooks/useToast";
@@ -148,135 +147,116 @@ export function FullCategoriesPage() {
     return <CategoriesDirectorySkeleton />;
   }
 
+  const columns = useMemo<Array<DirectoryColumn<Category>>>(
+    () => [
+      {
+        key: "category",
+        header: "Category",
+        sortable: true,
+        className: "min-w-[14rem]",
+        render: (category) => <CategoryNameCell category={category} />,
+      },
+      {
+        key: "subcategories",
+        header: "Subcategories",
+        className: "min-w-[14rem] max-w-[22rem]",
+        render: (category) => (
+          <p className="line-clamp-2 text-sm text-textMuted">
+            {(category.subcategories ?? []).join(", ") || "—"}
+          </p>
+        ),
+      },
+      {
+        key: "created",
+        header: "Created",
+        sortable: true,
+        className: "w-[8rem] whitespace-nowrap text-sm text-textMuted",
+        render: (category) => formatDate(category.createdAt),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[8rem]",
+        render: (category) => (
+          <StatePill
+            label={labelForStatus(category.status)}
+            tone={toneForStatus(category.status)}
+          />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
+        render: (category) => (
+          <CategoryTableActions
+            category={category}
+            isBusy={statusTargetId === category.id}
+            onEdit={() => navigate(`/categories/full/${category.id}/studio`)}
+            onDisable={() => setDeleteIntent({ category, mode: "disable" })}
+            onEnable={() => void handleRestore(category)}
+            onDeletePermanently={() => setDeleteIntent({ category, mode: "permanent" })}
+          />
+        ),
+      },
+    ],
+    [navigate, statusTargetId],
+  );
+
   return (
-    <div className="space-y-5">
-      <AdminFullHeader
-        eyebrow="Categories"
-        title="Category list"
-        description={`${snapshot.total} loaded · ${snapshot.active} active · edit name, image, subcategories, and status.`}
-        backRoute="/categories"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-        actions={
-          <HeaderActionButton
-            leftIcon={<Plus className="size-4" />}
-            onClick={() => navigate("/categories/full/new")}
-          >
-            Add category
-          </HeaderActionButton>
-        }
-      />
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatCard label="On this page" value={String(snapshot.total)} icon={Tags} animationDelay={40} />
-        <StatCard
-          label="Active"
-          value={String(snapshot.active)}
-          hint={`${snapshot.disabled} disabled`}
-          icon={CheckCircle2}
-          tone="success"
-          animationDelay={80}
+    <DirectoryPage
+      eyebrow="Categories"
+      title="Category list"
+      description="The taxonomy shoppers browse by — names, artwork, subcategories and visibility."
+      backRoute="/categories"
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      headerActions={
+        <HeaderActionButton
+          leftIcon={<Plus className="size-4" />}
+          onClick={() => navigate("/categories/full/new")}
+        >
+          Add category
+        </HeaderActionButton>
+      }
+      metrics={[
+        { label: "Categories", value: snapshot.total.toLocaleString(), icon: Tags, caption: "Loaded on this page" },
+        { label: "Active", value: snapshot.active.toLocaleString(), icon: CheckCircle2, tone: "success", caption: "Browsable by shoppers" },
+        { label: "Disabled", value: snapshot.disabled.toLocaleString(), icon: PauseCircle, tone: "warning", caption: "Hidden from the app" },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Name, slug or subcategory"
+          className="h-10 py-0"
         />
-        <StatCard
-          label="Disabled"
-          value={String(snapshot.disabled)}
-          icon={PauseCircle}
-          animationDelay={120}
-        />
-      </div>
-
-      <SectionCard
-        compact
-        title="All categories"
-        action={
-          <ListToolbar>
-            <ListToolbarField className="sm:min-w-[16rem]">
-              <SearchInput
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Name, slug, or subcategory"
-                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                options={[
-                  { label: "All statuses", value: "all" },
-                  { label: "Active", value: "active" },
-                  { label: "Disabled", value: "disabled" },
-                ]}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-          </ListToolbar>
-        }
-        bodyClassName="p-0"
-      >
-        <AdminInfiniteList
-          compact
-          listSummary={listSummary}
-          columns={[
-            {
-              key: "category",
-              header: "Category",
-              className: "min-w-[220px]",
-              render: (category) => <CategoryNameCell category={category} />,
-            },
-            {
-              key: "subcategories",
-              header: "Subcategories",
-              className: "min-w-[180px] max-w-[320px]",
-              render: (category) => (
-                <p className="line-clamp-2 text-sm text-textMuted">
-                  {(category.subcategories ?? []).join(", ") || "—"}
-                </p>
-              ),
-            },
-            {
-              key: "status",
-              header: "Status",
-              className: "w-[7.5rem]",
-              render: (category) => <StatusBadge status={category.status} />,
-            },
-            {
-              key: "created",
-              header: "Created",
-              className: "w-[7.5rem] whitespace-nowrap text-sm text-textMuted",
-              render: (category) => formatDate(category.createdAt),
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
-              render: (category) => (
-                <CategoryTableActions
-                  category={category}
-                  isBusy={statusTargetId === category.id}
-                  onEdit={() => navigate(`/categories/full/${category.id}/studio`)}
-                  onDisable={() => setDeleteIntent({ category, mode: "disable" })}
-                  onEnable={() => void handleRestore(category)}
-                  onDeletePermanently={() => setDeleteIntent({ category, mode: "permanent" })}
-                />
-              ),
-            },
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          options={[
+            { label: "All statuses", value: "all" },
+            { label: "Active", value: "active" },
+            { label: "Disabled", value: "disabled" },
           ]}
-          data={filteredCategories}
-          keyExtractor={(category) => category.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
-          emptyTitle="No categories found"
-          emptyDescription="Clear filters or add a category."
+          className="h-10"
         />
-      </SectionCard>
-
+      }
+      cardTitle="All categories"
+      count={filteredCategories.length}
+      listSummary={listSummary}
+      columns={columns}
+      data={filteredCategories}
+      keyExtractor={(category) => category.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No categories found"
+      emptyDescription="Clear the filters or add a category."
+      pagination={{ page, pageSize, onPageChange: goToPage, hasMore, isLoadingPage, loadedLabel: `per page · ${categories.length} loaded` }}
+    >
       <ConfirmDialog
         open={Boolean(deleteIntent)}
         onClose={() => setDeleteIntent(null)}
@@ -293,6 +273,6 @@ export function FullCategoriesPage() {
         confirmVariant="danger"
         isLoading={actionLoading}
       />
-    </div>
+    </DirectoryPage>
   );
 }

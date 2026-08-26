@@ -1,9 +1,11 @@
 import {
   CheckCircle2,
   Clock3,
+  Download,
   Mail,
   MapPin,
   Package,
+  PackageX,
   Plus,
   Star,
   Tag,
@@ -14,35 +16,40 @@ import { useNavigate } from "react-router-dom";
 
 import { getCategories } from "@/api/categoriesApi";
 import { getProduct, getProductsPage, updateProductStatus } from "@/api/productsApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
+import { DirectoryFooter } from "@/components/directory/DirectoryFooter";
+import { DirectoryTable, type DirectoryColumn, type SortState } from "@/components/directory/DirectoryTable";
+import { DirectoryToolbar } from "@/components/directory/DirectoryToolbar";
+import { MetricStat } from "@/components/directory/MetricStat";
+import { SegmentedTabs, type SegmentedTab } from "@/components/directory/SegmentedTabs";
+import { SelectionAction, SelectionBar } from "@/components/directory/SelectionBar";
+import { StatePill } from "@/components/directory/StatePill";
+import { StockMeter } from "@/components/directory/StockMeter";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
 import {
-  ProductNameCell,
+  ProductMark,
   ProductsDirectorySkeleton,
   ProductTableActions,
 } from "@/components/products/ProductsDirectoryUi";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { TABLE_ACTIONS_COLUMN_CLASS_WIDE } from "@/components/ui/IconButton";
-import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { SectionCard } from "@/components/ui/SectionCard";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
 import { useToast } from "@/hooks/useToast";
 import type { Category, Product, ProductStatus } from "@/types";
 import { formatCurrency, formatDate } from "@/utils/format";
+import { exportCsv } from "@/utils/exportCsv";
 import { formatPaginationRange } from "@/utils/paginationUi";
 import { normalizeTaxonomyValue } from "@/utils/productStudio";
 
 import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
-
-const TOOLBAR_CONTROL_CLASS =
-  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
 
 export function FullProductsPage() {
   const { token } = useAdminAuth();
@@ -148,12 +155,91 @@ export function FullProductsPage() {
   const snapshot = useMemo(() => {
     const active = products.filter((product) => product.status === "active").length;
     const pending = products.filter((product) => product.status === "pending").length;
-    return { total: products.length, active, pending };
+    const outOfStock = products.filter((product) => product.stock <= 0).length;
+    return { total: products.length, active, pending, outOfStock };
   }, [products]);
 
   const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredProducts.length })}${
     hasMore ? " · more pages available" : ""
   }`;
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sort, setSort] = useState<SortState>({ key: "created", direction: "desc" });
+
+  const statusTabs = useMemo<Array<SegmentedTab<string>>>(() => {
+    const countFor = (status: string) =>
+      products.filter((product) => product.status === status).length;
+    return [
+      { value: "all", label: "All", count: products.length },
+      { value: "active", label: "Active", count: countFor("active") },
+      { value: "pending", label: "Pending", count: countFor("pending") },
+      { value: "hidden", label: "Hidden", count: countFor("hidden") },
+      { value: "suspended", label: "Suspended", count: countFor("suspended") },
+    ];
+  }, [products]);
+
+  const visibleProducts = useMemo(() => {
+    if (!sort) return filteredProducts;
+    const direction = sort.direction === "asc" ? 1 : -1;
+    return [...filteredProducts].sort((left, right) => {
+      switch (sort.key) {
+        case "product":
+          return left.name.localeCompare(right.name) * direction;
+        case "price":
+          return (left.price - right.price) * direction;
+        case "stock":
+          return (left.stock - right.stock) * direction;
+        case "created":
+        default:
+          return (
+            (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()) * direction
+          );
+      }
+    });
+  }, [filteredProducts, sort]);
+
+  const toggleRow = useCallback((id: string) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback((ids: string[]) => {
+    setSelectedIds((previous) => {
+      const allSelected = ids.length > 0 && ids.every((id) => previous.has(id));
+      if (allSelected) {
+        const next = new Set(previous);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      }
+      return new Set([...previous, ...ids]);
+    });
+  }, []);
+
+  const changeSort = useCallback((key: string) => {
+    setSort((previous) => {
+      if (previous?.key === key) {
+        return { key, direction: previous.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  }, []);
+
+  const exportProducts = useCallback((rows: Product[]) => {
+    exportCsv(`odos-products-${new Date().toISOString().slice(0, 10)}.csv`, rows, [
+      { header: "Product", value: (product) => product.name },
+      { header: "Store", value: (product) => product.storeName ?? "ODOS Official" },
+      { header: "Category", value: (product) => product.category },
+      { header: "Price", value: (product) => product.price },
+      { header: "Compare at", value: (product) => product.oldPrice ?? "" },
+      { header: "Stock", value: (product) => product.stock },
+      { header: "Status", value: (product) => product.status },
+      { header: "Created", value: (product) => product.createdAt },
+    ]);
+  }, []);
 
   function closeProductDetail() {
     setSelectedProduct(null);
@@ -236,16 +322,106 @@ export function FullProductsPage() {
     }
   }
 
+  const productColumns = useMemo<Array<DirectoryColumn<Product>>>(
+    () => [
+      {
+        key: "product",
+        header: "Product name",
+        sortable: true,
+        className: "min-w-[15rem]",
+        render: (product) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <ProductMark name={product.name} imageUrl={product.images[0]} />
+            <div className="min-w-0">
+              <p className="truncate font-medium text-textStrong">{product.name}</p>
+              <p className="truncate text-xs text-textMuted">
+                {product.category}
+                {product.storeName ? ` · ${product.storeName}` : ""}
+              </p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "created",
+        header: "ID & created",
+        sortable: true,
+        className: "min-w-[10rem]",
+        render: (product) => (
+          <div className="min-w-0">
+            <p className="truncate font-mono text-[13px] text-textStrong">#{product.id}</p>
+            <p className="mt-0.5 text-xs text-textMuted">{formatDate(product.createdAt)}</p>
+          </div>
+        ),
+      },
+      {
+        key: "price",
+        header: "Price",
+        sortable: true,
+        className: "whitespace-nowrap",
+        render: (product) => (
+          <div>
+            <p className="font-semibold tabular-nums text-textStrong">
+              {formatCurrency(product.price)}
+            </p>
+            {product.oldPrice ? (
+              <p className="mt-0.5 text-xs tabular-nums text-textMuted line-through">
+                {formatCurrency(product.oldPrice)}
+              </p>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        key: "stock",
+        header: "Stock",
+        sortable: true,
+        className: "w-[7.5rem]",
+        render: (product) => <StockMeter stock={product.stock} />,
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[8.5rem]",
+        render: (product) => (
+          <StatePill
+            label={labelForStatus(product.status)}
+            tone={toneForStatus(product.status)}
+          />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
+        render: (product) => (
+          <ProductTableActions
+            product={product}
+            onEdit={() => navigate(`/products/full/${product.id}/studio`)}
+            onOpenDetail={() => void openProductDetail(product)}
+            onStatus={() => {
+              setStatusProduct(product);
+              setPendingStatus(product.status);
+            }}
+          />
+        ),
+      },
+    ],
+    // openProductDetail is a stable function declaration on this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigate],
+  );
+
   if (isLoading && products.length === 0) {
     return <ProductsDirectorySkeleton />;
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <AdminFullHeader
         eyebrow="Products"
         title="Product list"
-        description={`${snapshot.total} loaded · ${snapshot.pending} pending approval · search, filter, edit, or change status.`}
+        description="Manage inventory, pricing and availability across every store."
         backRoute="/products"
         onRefresh={() => void refresh()}
         refreshing={isLoading}
@@ -259,149 +435,144 @@ export function FullProductsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="On this page" value={String(snapshot.total)} icon={Package} animationDelay={40} />
-        <StatCard
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricStat
+          label="Total products"
+          value={snapshot.total.toLocaleString()}
+          icon={Package}
+          caption="Loaded on this page"
+          animationDelay={40}
+        />
+        <MetricStat
           label="Active"
-          value={String(snapshot.active)}
+          value={snapshot.active.toLocaleString()}
           icon={CheckCircle2}
           tone="success"
+          caption="Live in the shopper catalog"
           animationDelay={80}
         />
-        <StatCard
-          label="Pending"
-          value={String(snapshot.pending)}
-          hint="Needs approval"
+        <MetricStat
+          label="Pending review"
+          value={snapshot.pending.toLocaleString()}
           icon={Clock3}
           tone="warning"
+          caption="Waiting on approval"
           animationDelay={120}
+        />
+        <MetricStat
+          label="Out of stock"
+          value={snapshot.outOfStock.toLocaleString()}
+          icon={PackageX}
+          tone="danger"
+          caption="Hidden from shoppers until restocked"
+          animationDelay={160}
         />
       </div>
 
-      <SectionCard
-        compact
-        title="All products"
-        action={
-          <ListToolbar>
-            <ListToolbarField className="sm:min-w-[16rem]">
-              <SearchInput
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Name, store, category"
-                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={categoryFilter}
-                onChange={(event) => setCategoryFilter(event.target.value)}
-                options={categoryOptions}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                options={[
-                  { label: "All statuses", value: "all" },
-                  { label: "Pending approval", value: "pending" },
-                  { label: "Active", value: "active" },
-                  { label: "Hidden", value: "hidden" },
-                  { label: "Suspended", value: "suspended" },
-                ]}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-          </ListToolbar>
+      <DirectoryToolbar
+        search={
+          <SearchInput
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Product, store or category"
+            className="h-10 py-0"
+          />
         }
-        bodyClassName="p-0"
+        filters={
+          <FilterSelect
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            options={categoryOptions}
+            className="h-10"
+          />
+        }
+        trailing={
+          <SegmentedTabs
+            ariaLabel="Filter products by status"
+            tabs={statusTabs}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          />
+        }
+      />
+
+      <section className="animate-fade-up rounded-2xl border border-line bg-surface opacity-0 shadow-card">
+        <header className="flex flex-col gap-3 border-b border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-textStrong">
+              All products{" "}
+              <span className="font-normal tabular-nums text-textMuted">
+                ({visibleProducts.length})
+              </span>
+            </h2>
+            <p className="mt-0.5 text-xs text-textMuted">{listSummary}</p>
+          </div>
+          <Button
+            variant="secondary"
+            leftIcon={<Download className="size-4" />}
+            onClick={() => exportProducts(visibleProducts)}
+            disabled={visibleProducts.length === 0}
+            className="h-10 py-0"
+          >
+            Export page
+          </Button>
+        </header>
+
+        {error ? (
+          <div className="p-4">
+            <ErrorState description={error} onRetry={() => void refresh()} />
+          </div>
+        ) : isLoading ? (
+          <div className="p-4">
+            <LoadingState label="Loading products..." />
+          </div>
+        ) : (
+          <>
+            <DirectoryTable
+              columns={productColumns}
+              data={visibleProducts}
+              keyExtractor={(product) => product.id}
+              selectedIds={selectedIds}
+              onToggleRow={toggleRow}
+              onToggleAll={toggleAll}
+              sort={sort}
+              onSortChange={changeSort}
+              emptyState={
+                <div className="p-4">
+                  <EmptyState
+                    title="No products found"
+                    description="Clear the filters or add a product."
+                  />
+                </div>
+              }
+            />
+            <DirectoryFooter
+              page={page}
+              pageSize={pageSize}
+              onPageChange={goToPage}
+              hasMore={hasMore}
+              isLoading={isLoadingPage}
+              loadedLabel={`per page · ${products.length} loaded`}
+            />
+          </>
+        )}
+      </section>
+
+      <SelectionBar
+        count={selectedIds.size}
+        noun="product"
+        onClear={() => setSelectedIds(new Set())}
       >
-        <AdminInfiniteList
-          compact
-          listSummary={listSummary}
-          columns={[
-            {
-              key: "product",
-              header: "Product",
-              className: "min-w-[220px]",
-              render: (product) => <ProductNameCell product={product} />,
-            },
-            {
-              key: "store",
-              header: "Store",
-              className: "min-w-[120px]",
-              render: (product) => (
-                <p className="truncate text-sm text-textStrong">{product.storeName ?? "ODOS Official"}</p>
-              ),
-            },
-            {
-              key: "price",
-              header: "Price",
-              className: "whitespace-nowrap tabular-nums",
-              render: (product) => (
-                <div>
-                  <p className="font-medium text-textStrong">{formatCurrency(product.price)}</p>
-                  {product.oldPrice ? (
-                    <p className="text-xs text-textMuted line-through">{formatCurrency(product.oldPrice)}</p>
-                  ) : null}
-                </div>
-              ),
-            },
-            {
-              key: "rating",
-              header: "Rating",
-              className: "w-[5rem]",
-              render: (product) => (
-                <div className="flex items-center gap-1 text-sm tabular-nums">
-                  <Star className="size-3.5 fill-amber-300 text-amber-300" aria-hidden />
-                  {typeof product.rating === "number" ? product.rating.toFixed(1) : "—"}
-                </div>
-              ),
-            },
-            {
-              key: "stock",
-              header: "Stock",
-              className: "w-[5rem] tabular-nums text-sm",
-              render: (product) => product.stock,
-            },
-            {
-              key: "status",
-              header: "Status",
-              className: "w-[7.5rem]",
-              render: (product) => <StatusBadge status={product.status} />,
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
-              render: (product) => (
-                <ProductTableActions
-                  product={product}
-                  onEdit={() => navigate(`/products/full/${product.id}/studio`)}
-                  onOpenDetail={() => navigate(`/products/full/${product.id}`)}
-                  onStatus={() => {
-                    setStatusProduct(product);
-                    setPendingStatus(product.status);
-                  }}
-                />
-              ),
-            },
-          ]}
-          data={filteredProducts}
-          keyExtractor={(product) => product.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
-          emptyTitle="No products found"
-          emptyDescription="Clear filters or add a product."
-        />
-      </SectionCard>
+        <SelectionAction
+          icon={<Download className="size-4" />}
+          onClick={() => {
+            exportProducts(visibleProducts.filter((product) => selectedIds.has(product.id)));
+            setSelectedIds(new Set());
+          }}
+        >
+          Export
+        </SelectionAction>
+      </SelectionBar>
 
 
       <Modal
@@ -469,7 +640,10 @@ export function FullProductsPage() {
               <div className="space-y-5">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={selectedProduct.status} />
+                    <StatePill
+                      label={labelForStatus(selectedProduct.status)}
+                      tone={toneForStatus(selectedProduct.status)}
+                    />
                     {selectedProduct.status === "pending" ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning">
                         <Clock3 className="size-3.5" />

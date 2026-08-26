@@ -1,202 +1,252 @@
-import React, { useState, useEffect } from 'react';
+import { BarChart3, MousePointerClick, Percent, Ticket } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
-  getPromoAnalyticsTimeseries,
   getPromoAnalyticsLeaderboard,
-  PromoAnalyticsTimeseries,
-  PromoAnalyticsLeaderboard,
-} from '../../api/promoAnalyticsApi';
+  getPromoAnalyticsOverview,
+  getPromoAnalyticsTimeseries,
+  type PromoAnalyticsLeaderboard,
+  type PromoAnalyticsLeaderboardItem,
+  type PromoAnalyticsOverview,
+  type PromoAnalyticsTimeseries,
+  type PromoEntityType,
+} from "@/api/promoAnalyticsApi";
+import { AdminPageIntro } from "@/components/admin/PageIntro";
+import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsUi";
+import { MiniBarTrend } from "@/components/analytics/MarketplaceAnalyticsUi";
+import { DataTable } from "@/components/tables/DataTable";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { SectionCard } from "@/components/ui/SectionCard";
+import { StatCard } from "@/components/ui/StatCard";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { formatCurrency } from "@/utils/format";
 
 /**
- * Admin dashboard showing how your promotions are performing.
+ * How the marketplace's promotions are performing.
  *
- * Shows:
- * - How many people SAW each promotion (impressions)
- * - How many people CLICKED it (clicks)
- * - How many actually used it (conversions)
- * - Your best-performing promotions (leaderboard)
+ * The funnel is impression → click → conversion, reported per promo surface
+ * (merchandising campaigns, vouchers, home banners). Vouchers additionally show
+ * real money, because a voucher redemption records the discount actually given
+ * — campaigns and banners have no equivalent figure.
  */
 
-type EntityType = 'campaign' | 'voucher' | 'banner';
-type DateRange = 7 | 30 | 90;
+const ENTITY_TABS: Array<{ value: PromoEntityType; label: string }> = [
+  { value: "campaign", label: "Campaigns" },
+  { value: "voucher", label: "Vouchers" },
+  { value: "banner", label: "Banners" },
+];
 
-export const FullPromoAnalyticsPage: React.FC<{ token: string }> = ({ token }) => {
-  const [activeTab, setActiveTab] = useState<EntityType>('campaign');
-  const [dateRange, setDateRange] = useState<DateRange>(30);
+const RANGES = [7, 30, 90] as const;
 
-  const [timeseries, setTimeseries] = useState<PromoAnalyticsTimeseries | null>(null);
-  const [leaderboard, setLeaderboard] = useState<PromoAnalyticsLeaderboard | null>(null);
-  const [loading, setLoading] = useState(false);
+type PromoAnalyticsState = {
+  overview: PromoAnalyticsOverview;
+  timeseries: PromoAnalyticsTimeseries;
+  leaderboard: PromoAnalyticsLeaderboard;
+};
+
+/** Rates arrive from the API already scaled to percent — never multiply again. */
+function formatPercent(value: number) {
+  return `${value.toFixed(1)}%`;
+}
+
+export function FullPromoAnalyticsPage() {
+  const { token } = useAdminAuth();
+  const [entityType, setEntityType] = useState<PromoEntityType>("campaign");
+  const [days, setDays] = useState<number>(30);
+  const [state, setState] = useState<PromoAnalyticsState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch data when tab or date range changes
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [ts, lb] = await Promise.all([
-          getPromoAnalyticsTimeseries(token, {
-            entityType: activeTab,
-            days: dateRange,
-          }),
-          getPromoAnalyticsLeaderboard(token, {
-            entityType: activeTab,
-            days: dateRange,
-            limit: 10,
-          }),
-        ]);
-        setTimeseries(ts);
-        setLeaderboard(lb);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load analytics');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [activeTab, dateRange, token]);
-
-  const getTabLabel = (type: EntityType) => {
-    switch (type) {
-      case 'campaign':
-        return 'Campaigns';
-      case 'voucher':
-        return 'Vouchers';
-      case 'banner':
-        return 'Banners';
+  const load = useCallback(async () => {
+    if (!token) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [overview, timeseries, leaderboard] = await Promise.all([
+        getPromoAnalyticsOverview(token, { days }),
+        getPromoAnalyticsTimeseries(token, { entityType, days }),
+        getPromoAnalyticsLeaderboard(token, { entityType, days, limit: 10 }),
+      ]);
+      setState({ overview, timeseries, leaderboard });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load promo analytics");
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [days, entityType, token]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const channel = useMemo(
+    () => state?.overview.channels.find((item) => item.entityType === entityType),
+    [entityType, state],
+  );
+
+  const trendBars = useMemo(() => {
+    if (!state) return [];
+    // A 90-day window is far too many bars to read, so show the tail.
+    const points = state.timeseries.data.slice(-30);
+    return points.map((point) => ({
+      label: point.date.slice(5),
+      value: point.impressions,
+    }));
+  }, [state]);
+
+  const columns = useMemo(
+    () => [
+      {
+        key: "name",
+        header: "Promotion",
+        render: (row: PromoAnalyticsLeaderboardItem) => (
+          <span className="font-medium">{row.entityLabel}</span>
+        ),
+      },
+      {
+        key: "impressions",
+        header: "Views",
+        render: (row: PromoAnalyticsLeaderboardItem) => row.impressions.toLocaleString(),
+      },
+      {
+        key: "clicks",
+        header: "Clicks",
+        render: (row: PromoAnalyticsLeaderboardItem) => row.clicks.toLocaleString(),
+      },
+      {
+        key: "conversions",
+        header: "Used",
+        render: (row: PromoAnalyticsLeaderboardItem) => row.conversions.toLocaleString(),
+      },
+      {
+        key: "ctr",
+        header: "Click rate",
+        render: (row: PromoAnalyticsLeaderboardItem) => formatPercent(row.clickThroughRate),
+      },
+      {
+        key: "cvr",
+        header: "Use rate",
+        render: (row: PromoAnalyticsLeaderboardItem) => formatPercent(row.conversionRate),
+      },
+    ],
+    [],
+  );
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-2">Promotion Performance</h1>
-      <p className="text-gray-600 mb-6">
-        See how your campaigns, vouchers, and banners are performing. Track views, clicks, and
-        actual purchases.
-      </p>
+    <div className="flex flex-col gap-5">
+      <AdminPageIntro
+        eyebrow="Promotions"
+        title="Promotion performance"
+        description="Views, clicks and redemptions across campaigns, vouchers and banners."
+        meta={state ? `Last ${state.overview.days} days` : undefined}
+      />
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b">
-        {(['campaign', 'voucher', 'banner'] as EntityType[]).map((type) => (
+      <div className="flex flex-wrap items-center gap-2">
+        {ENTITY_TABS.map((tab) => (
           <button
-            key={type}
-            onClick={() => setActiveTab(type)}
-            className={`px-4 py-2 font-medium border-b-2 ${
-              activeTab === type
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            key={tab.value}
+            type="button"
+            onClick={() => setEntityType(tab.value)}
+            className={
+              entityType === tab.value
+                ? "rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-white"
+                : "rounded-full border border-line px-4 py-1.5 text-sm text-muted hover:text-body"
+            }
           >
-            {getTabLabel(type)}
+            {tab.label}
+          </button>
+        ))}
+
+        <span className="ml-auto text-sm text-muted">Last</span>
+        {RANGES.map((range) => (
+          <button
+            key={range}
+            type="button"
+            onClick={() => setDays(range)}
+            className={
+              days === range
+                ? "rounded-full bg-surfaceMuted px-3 py-1.5 text-sm font-medium text-body"
+                : "rounded-full border border-line px-3 py-1.5 text-sm text-muted hover:text-body"
+            }
+          >
+            {range}d
           </button>
         ))}
       </div>
 
-      {/* Date Range Selector */}
-      <div className="flex gap-2 mb-6">
-        <span className="text-sm font-medium text-gray-700 self-center">Last:</span>
-        {[7, 30, 90].map((days) => (
-          <button
-            key={days}
-            onClick={() => setDateRange(days as DateRange)}
-            className={`px-3 py-1 text-sm rounded border ${
-              dateRange === days
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            {days} days
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="text-center py-8 text-gray-500">Loading analytics...</div>
+      {isLoading && !state ? (
+        <AnalyticsSkeleton />
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded p-4 text-red-700">
-          {error}
-        </div>
-      ) : (
+        <ErrorState description={error} onRetry={() => void load()} />
+      ) : state ? (
         <>
-          {/* Summary Stats */}
-          {timeseries && (
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="bg-blue-50 rounded p-4">
-                <div className="text-sm text-gray-600 mb-1">Total Views</div>
-                <div className="text-3xl font-bold text-blue-600">
-                  {timeseries.total_impressions.toLocaleString()}
-                </div>
-              </div>
-              <div className="bg-green-50 rounded p-4">
-                <div className="text-sm text-gray-600 mb-1">Total Clicks</div>
-                <div className="text-3xl font-bold text-green-600">
-                  {timeseries.total_clicks.toLocaleString()}
-                </div>
-              </div>
-              <div className="bg-purple-50 rounded p-4">
-                <div className="text-sm text-gray-600 mb-1">Total Used</div>
-                <div className="text-3xl font-bold text-purple-600">
-                  {timeseries.total_conversions.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <StatCard
+              label="Views"
+              value={(channel?.impressions ?? 0).toLocaleString()}
+              icon={BarChart3}
+              animationDelay={60}
+            />
+            <StatCard
+              label="Clicks"
+              value={(channel?.clicks ?? 0).toLocaleString()}
+              hint={`${formatPercent(channel?.clickThroughRate ?? 0)} click rate`}
+              icon={MousePointerClick}
+              tone="info"
+              animationDelay={110}
+            />
+            <StatCard
+              label="Used"
+              value={(channel?.conversions ?? 0).toLocaleString()}
+              hint={`${formatPercent(channel?.conversionRate ?? 0)} of clicks`}
+              icon={Percent}
+              tone="success"
+              animationDelay={160}
+            />
+            <StatCard
+              label="Discount given"
+              value={formatCurrency(state.overview.totalDiscountGiven)}
+              hint={`${state.overview.totalRedemptions.toLocaleString()} voucher redemptions`}
+              icon={Ticket}
+              animationDelay={210}
+            />
+          </div>
 
-          {/* Leaderboard */}
-          {leaderboard && leaderboard.items.length > 0 && (
-            <div className="bg-white rounded border p-4">
-              <h2 className="text-lg font-bold mb-4">Top Performing {getTabLabel(activeTab)}</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b bg-gray-50">
-                    <tr>
-                      <th className="text-left py-2 px-3">Name</th>
-                      <th className="text-center py-2 px-3">Views</th>
-                      <th className="text-center py-2 px-3">Clicks</th>
-                      <th className="text-center py-2 px-3">Used</th>
-                      <th className="text-center py-2 px-3">Click Rate</th>
-                      <th className="text-center py-2 px-3">Use Rate</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboard.items.map((item) => (
-                      <tr key={item.entity_id} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-3 font-medium">{item.entity_label}</td>
-                        <td className="text-center py-3 px-3">
-                          {item.impressions.toLocaleString()}
-                        </td>
-                        <td className="text-center py-3 px-3">{item.clicks.toLocaleString()}</td>
-                        <td className="text-center py-3 px-3">
-                          {item.conversions.toLocaleString()}
-                        </td>
-                        <td className="text-center py-3 px-3">
-                          <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
-                            {(item.click_through_rate * 100).toFixed(1)}%
-                          </span>
-                        </td>
-                        <td className="text-center py-3 px-3">
-                          <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">
-                            {(item.conversion_rate * 100).toFixed(1)}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          <SectionCard
+            title="Daily views"
+            description={`Impressions per day for ${
+              ENTITY_TABS.find((tab) => tab.value === entityType)?.label.toLowerCase()
+            }. Days with no activity are shown as zero.`}
+          >
+            {trendBars.length > 0 ? (
+              <MiniBarTrend title="Impressions" bars={trendBars} />
+            ) : (
+              <p className="text-sm text-muted">No activity recorded in this window.</p>
+            )}
+          </SectionCard>
 
-          {leaderboard && leaderboard.items.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No data yet. Check back after customers interact with your promotions!
-            </div>
-          )}
+          <SectionCard
+            title={`Top ${ENTITY_TABS.find((tab) => tab.value === entityType)?.label.toLowerCase()}`}
+            description="Ranked by redemptions, then by clicks."
+          >
+            {state.leaderboard.items.length > 0 ? (
+              <DataTable
+                columns={columns}
+                data={state.leaderboard.items}
+                keyExtractor={(row) => row.entityId}
+                compact
+              />
+            ) : (
+              <p className="text-sm text-muted">
+                Nothing tracked yet. Figures appear once shoppers see and tap these promotions in
+                the app.
+              </p>
+            )}
+          </SectionCard>
         </>
-      )}
+      ) : null}
     </div>
   );
-};
+}
 
 export default FullPromoAnalyticsPage;

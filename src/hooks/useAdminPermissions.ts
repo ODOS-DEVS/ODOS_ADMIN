@@ -100,6 +100,7 @@ export const ROUTE_FEATURES: Record<string, string> = {
   "/promo-banners": "promotions",
   "/merchandising-campaigns": "promotions",
   "/flash-sale-events": "promotions",
+  "/promo-analytics": "promotions",
   "/orders": "orders",
   "/delivery-settings": "delivery",
   "/support-chats": "support",

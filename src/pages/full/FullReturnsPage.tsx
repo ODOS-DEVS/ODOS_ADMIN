@@ -1,18 +1,24 @@
-import { Eye, RefreshCcw, Wallet } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, Eye, PackageOpen, RefreshCcw, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getReturnRequestsPage, updateReturnRequest } from "@/api/ordersApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
 import { Modal } from "@/components/ui/Modal";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
+import {
+  TABLE_ACTIONS_COLUMN_CLASS,
+  TableActionBar,
+  TableActionBarItem,
+  TableActionsCell,
+} from "@/components/ui/IconButton";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { SectionCard } from "@/components/ui/SectionCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useQueueSearchParams } from "@/hooks/useQueueSearchParams";
@@ -197,143 +203,174 @@ export function FullReturnsPage() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <AdminFullHeader
-        eyebrow="Returns"
-        title="Complete returns desk"
-        description="Every return, refund, and exchange case across the platform."
-        backRoute="/returns"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-      />
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Total requests</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.total}</p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Open requests</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.openCount}</p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Resolved</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.resolvedCount}</p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Refunded total</p>
-          <p className="mt-3 flex items-center gap-2 text-3xl font-semibold text-textStrong">
-            <Wallet className="size-5 text-accent" />
-            {formatCurrency(summary.refundedTotal)}
-          </p>
-        </div>
-      </div>
-
-      <SectionCard
-        title="Return queue"
-        description="Search by order, product, shopper, or store. Use the queue to move requests through review, approval, refund, or exchange completion."
-        action={
-          <div className="flex flex-col gap-3 xl:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search order, product, shopper, or reason"
-              className="xl:w-96"
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as ReturnStatusFilter)}
-              options={[
-                { label: "All statuses", value: "all" },
-                ...statusOptions,
-              ]}
-            />
+  const columns = useMemo<Array<DirectoryColumn<AdminReturnRequest>>>(
+    () => [
+      {
+        key: "request",
+        header: "Request",
+        sortable: true,
+        className: "min-w-[14rem] max-w-[20rem]",
+        render: (request) => {
+          const variant = [request.selectedColor, request.selectedSize].filter(Boolean).join(" · ");
+          return (
+            <div className="min-w-0">
+              <p className="truncate font-medium text-textStrong">{request.productTitle}</p>
+              <p className="truncate text-xs text-textMuted">
+                <span className="font-mono">{request.orderNumber}</span> · {request.requestType} ·
+                {" "}Qty {request.quantity}
+                {variant ? ` · ${variant}` : ""}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        key: "customer",
+        header: "Customer",
+        className: "min-w-[11rem] max-w-[15rem]",
+        render: (request) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-textStrong">{request.customerName}</p>
+            <p className="truncate text-xs text-textMuted">{request.customerEmail}</p>
           </div>
-        }
-      >
-        <AdminInfiniteList
-            columns={[
-              {
-                key: "request",
-                header: "Request",
-                render: (request) => {
-                  const variant = [request.selectedColor, request.selectedSize]
-                    .filter(Boolean)
-                    .join(" · ");
-                  return (
-                    <div>
-                      <p className="font-medium">{request.productTitle}</p>
-                      <p className="mt-1 text-xs text-textMuted">
-                        {request.orderNumber} · {request.requestType} · Qty {request.quantity}
-                        {variant ? ` · ${variant}` : ""}
-                      </p>
-                    </div>
-                  );
-                },
-              },
-              {
-                key: "customer",
-                header: "Customer",
-                render: (request) => (
-                  <div>
-                    <p>{request.customerName}</p>
-                    <p className="mt-1 text-xs text-textMuted">{request.customerEmail}</p>
-                  </div>
-                ),
-              },
-              {
-                key: "store",
-                header: "Store",
-                render: (request) => request.storeName,
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (request) => <StatusBadge status={request.status} />,
-              },
-              {
-                key: "created",
-                header: "Created",
-                render: (request) => formatDateTime(request.createdAt),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                render: (request) => (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate(`/returns/full/${request.id}`)}
-                    >
-                      Open dossier
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      leftIcon={<Eye className="size-4" />}
-                      onClick={() => openRequest(request)}
-                    >
-                      View
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-            data={filteredRequests}
-            keyExtractor={(request) => request.id}
-            isLoading={isLoading}
-            page={page}
-            pageSize={pageSize}
-            isLoadingPage={isLoadingPage}
-            hasMore={hasMore}
-            error={error}
-            onPageChange={goToPage}
-            onRetry={() => void refresh()}
-            emptyTitle="No return requests yet"
-            emptyDescription="Once customers submit return, refund, or exchange requests, they will show up here for review."
+        ),
+      },
+      {
+        key: "store",
+        header: "Store",
+        className: "min-w-[9rem] max-w-[12rem]",
+        render: (request) => (
+          <p className="truncate text-sm text-textStrong">{request.storeName}</p>
+        ),
+      },
+      {
+        key: "refund",
+        header: "Refund",
+        sortable: true,
+        className: "w-[7.5rem] whitespace-nowrap",
+        render: (request) =>
+          request.refundAmount ? (
+            <p className="font-semibold tabular-nums text-textStrong">
+              {formatCurrency(request.refundAmount)}
+            </p>
+          ) : (
+            <span className="text-sm text-textSubtle">—</span>
+          ),
+      },
+      {
+        key: "created",
+        header: "Created",
+        sortable: true,
+        className: "w-[9rem] whitespace-nowrap text-sm text-textMuted",
+        render: (request) => formatDateTime(request.createdAt),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[9rem]",
+        render: (request) => (
+          <StatePill
+            label={labelForStatus(request.status)}
+            tone={toneForStatus(request.status)}
           />
-      </SectionCard>
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS,
+        render: (request) => (
+          <TableActionsCell>
+            <TableActionBar>
+              <TableActionBarItem label="Preview request" onClick={() => openRequest(request)}>
+                <Eye className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+              <TableActionBarItem
+                label="Open dossier"
+                onClick={() => navigate(`/returns/full/${request.id}`)}
+              >
+                <ArrowRight className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+            </TableActionBar>
+          </TableActionsCell>
+        ),
+      },
+    ],
+    [navigate],
+  );
 
+  return (
+    <DirectoryPage
+      eyebrow="Returns"
+      title="Complete returns desk"
+      description="Every return, refund and exchange case across the platform."
+      backRoute="/returns"
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      metrics={[
+        {
+          label: "Total requests",
+          value: summary.total.toLocaleString(),
+          icon: PackageOpen,
+          caption: "All time",
+        },
+        {
+          label: "Open",
+          value: summary.openCount.toLocaleString(),
+          icon: Clock3,
+          tone: "warning",
+          caption: "Waiting on a decision",
+        },
+        {
+          label: "Resolved",
+          value: summary.resolvedCount.toLocaleString(),
+          icon: CheckCircle2,
+          tone: "success",
+          caption: "Closed cases",
+        },
+        {
+          label: "Refunded",
+          value: formatCurrency(summary.refundedTotal),
+          icon: Wallet,
+          tone: "info",
+          caption: "Returned to shoppers",
+        },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Order, product, shopper or reason"
+          className="h-10 py-0"
+        />
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value as ReturnStatusFilter)}
+          options={[{ label: "All statuses", value: "all" }, ...statusOptions]}
+          className="h-10"
+        />
+      }
+      cardTitle="Return queue"
+      count={filteredRequests.length}
+      columns={columns}
+      data={filteredRequests}
+      keyExtractor={(request) => request.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No return requests yet"
+      emptyDescription="Return, refund and exchange requests appear here for review."
+      pagination={{
+        page,
+        pageSize,
+        onPageChange: goToPage,
+        hasMore,
+        isLoadingPage,
+        loadedLabel: `per page · ${requests.length} loaded`,
+      }}
+    >
       <Modal
         open={Boolean(selectedRequest)}
         onClose={() => {
@@ -501,6 +538,6 @@ export function FullReturnsPage() {
         confirmVariant={draftStatus === "rejected" ? "danger" : "primary"}
         isLoading={actionLoading}
       />
-    </div>
+    </DirectoryPage>
   );
 }

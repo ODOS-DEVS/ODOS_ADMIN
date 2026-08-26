@@ -1,17 +1,22 @@
-import { Eye, EyeOff, MessageSquareText, RotateCcw, Star } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, MessageSquareText, RotateCcw, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getReviewsPage, updateReviewModeration } from "@/api/reviewsApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { DetailField, DetailFields, DetailSection, DetailStack } from "@/components/ui/DetailList";
 import { Modal } from "@/components/ui/Modal";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { StatePill } from "@/components/directory/StatePill";
+import {
+  TABLE_ACTIONS_COLUMN_CLASS_WIDE,
+  TableActionBar,
+  TableActionBarItem,
+  TableActionsCell,
+} from "@/components/ui/IconButton";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { SectionCard } from "@/components/ui/SectionCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useToast } from "@/hooks/useToast";
@@ -144,168 +149,181 @@ export function FullReviewsPage() {
     setModerationReason(nextHidden ? review.moderationReason ?? "" : "");
   }
 
-  return (
-    <div className="space-y-6">
-      <AdminFullHeader
-        eyebrow="Reviews"
-        title="Complete review moderation"
-        description="All product reviews with visibility and moderation controls."
-        backRoute="/reviews"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-      />
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Total reviews</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.total}</p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Visible to shoppers</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">{summary.visibleCount}</p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Average rating</p>
-          <p className="mt-3 flex items-center gap-2 text-3xl font-semibold text-textStrong">
-            <Star className="size-5 text-accent" />
-            {summary.averageRating.toFixed(1)}
-          </p>
-        </div>
-      </div>
-
-      <SectionCard
-        title="Customer reviews"
-        description="Search by product, shopper, order, store, or comment. Hide reviews that should not appear on public product pages."
-        action={
-          <div className="flex flex-col gap-3 xl:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search product, shopper, order, or comment"
-              className="xl:w-96"
-            />
-            <FilterSelect
-              value={visibilityFilter}
-              onChange={(event) => setVisibilityFilter(event.target.value as VisibilityFilter)}
-              options={[
-                { label: "All reviews", value: "all" },
-                { label: "Visible only", value: "visible" },
-                { label: "Hidden only", value: "hidden" },
-              ]}
-            />
+  const columns = useMemo<Array<DirectoryColumn<AdminReview>>>(
+    () => [
+      {
+        key: "product",
+        header: "Product",
+        sortable: true,
+        className: "min-w-[13rem] max-w-[18rem]",
+        render: (review) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-textStrong">{review.productName}</p>
+            <p className="truncate text-xs text-textMuted">
+              {review.storeName ?? "ODOS store"} · {review.orderNumber}
+            </p>
           </div>
-        }
-      >
-        <AdminInfiniteList
-            columns={[
-              {
-                key: "product",
-                header: "Product",
-                render: (review) => (
-                  <div>
-                    <p className="font-medium">{review.productName}</p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      {review.storeName ?? "ODOS store"} · {review.orderNumber}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "shopper",
-                header: "Shopper",
-                render: (review) => (
-                  <div>
-                    <p className="font-medium">{review.userName}</p>
-                    <p className="mt-1 text-xs text-textMuted">{review.userEmail}</p>
-                  </div>
-                ),
-              },
-              {
-                key: "rating",
-                header: "Rating",
-                render: (review) => (
-                  <div className="flex items-center gap-2">
-                    <Star className="size-4 text-accent" />
-                    <span>{review.rating.toFixed(1)}</span>
-                  </div>
-                ),
-              },
-              {
-                key: "comment",
-                header: "Comment",
-                render: (review) => (
-                  <div className="max-w-sm">
-                    <p>{truncateComment(review.comment)}</p>
-                    {review.isHidden && review.moderationReason ? (
-                      <p className="mt-2 text-xs text-textMuted">
-                        Note: {review.moderationReason}
-                      </p>
-                    ) : null}
-                  </div>
-                ),
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (review) => (
-                  <StatusBadge status={review.isHidden ? "hidden" : "visible"} />
-                ),
-              },
-              {
-                key: "created",
-                header: "Submitted",
-                render: (review) => formatDateTime(review.createdAt),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                render: (review) => (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate(`/reviews/full/${review.id}`)}
-                    >
-                      Open dossier
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      leftIcon={<Eye className="size-4" />}
-                      onClick={() => setSelectedReview(review)}
-                    >
-                      View
-                    </Button>
-                    <Button
-                      variant={review.isHidden ? "secondary" : "danger"}
-                      leftIcon={
-                        review.isHidden ? (
-                          <RotateCcw className="size-4" />
-                        ) : (
-                          <EyeOff className="size-4" />
-                        )
-                      }
-                      onClick={() => openModeration(review, !review.isHidden)}
-                    >
-                      {review.isHidden ? "Restore" : "Hide"}
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-            data={filteredReviews}
-            keyExtractor={(review) => review.id}
-            isLoading={isLoading}
-            page={page}
-            pageSize={pageSize}
-            isLoadingPage={isLoadingPage}
-            hasMore={hasMore}
-            error={error}
-            onPageChange={goToPage}
-            onRetry={() => void refresh()}
-            emptyTitle="No reviews found"
-            emptyDescription="Try a different search or switch the visibility filter."
+        ),
+      },
+      {
+        key: "shopper",
+        header: "Shopper",
+        className: "min-w-[11rem] max-w-[15rem]",
+        render: (review) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-textStrong">{review.userName}</p>
+            <p className="truncate text-xs text-textMuted">{review.userEmail}</p>
+          </div>
+        ),
+      },
+      {
+        key: "rating",
+        header: "Rating",
+        sortable: true,
+        className: "w-[6rem]",
+        render: (review) => (
+          <div className="flex items-center gap-1.5">
+            <Star className="size-4 fill-amber-300 text-amber-300" aria-hidden />
+            <span className="font-semibold tabular-nums text-textStrong">
+              {review.rating.toFixed(1)}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: "comment",
+        header: "Comment",
+        className: "min-w-[15rem] max-w-[22rem]",
+        render: (review) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm text-textBody">{truncateComment(review.comment)}</p>
+            {review.isHidden && review.moderationReason ? (
+              <p className="truncate text-xs text-textMuted">Note: {review.moderationReason}</p>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        key: "created",
+        header: "Submitted",
+        sortable: true,
+        className: "w-[9rem] whitespace-nowrap text-sm text-textMuted",
+        render: (review) => formatDateTime(review.createdAt),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[7.5rem]",
+        render: (review) => (
+          <StatePill
+            label={review.isHidden ? "Hidden" : "Visible"}
+            tone={review.isHidden ? "neutral" : "success"}
           />
-      </SectionCard>
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
+        render: (review) => (
+          <TableActionsCell>
+            <TableActionBar>
+              <TableActionBarItem label="Preview review" onClick={() => setSelectedReview(review)}>
+                <Eye className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+              <TableActionBarItem
+                label={review.isHidden ? "Restore review" : "Hide review"}
+                onClick={() => openModeration(review, !review.isHidden)}
+              >
+                {review.isHidden ? (
+                  <RotateCcw className="size-4 shrink-0" strokeWidth={2} />
+                ) : (
+                  <EyeOff className="size-4 shrink-0" strokeWidth={2} />
+                )}
+              </TableActionBarItem>
+              <TableActionBarItem
+                label="Open dossier"
+                onClick={() => navigate(`/reviews/full/${review.id}`)}
+              >
+                <ArrowRight className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+            </TableActionBar>
+          </TableActionsCell>
+        ),
+      },
+    ],
+    [navigate],
+  );
 
+  return (
+    <DirectoryPage
+      eyebrow="Reviews"
+      title="Complete review moderation"
+      description="Every product review, with the controls to hide anything that should not be public."
+      backRoute="/reviews"
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      metrics={[
+        {
+          label: "Total reviews",
+          value: summary.total.toLocaleString(),
+          icon: MessageSquareText,
+          caption: "Across every product",
+        },
+        {
+          label: "Visible",
+          value: summary.visibleCount.toLocaleString(),
+          icon: Eye,
+          tone: "success",
+          caption: `${summary.total - summary.visibleCount} hidden`,
+        },
+        {
+          label: "Average rating",
+          value: summary.averageRating.toFixed(1),
+          icon: Star,
+          tone: "warning",
+          caption: "Out of 5",
+        },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Product, shopper, order or comment"
+          className="h-10 py-0"
+        />
+      }
+      filters={
+        <FilterSelect
+          value={visibilityFilter}
+          onChange={(event) => setVisibilityFilter(event.target.value as VisibilityFilter)}
+          options={[
+            { label: "All reviews", value: "all" },
+            { label: "Visible only", value: "visible" },
+            { label: "Hidden only", value: "hidden" },
+          ]}
+          className="h-10"
+        />
+      }
+      cardTitle="Customer reviews"
+      count={filteredReviews.length}
+      columns={columns}
+      data={filteredReviews}
+      keyExtractor={(review) => review.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No reviews found"
+      emptyDescription="Clear the filters or try another search."
+      pagination={{
+        page,
+        pageSize,
+        onPageChange: goToPage,
+        hasMore,
+        isLoadingPage,
+        loadedLabel: `per page · ${reviews.length} loaded`,
+      }}
+    >
       <Modal
         open={Boolean(selectedReview)}
         onClose={() => setSelectedReview(null)}
@@ -434,6 +452,6 @@ export function FullReviewsPage() {
           </DetailStack>
         ) : null}
       </Modal>
-    </div>
+    </DirectoryPage>
   );
 }

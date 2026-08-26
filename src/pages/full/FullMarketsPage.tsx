@@ -1,17 +1,14 @@
-import {
-  ArrowLeft,
-  ImagePlus,
-  Plus,
-  RefreshCw,
-  Store,
-  Warehouse,
-} from "lucide-react";
+import { ArrowLeft, Building2, CheckCircle2, ImagePlus, PauseCircle, Plus, RefreshCw, Store, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { createMarket, deleteMarket, getMarketsPage, updateMarket } from "@/api/marketsApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
-import { AdminFullHeader, HeaderActionButton } from "@/components/admin/AdminShell";
+import { HeaderActionButton } from "@/components/admin/AdminShell";
+import { formatDate } from "@/utils/format";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import {
   MarketNameCell,
   MarketsDirectorySkeleton,
@@ -21,11 +18,7 @@ import { UserSectionNav } from "@/components/users/UsersUi";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Modal } from "@/components/ui/Modal";
-import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { SectionCard } from "@/components/ui/SectionCard";
-import { StatCard } from "@/components/ui/StatCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { TABLE_ACTIONS_COLUMN_CLASS_NARROW } from "@/components/ui/IconButton";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -212,131 +205,97 @@ export function FullMarketsPage() {
     return <MarketsDirectorySkeleton />;
   }
 
+  const columns = useMemo<Array<DirectoryColumn<Market>>>(
+    () => [
+      {
+        key: "market",
+        header: "Market",
+        sortable: true,
+        className: "min-w-[16rem]",
+        render: (market) => <MarketNameCell market={market} />,
+      },
+      {
+        key: "created",
+        header: "Created",
+        sortable: true,
+        className: "w-[8rem] whitespace-nowrap text-sm text-textMuted",
+        render: (market) => formatDate(market.createdAt),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[8rem]",
+        render: (market) => (
+          <StatePill label={labelForStatus(market.status)} tone={toneForStatus(market.status)} />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS_NARROW,
+        render: (market) => (
+          <MarketTableActions
+            market={market}
+            onEdit={() => openEditModal(market)}
+            onDisable={() => setDeleteTarget(market)}
+          />
+        ),
+      },
+    ],
+    [openEditModal],
+  );
+
   return (
-    <div className="space-y-5">
-      <AdminFullHeader
-        eyebrow="Markets"
-        title="Market directory"
-        description={`${snapshot.total} on this page · ${snapshot.active} active · create or edit markets and tie stores to them.`}
-        backRoute="/markets"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-        actions={
-          <HeaderActionButton leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
-            Create market
-          </HeaderActionButton>
-        }
-      />
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatCard
-          label="Markets"
-          value={String(snapshot.total)}
-          hint="On this page"
-          icon={Store}
-          animationDelay={40}
+    <DirectoryPage
+      eyebrow="Markets"
+      title="Market directory"
+      description="Physical markets shoppers browse by, and the stores tied to each one."
+      backRoute="/markets"
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      headerActions={
+        <HeaderActionButton leftIcon={<Plus className="size-4" />} onClick={openCreateModal}>
+          Create market
+        </HeaderActionButton>
+      }
+      metrics={[
+        { label: "Markets", value: snapshot.total.toLocaleString(), icon: Building2, caption: "Loaded on this page" },
+        { label: "Active", value: snapshot.active.toLocaleString(), icon: CheckCircle2, tone: "success", caption: "Visible to shoppers" },
+        { label: "Disabled", value: snapshot.disabled.toLocaleString(), icon: PauseCircle, tone: "warning", caption: "Hidden from the app" },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search markets"
+          className="h-10 py-0"
         />
-        <StatCard
-          label="Active"
-          value={String(snapshot.active)}
-          hint="Discoverable"
-          icon={Store}
-          tone="success"
-          animationDelay={80}
-        />
-        <StatCard
-          label="Disabled"
-          value={String(snapshot.disabled)}
-          hint="Hidden from browse"
-          icon={Warehouse}
-          tone="warning"
-          animationDelay={120}
-        />
-      </div>
-
-      <UserSectionNav
-        sections={MARKET_TABS.map((tab) => ({
-          id: tab.id,
-          label: `${tab.label} (${filterMarketsByTab(markets, tab.id).length})`,
-        }))}
-        activeId={activeTab}
-        onSelect={(id) => setActiveTab(id as MarketDirectoryTab)}
-      />
-
-      <SectionCard
-        compact
-        title={`${activeTabLabel} markets`}
-        description="Search, filter, and manage shopper-facing market artwork."
-        action={
-          <ListToolbar>
-            <ListToolbarField className="sm:min-w-[16rem]">
-              <SearchInput
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search markets"
-                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                options={[
-                  { label: "All statuses", value: "all" },
-                  { label: "Active", value: "active" },
-                  { label: "Disabled", value: "disabled" },
-                ]}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-          </ListToolbar>
-        }
-        bodyClassName="p-0"
-      >
-        <AdminInfiniteList
-          compact
-          listSummary={listSummary}
-          columns={[
-            {
-              key: "market",
-              header: "Market",
-              className: "min-w-[220px]",
-              render: (market) => <MarketNameCell market={market} />,
-            },
-            {
-              key: "status",
-              header: "Status",
-              className: "w-[7.5rem]",
-              render: (market) => <StatusBadge status={market.status} />,
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              className: TABLE_ACTIONS_COLUMN_CLASS_NARROW,
-              render: (market) => (
-                <MarketTableActions
-                  market={market}
-                  onEdit={() => openEditModal(market)}
-                  onDisable={() => setDeleteTarget(market)}
-                />
-              ),
-            },
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          options={[
+            { label: "All statuses", value: "all" },
+            { label: "Active", value: "active" },
+            { label: "Disabled", value: "disabled" },
           ]}
-          data={filteredMarkets}
-          keyExtractor={(market) => market.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
-          emptyTitle="No markets found"
-          emptyDescription="Try another tab or create a new ODOS market."
+          className="h-10"
         />
-      </SectionCard>
-
+      }
+      cardTitle="All markets"
+      count={filteredMarkets.length}
+      listSummary={listSummary}
+      columns={columns}
+      data={filteredMarkets}
+      keyExtractor={(market) => market.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No markets found"
+      emptyDescription="Clear the filters or create a market."
+      pagination={{ page, pageSize, onPageChange: goToPage, hasMore, isLoadingPage, loadedLabel: `per page · ${markets.length} loaded` }}
+    >
       <Modal
         open={isEditorOpen}
         onClose={() => {
@@ -476,6 +435,6 @@ export function FullMarketsPage() {
         confirmVariant="danger"
         isLoading={actionLoading}
       />
-    </div>
+    </DirectoryPage>
   );
 }

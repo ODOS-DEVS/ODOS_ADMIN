@@ -1,4 +1,4 @@
-import { Landmark, Wallet } from "lucide-react";
+import { CircleDollarSign, Landmark, Users, Wallet } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import {
@@ -6,13 +6,15 @@ import {
   getPaymentTransactionsPage,
   getPlatformLedgerEntriesPage,
 } from "@/api/financeApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
+import { DirectorySection } from "@/components/directory/DirectorySection";
+import { MetricStat } from "@/components/directory/MetricStat";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { AdminFullHeader } from "@/components/admin/AdminShell";
 import { SectionCard } from "@/components/ui/SectionCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import type { AdminFinanceOverview } from "@/types";
@@ -108,70 +110,38 @@ export function FullFinancePage() {
         refreshing={isOverviewLoading || isPaymentsLoading || isLedgerLoading}
       />
 
-      <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Treasury cash</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">
-            {formatCurrency(overview.currentBalance, overview.currency)}
-          </p>
-          <p className="mt-2 text-xs text-textMuted">
-            Cash still controlled by ODOS after processor fees, refunds, and vendor payouts.
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Vendor liability</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">
-            {formatCurrency(overview.vendorLiabilityBalance, overview.currency)}
-          </p>
-          <p className="mt-2 text-xs text-textMuted">
-            Money ODOS still owes vendors across held and withdrawable balances.
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">ODOS commission</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">
-            {formatCurrency(overview.commissionBalance, overview.currency)}
-          </p>
-          <p className="mt-2 text-xs text-textMuted">
-            Platform commission retained before any separate business expense accounting.
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Gross collected</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">
-            {formatCurrency(overview.grossCollectedTotal, overview.currency)}
-          </p>
-          <p className="mt-2 text-xs text-textMuted">
-            Total verified order value collected through the payment rail.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
-          <p className="text-sm text-textMuted">Processor fees</p>
-          <p className="mt-3 text-2xl font-semibold text-textStrong">
-            {formatCurrency(overview.processorFeeTotal, overview.currency)}
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
-          <p className="text-sm text-textMuted">Refunded</p>
-          <p className="mt-3 text-2xl font-semibold text-textStrong">
-            {formatCurrency(overview.refundedTotal, overview.currency)}
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
-          <p className="text-sm text-textMuted">Pending withdrawals</p>
-          <p className="mt-3 text-2xl font-semibold text-textStrong">
-            {formatCurrency(overview.pendingWithdrawalTotal, overview.currency)}
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surfaceMuted p-5">
-          <p className="text-sm text-textMuted">Approved awaiting payout</p>
-          <p className="mt-3 text-2xl font-semibold text-textStrong">
-            {formatCurrency(overview.approvedWithdrawalTotal, overview.currency)}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <MetricStat
+          label="Treasury cash"
+          value={formatCurrency(overview.currentBalance, overview.currency)}
+          icon={Landmark}
+          caption="Held by ODOS after fees, refunds and payouts"
+          animationDelay={40}
+        />
+        <MetricStat
+          label="Vendor liability"
+          value={formatCurrency(overview.vendorLiabilityBalance, overview.currency)}
+          icon={Users}
+          tone="warning"
+          caption="Owed to vendors across all balances"
+          animationDelay={80}
+        />
+        <MetricStat
+          label="Paid order volume"
+          value={formatCurrency(overview.paidOrderVolume, overview.currency)}
+          icon={CircleDollarSign}
+          tone="success"
+          caption={`${overview.paidOrderCount} paid orders`}
+          animationDelay={120}
+        />
+        <MetricStat
+          label="Payouts sent"
+          value={formatCurrency(overview.totalPayoutsSent, overview.currency)}
+          icon={Wallet}
+          tone="info"
+          caption="Settled to vendor accounts"
+          animationDelay={160}
+        />
       </div>
 
       <SectionCard
@@ -199,12 +169,11 @@ export function FullFinancePage() {
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="Recent payments"
-        description="Every verified checkout is recorded here with its provider reference and processing fee."
-      >
-        <AdminInfiniteList
-          columns={[
+      <DirectorySection
+        cardTitle="Recent payments"
+        count={payments.length}
+        listSummary="Every verified checkout, with its provider reference and processing fee."
+        columns={[
             {
               key: "order",
               header: "Order",
@@ -218,7 +187,7 @@ export function FullFinancePage() {
             {
               key: "status",
               header: "Status",
-              render: (payment) => <StatusBadge status={payment.status} />,
+              render: (payment) => <StatePill label={labelForStatus(payment.status)} tone={toneForStatus(payment.status)} />,
             },
             {
               key: "channel",
@@ -267,29 +236,30 @@ export function FullFinancePage() {
                     : formatDateTime(payment.createdAt)}
                 </span>
               ),
-            },
-          ]}
-          data={payments}
-          keyExtractor={(payment) => payment.id}
-          isLoading={isPaymentsLoading}
-          page={paymentsPage}
-          pageSize={paymentsPageSize}
-          isLoadingPage={isPaymentsLoadingPage}
-          hasMore={hasMorePayments}
-          error={paymentsError}
-          onPageChange={goToPaymentsPage}
-          onRetry={() => void refreshPayments()}
-          emptyTitle="No verified payments yet"
-          emptyDescription="Once a shopper completes checkout, the payment record will appear here."
-        />
-      </SectionCard>
+            },]}
+        data={payments}
+        keyExtractor={(payment) => payment.id}
+        isLoading={isPaymentsLoading}
+        error={paymentsError}
+        onRetry={() => void refreshPayments()}
+        emptyTitle="No payments recorded yet"
+        emptyDescription="Verified checkouts appear here as they come in."
+        pagination={{
+          page: paymentsPage,
+          pageSize: paymentsPageSize,
+          onPageChange: goToPaymentsPage,
+          hasMore: hasMorePayments,
+          isLoadingPage: isPaymentsLoadingPage,
+          loadedLabel: `per page · ${payments.length} loaded`,
+        }}
+        animationDelay={200}
+      />
 
-      <SectionCard
-        title="Treasury ledger"
-        description="This is the audit trail for how ODOS cash, vendor liability, and commission balances changed over time."
-      >
-        <AdminInfiniteList
-          columns={[
+      <DirectorySection
+        cardTitle="Treasury ledger"
+        count={ledger.length}
+        listSummary="Every movement in and out of the ODOS treasury, newest first."
+        columns={[
             {
               key: "kind",
               header: "Entry",
@@ -308,7 +278,7 @@ export function FullFinancePage() {
             {
               key: "direction",
               header: "Direction",
-              render: (entry) => <StatusBadge status={entry.direction} />,
+              render: (entry) => <StatePill label={labelForStatus(entry.direction)} tone={toneForStatus(entry.direction)} />,
             },
             {
               key: "amount",
@@ -346,22 +316,24 @@ export function FullFinancePage() {
               render: (entry) => (
                 <span className="text-sm text-textMuted">{formatDateTime(entry.createdAt)}</span>
               ),
-            },
-          ]}
-          data={ledger}
-          keyExtractor={(entry) => entry.id}
-          isLoading={isLedgerLoading}
-          page={ledgerPage}
-          pageSize={ledgerPageSize}
-          isLoadingPage={isLedgerLoadingPage}
-          hasMore={hasMoreLedger}
-          error={ledgerError}
-          onPageChange={goToLedgerPage}
-          onRetry={() => void refreshLedger()}
-          emptyTitle="No ledger entries yet"
-          emptyDescription="Once a payment, refund, or payout runs through the system, the ledger trail will appear here."
-        />
-      </SectionCard>
+            },]}
+        data={ledger}
+        keyExtractor={(entry) => entry.id}
+        isLoading={isLedgerLoading}
+        error={ledgerError}
+        onRetry={() => void refreshLedger()}
+        emptyTitle="No ledger entries yet"
+        emptyDescription="Treasury movements appear here as money flows through the platform."
+        pagination={{
+          page: ledgerPage,
+          pageSize: ledgerPageSize,
+          onPageChange: goToLedgerPage,
+          hasMore: hasMoreLedger,
+          isLoadingPage: isLedgerLoadingPage,
+          loadedLabel: `per page · ${ledger.length} loaded`,
+        }}
+        animationDelay={240}
+      />
     </div>
   );
 }

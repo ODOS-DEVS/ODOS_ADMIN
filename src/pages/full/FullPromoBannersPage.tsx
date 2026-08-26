@@ -1,16 +1,22 @@
-import { Edit3, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Edit3, Images, PauseCircle, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { deletePromoBanner, getPromoBannersPage } from "@/api/promoBannersApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
+import {
+  TABLE_ACTIONS_COLUMN_CLASS,
+  TableActionBar,
+  TableActionBarItem,
+  TableActionsCell,
+} from "@/components/ui/IconButton";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { SectionCard } from "@/components/ui/SectionCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useToast } from "@/hooks/useToast";
@@ -83,148 +89,158 @@ export function FullPromoBannersPage() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <AdminFullHeader
-        eyebrow="Promo banners"
-        title="Campaign banners"
-        description="Home and deals banners with shopper-friendly destinations — no technical links needed."
-        backRoute="/promo-banners"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-        actions={
-          <Button
-            leftIcon={<Plus className="size-4" />}
-            onClick={() => navigate("/promo-banners/full/new")}
-          >
-            Create in studio
-          </Button>
-        }
-      />
-
-      <SectionCard
-        title="Banner library"
-        description="Lower carousel order appears first. Each banner can send shoppers to a different screen when tapped."
-        action={
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search banners"
-              className="sm:w-80"
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              options={[
-                { label: "All statuses", value: "all" },
-                { label: "Active", value: "active" },
-                { label: "Disabled", value: "disabled" },
-              ]}
-            />
+  const columns = useMemo<Array<DirectoryColumn<PromoBanner>>>(
+    () => [
+      {
+        key: "banner",
+        header: "Banner",
+        sortable: true,
+        className: "min-w-[16rem]",
+        render: (banner) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="size-11 shrink-0 overflow-hidden rounded-xl border border-line bg-surfaceMuted">
+              {banner.imageUrl ? (
+                <img src={banner.imageUrl} alt="" className="size-full object-cover" />
+              ) : (
+                <div className="flex size-full items-center justify-center text-[10px] text-textMuted">
+                  No image
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate font-medium text-textStrong">{banner.title}</p>
+              {banner.subtitle ? (
+                <p className="truncate text-xs text-textMuted">{banner.subtitle}</p>
+              ) : null}
+            </div>
           </div>
-        }
-      >
-        <AdminInfiniteList
-          columns={[
-            {
-              key: "banner",
-              header: "Banner",
-              render: (banner) => (
-                <div className="flex items-center gap-4">
-                  <div className="size-14 overflow-hidden rounded-2xl border border-line bg-surfaceMuted">
-                    {banner.imageUrl ? (
-                      <img src={banner.imageUrl} alt={banner.title} className="size-full object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-[11px] text-textMuted">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium">{banner.title}</p>
-                    {banner.subtitle ? (
-                      <p className="mt-1 text-xs text-textMuted">{banner.subtitle}</p>
-                    ) : null}
-                  </div>
-                </div>
-              ),
-            },
-            {
-              key: "placement",
-              header: "Shows on",
-              render: (banner) => (
-                <div className="text-sm">
-                  <p>{describePromoPlacement(banner.placement)}</p>
-                  <p className="mt-1 text-xs text-textMuted">Order {banner.sortOrder}</p>
-                </div>
-              ),
-            },
-            {
-              key: "destination",
-              header: "Tap opens",
-              render: (banner) => (
-                <div className="text-sm">
-                  <p>{banner.destinationLabel ?? banner.ctaLabel}</p>
-                  <p className="mt-1 text-xs text-textMuted">Button: {banner.ctaLabel}</p>
-                </div>
-              ),
-            },
-            {
-              key: "schedule",
-              header: "Schedule",
-              render: (banner) => (
-                <div className="text-sm">
-                  <p>{banner.startsAt ? formatDate(banner.startsAt) : "Live now"}</p>
-                  <p className="mt-1 text-xs text-textMuted">
-                    {banner.endsAt ? `Until ${formatDate(banner.endsAt)}` : "No end date"}
-                  </p>
-                </div>
-              ),
-            },
-            {
-              key: "status",
-              header: "Status",
-              render: (banner) => <StatusBadge status={banner.status} />,
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              render: (banner) => (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="secondary"
-                    leftIcon={<Edit3 className="size-4" />}
-                    onClick={() => navigate(`/promo-banners/full/${banner.id}/studio`)}
-                  >
-                    Open studio
-                  </Button>
-                  <Button
-                    variant="danger"
-                    leftIcon={<Trash2 className="size-4" />}
-                    onClick={() => setDeleteTarget(banner)}
-                  >
-                    Archive
-                  </Button>
-                </div>
-              ),
-            },
-          ]}
-          data={filteredBanners}
-          keyExtractor={(banner) => banner.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
-          emptyTitle="No promo banners found"
-          emptyDescription="Create a banner in the studio or broaden the current filters."
-        />
-      </SectionCard>
+        ),
+      },
+      {
+        key: "placement",
+        header: "Shows on",
+        sortable: true,
+        className: "min-w-[10rem]",
+        render: (banner) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm text-textStrong">
+              {describePromoPlacement(banner.placement)}
+            </p>
+            <p className="text-xs text-textMuted">Order {banner.sortOrder}</p>
+          </div>
+        ),
+      },
+      {
+        key: "destination",
+        header: "Tap opens",
+        className: "min-w-[10rem]",
+        render: (banner) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm text-textStrong">
+              {banner.destinationLabel ?? banner.ctaLabel}
+            </p>
+            <p className="truncate text-xs text-textMuted">Button: {banner.ctaLabel}</p>
+          </div>
+        ),
+      },
+      {
+        key: "schedule",
+        header: "Schedule",
+        className: "min-w-[9rem] whitespace-nowrap",
+        render: (banner) => (
+          <div>
+            <p className="text-sm text-textStrong">
+              {banner.startsAt ? formatDate(banner.startsAt) : "Live now"}
+            </p>
+            <p className="text-xs text-textMuted">
+              {banner.endsAt ? `Until ${formatDate(banner.endsAt)}` : "No end date"}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[8rem]",
+        render: (banner) => (
+          <StatePill label={labelForStatus(banner.status)} tone={toneForStatus(banner.status)} />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS,
+        render: (banner) => (
+          <TableActionsCell>
+            <TableActionBar>
+              <TableActionBarItem
+                label="Open studio"
+                onClick={() => navigate(`/promo-banners/full/${banner.id}/studio`)}
+              >
+                <Edit3 className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+              <TableActionBarItem label="Archive banner" onClick={() => setDeleteTarget(banner)}>
+                <Trash2 className="size-4 shrink-0" strokeWidth={2} />
+              </TableActionBarItem>
+            </TableActionBar>
+          </TableActionsCell>
+        ),
+      },
+    ],
+    [navigate],
+  );
 
+  return (
+    <DirectoryPage
+      eyebrow="Promo banners"
+      title="Campaign banners"
+      description="Home and deals artwork, where each banner sends shoppers, and when it runs."
+      backRoute="/promo-banners"
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      headerActions={
+        <Button leftIcon={<Plus className="size-4" />} onClick={() => navigate("/promo-banners/full/new")}>
+          Create in studio
+        </Button>
+      }
+      metrics={[
+        { label: "Banners", value: banners.length.toLocaleString(), icon: Images, caption: "Loaded on this page" },
+        { label: "Active", value: banners.filter((banner) => banner.status === "active").length.toLocaleString(), icon: CheckCircle2, tone: "success", caption: "Showing in the app" },
+        { label: "Disabled", value: banners.filter((banner) => banner.status !== "active").length.toLocaleString(), icon: PauseCircle, tone: "warning", caption: "Hidden from shoppers" },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search banners"
+          className="h-10 py-0"
+        />
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          options={[
+            { label: "All statuses", value: "all" },
+            { label: "Active", value: "active" },
+            { label: "Disabled", value: "disabled" },
+          ]}
+          className="h-10"
+        />
+      }
+      cardTitle="Banner library"
+      count={filteredBanners.length}
+      listSummary="Lower carousel order appears first."
+      columns={columns}
+      data={filteredBanners}
+      keyExtractor={(banner) => banner.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No promo banners found"
+      emptyDescription="Create a banner in the studio or broaden the filters."
+      pagination={{ page, pageSize, onPageChange: goToPage, hasMore, isLoadingPage, loadedLabel: `per page · ${banners.length} loaded` }}
+    >
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="Archive promo banner?"
@@ -235,6 +251,6 @@ export function FullPromoBannersPage() {
         onConfirm={() => void handleArchive()}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </DirectoryPage>
   );
 }

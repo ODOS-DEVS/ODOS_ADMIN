@@ -1,4 +1,4 @@
-import { Eye, RefreshCcw, Wallet } from "lucide-react";
+import { Clock3, Eye, Hourglass, Inbox, RefreshCcw, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -6,14 +6,14 @@ import {
   getVendorWithdrawalRequestsPage,
   updateVendorWithdrawalRequest,
 } from "@/api/payoutsApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import { Button } from "@/components/ui/Button";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { Modal } from "@/components/ui/Modal";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { SearchInput } from "@/components/ui/SearchInput";
-import { SectionCard } from "@/components/ui/SectionCard";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
 import { useToast } from "@/hooks/useToast";
@@ -232,194 +232,174 @@ export function FullPayoutsPage() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <AdminFullHeader
-        eyebrow="Payouts"
-        title="Vendor withdrawal queue"
-        description="Review vendor cash-out requests, approve or reject them, then confirm payout once the vendor has been paid."
-        backRoute={isMainPayoutsRoute ? "/dashboard" : "/payouts"}
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-      />
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Total requests</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">
-            {summary.total}
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Pending review</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">
-            {summary.pendingCount}
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Awaiting payout</p>
-          <p className="mt-3 text-3xl font-semibold text-textStrong">
-            {formatCurrency(summary.pendingTotal)}
-          </p>
-        </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
-          <p className="text-sm text-textMuted">Paid out</p>
-          <p className="mt-3 flex items-center gap-2 text-3xl font-semibold text-textStrong">
-            <Wallet className="size-5 text-accent" />
-            {formatCurrency(summary.paidTotal)}
-          </p>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-info/20 bg-info-soft px-5 py-4 text-sm text-textStrong">
-        <p className="font-medium text-info">How vendor payouts work</p>
-        <p className="mt-2 text-textMuted">
-          Approve first, then pay the vendor. Use{" "}
-          <span className="text-textStrong">Send via Paystack</span> only if your
-          Paystack business is Registered and transfers are enabled. If Paystack
-          shows a Starter-business error, send the money yourself through mobile
-          money or bank transfer, then click{" "}
-          <span className="text-textStrong">Confirm manual payout</span> so ODOS
-          deducts the vendor wallet and records the payout.
-        </p>
-      </div>
-
-      <SectionCard
-        title="Withdrawal queue"
-        description="Use this queue to move requests from review to approval and final payout while keeping clear notes on every vendor withdrawal."
-        action={
-          <div className="flex flex-col gap-3 xl:flex-row">
-            <SearchInput
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search vendor, store, provider, or account"
-              className="xl:w-96"
-            />
-            <FilterSelect
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as StatusFilter)
-              }
-              options={[
-                { label: "All statuses", value: "all" },
-                ...statusOptions,
-              ]}
-            />
+  const columns = useMemo<Array<DirectoryColumn<AdminVendorWithdrawalRequest>>>(
+    () => [
+      {
+        key: "vendor",
+        header: "Vendor",
+        sortable: true,
+        className: "min-w-[12rem] max-w-[16rem]",
+        render: (request) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-textStrong">{request.vendorName}</p>
+            <p className="truncate text-xs text-textMuted">{request.vendorEmail}</p>
           </div>
-        }
-      >
-        <AdminInfiniteList
-            columns={[
-              {
-                key: "vendor",
-                header: "Vendor",
-                render: (request) => (
-                  <div>
-                    <p className="font-medium">{request.vendorName}</p>
-                    <p className="mt-1 text-xs text-textMuted">
-                      {request.vendorEmail}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "store",
-                header: "Store",
-                render: (request) => request.storeName ?? "Store not linked",
-              },
-              {
-                key: "amount",
-                header: "Amount",
-                render: (request) =>
-                  `${request.currency} ${request.amount.toFixed(2)}`,
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (request) => <StatusBadge status={request.status} />,
-              },
-              {
-                key: "created",
-                header: "Requested",
-                render: (request) => formatDateTime(request.createdAt),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                render: (request) => (
-                  <div className="flex flex-wrap gap-2">
-                    {request.status === "pending" ? (
-                      <>
-                        <Button
-                          variant="primary"
-                          isLoading={quickActionId === request.id}
-                          onClick={() => void handleQuickUpdate(request, "approved")}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          isLoading={quickActionId === request.id}
-                          onClick={() => void handleQuickUpdate(request, "rejected")}
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    ) : null}
-                    {request.status === "approved" ? (
-                      <>
-                        <Button
-                          variant="primary"
-                          isLoading={quickActionId === request.id}
-                          onClick={() => void handleQuickUpdate(request, "paid")}
-                        >
-                          Send via Paystack
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          isLoading={quickActionId === request.id}
-                          onClick={() =>
-                            void handleQuickUpdate(request, "paid", {
-                              confirmManualPayout: true,
-                            })
-                          }
-                        >
-                          Confirm manual payout
-                        </Button>
-                      </>
-                    ) : null}
-                    <Button
-                      variant="secondary"
-                      leftIcon={<Eye className="size-4" />}
-                      onClick={() => openRequest(request)}
-                    >
-                      Review
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => navigate(`/payouts/${request.id}`)}
-                    >
-                      Details
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-            data={filteredRequests}
-            keyExtractor={(request) => request.id}
-            isLoading={isLoading}
-            page={page}
-            pageSize={pageSize}
-            isLoadingPage={isLoadingPage}
-            hasMore={hasMore}
-            error={error}
-            onPageChange={goToPage}
-            onRetry={() => void refresh()}
-            emptyTitle="No payout requests yet"
-            emptyDescription="Vendor withdrawal requests will appear here as soon as vendors start moving money out of their ODOS wallet."
-          />
-      </SectionCard>
+        ),
+      },
+      {
+        key: "store",
+        header: "Store",
+        className: "min-w-[9rem] max-w-[13rem]",
+        render: (request) => (
+          <p className="truncate text-sm text-textStrong">
+            {request.storeName ?? "Store not linked"}
+          </p>
+        ),
+      },
+      {
+        key: "amount",
+        header: "Amount",
+        sortable: true,
+        className: "w-[8rem] whitespace-nowrap",
+        render: (request) => (
+          <p className="font-semibold tabular-nums text-textStrong">
+            {request.currency} {request.amount.toFixed(2)}
+          </p>
+        ),
+      },
+      {
+        key: "created",
+        header: "Requested",
+        sortable: true,
+        className: "w-[9rem] whitespace-nowrap text-sm text-textMuted",
+        render: (request) => formatDateTime(request.createdAt),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[8.5rem]",
+        render: (request) => (
+          <StatePill label={labelForStatus(request.status)} tone={toneForStatus(request.status)} />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: "w-[19rem] text-right",
+        render: (request) => (
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {request.status === "pending" ? (
+              <>
+                <Button
+                  variant="primary"
+                  className="h-9 px-3 py-0 text-[13px]"
+                  isLoading={quickActionId === request.id}
+                  onClick={() => void handleQuickUpdate(request, "approved")}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="h-9 px-3 py-0 text-[13px]"
+                  isLoading={quickActionId === request.id}
+                  onClick={() => void handleQuickUpdate(request, "rejected")}
+                >
+                  Reject
+                </Button>
+              </>
+            ) : null}
+            {request.status === "approved" ? (
+              <>
+                <Button
+                  variant="primary"
+                  className="h-9 px-3 py-0 text-[13px]"
+                  isLoading={quickActionId === request.id}
+                  onClick={() => void handleQuickUpdate(request, "paid")}
+                >
+                  Send via Paystack
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="h-9 px-3 py-0 text-[13px]"
+                  isLoading={quickActionId === request.id}
+                  onClick={() =>
+                    void handleQuickUpdate(request, "paid", { confirmManualPayout: true })
+                  }
+                >
+                  Confirm manual
+                </Button>
+              </>
+            ) : null}
+            <Button
+              variant="secondary"
+              className="h-9 px-2.5 py-0"
+              aria-label="Review request"
+              onClick={() => openRequest(request)}
+            >
+              <Eye className="size-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [quickActionId],
+  );
 
+  return (
+    <DirectoryPage
+      eyebrow="Payouts"
+      title="Vendor withdrawal queue"
+      description="Review cash-out requests, approve or reject them, then confirm payout once the vendor has been paid."
+      backRoute={isMainPayoutsRoute ? "/dashboard" : "/payouts"}
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      metrics={[
+        { label: "Total requests", value: summary.total.toLocaleString(), icon: Inbox, caption: "All time" },
+        { label: "Pending review", value: summary.pendingCount.toLocaleString(), icon: Clock3, tone: "warning", caption: "Waiting on a decision" },
+        { label: "Awaiting payout", value: formatCurrency(summary.pendingTotal), icon: Hourglass, tone: "info", caption: "Approved, not yet sent" },
+        { label: "Paid out", value: formatCurrency(summary.paidTotal), icon: Wallet, tone: "success", caption: "Settled to vendors" },
+      ]}
+      notice={
+        <div className="rounded-2xl border border-info/20 bg-info-soft px-4 py-3.5 text-sm">
+          <p className="font-medium text-info">How vendor payouts work</p>
+          <p className="mt-1.5 text-textMuted">
+            Approve first, then pay the vendor. Use{" "}
+            <span className="font-medium text-textStrong">Send via Paystack</span> only if your
+            Paystack business is Registered and transfers are enabled. If Paystack shows a
+            Starter-business error, send the money yourself by mobile money or bank transfer, then
+            click <span className="font-medium text-textStrong">Confirm manual</span> so ODOS
+            deducts the vendor wallet and records the payout.
+          </p>
+        </div>
+      }
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Vendor, store, provider or account"
+          className="h-10 py-0"
+        />
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+          options={[{ label: "All statuses", value: "all" }, ...statusOptions]}
+          className="h-10"
+        />
+      }
+      cardTitle="Withdrawal queue"
+      count={filteredRequests.length}
+      columns={columns}
+      data={filteredRequests}
+      keyExtractor={(request) => request.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No withdrawal requests"
+      emptyDescription="Vendor cash-out requests appear here for review."
+      pagination={{ page, pageSize, onPageChange: goToPage, hasMore, isLoadingPage, loadedLabel: `per page · ${requests.length} loaded` }}
+    >
       <Modal
         open={Boolean(selectedRequest)}
         onClose={() => {
@@ -566,6 +546,6 @@ export function FullPayoutsPage() {
           </DetailStack>
         ) : null}
       </Modal>
-    </div>
+    </DirectoryPage>
   );
 }

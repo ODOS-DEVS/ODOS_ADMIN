@@ -7,24 +7,24 @@ import {
   getVendorApplicationsPage,
   rejectVendorApplication,
 } from "@/api/vendorApplicationsApi";
-import { AdminInfiniteList } from "@/components/admin/AdminInfiniteList";
 import {
   ApplicationMark,
   ApplicationTableActions,
 } from "@/components/vendor-applications/VendorApplicationsDirectoryUi";
 import { VendorApplicationDetails } from "@/components/vendor/VendorApplicationDetails";
 import { MetricBar } from "@/components/analytics/AnalyticsUi";
-import { UserSectionNav } from "@/components/users/UsersUi";
-import { AdminFullHeader } from "@/components/admin/AdminShell";
+import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
+import { SegmentedTabs } from "@/components/directory/SegmentedTabs";
+import { StatePill } from "@/components/directory/StatePill";
+import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterSelect } from "@/components/ui/FilterSelect";
-import { ListToolbar, ListToolbarField } from "@/components/ui/ListToolbar";
 import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { TABLE_ACTIONS_COLUMN_CLASS_WIDE } from "@/components/ui/IconButton";
-import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useInfiniteAdminList } from "@/hooks/useInfiniteAdminList";
@@ -179,201 +179,175 @@ export function FullVendorApplicationsPage() {
 
   const activeTabLabel = QUEUE_TABS.find((tab) => tab.id === activeTab)?.label ?? "All";
 
-  return (
-    <div className="space-y-6">
-      <AdminFullHeader
-        eyebrow="Vendor applications"
-        title="Complete application queue"
-        description={`${snapshot.needsReview} need review on this page · approve or reject with full KYC visible in each dossier.`}
-        backRoute="/vendor-applications"
-        onRefresh={() => void refresh()}
-        refreshing={isLoading}
-      />
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] xl:items-start">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <StatCard
-            label="Pending"
-            value={String(snapshot.pending)}
-            hint={`${snapshot.underReview} under review`}
-            icon={Clock3}
-            tone="warning"
-            animationDelay={40}
-          />
-          <StatCard
-            label="Under review"
-            value={String(snapshot.underReview)}
-            icon={ClipboardList}
-            animationDelay={80}
-          />
-          <StatCard
-            label="Approved"
-            value={String(snapshot.approved)}
-            icon={CheckCircle2}
-            tone="success"
-            animationDelay={120}
-          />
-          <StatCard
-            label="Rejected"
-            value={String(snapshot.rejected)}
-            icon={XCircle}
-            tone="warning"
-            animationDelay={160}
-          />
-        </div>
-
-        {snapshot.total > 0 ? (
-          <SectionCard compact title="Queue mix" description="Status share on this page">
-            <div className="space-y-4">
-              <MetricBar
-                label="Needs review"
-                value={snapshot.needsReview}
-                max={snapshot.total}
-                displayValue={String(snapshot.needsReview)}
-                tone="amber"
-              />
-              <MetricBar
-                label="Approved"
-                value={snapshot.approved}
-                max={snapshot.total}
-                displayValue={String(snapshot.approved)}
-                tone="emerald"
-              />
+  const columns = useMemo<Array<DirectoryColumn<VendorApplication>>>(
+    () => [
+      {
+        key: "business",
+        header: "Business",
+        sortable: true,
+        className: "min-w-[14rem]",
+        render: (application) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <ApplicationMark name={application.businessName} logoUrl={application.logoImageUrl} />
+            <div className="min-w-0">
+              <p className="truncate font-medium text-textStrong">{application.businessName}</p>
+              <p className="truncate text-xs text-textMuted">{application.storeName}</p>
             </div>
-          </SectionCard>
-        ) : null}
-      </div>
+          </div>
+        ),
+      },
+      {
+        key: "applicant",
+        header: "Applicant",
+        className: "min-w-[11rem] max-w-[15rem]",
+        render: (application) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-textStrong">{application.fullName}</p>
+            <p className="truncate text-xs text-textMuted">{application.email}</p>
+          </div>
+        ),
+      },
+      {
+        key: "contact",
+        header: "Contact",
+        className: "min-w-[10rem]",
+        render: (application) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm text-textStrong">{application.phoneNumber}</p>
+            <p className="truncate text-xs text-textMuted">
+              {application.city}, {application.region}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "submitted",
+        header: "Submitted",
+        sortable: true,
+        className: "min-w-[9rem] whitespace-nowrap",
+        render: (application) => (
+          <div>
+            <p className="text-sm text-textStrong">{formatDate(application.submittedAt)}</p>
+            <p className="mt-0.5 text-[11px] text-textSubtle">
+              Updated {formatDate(application.updatedAt)}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-[8.5rem]",
+        render: (application) => (
+          <StatePill
+            label={labelForStatus(application.status)}
+            tone={toneForStatus(application.status)}
+          />
+        ),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
+        render: (application) => (
+          <ApplicationTableActions
+            application={application}
+            onPreview={() => setSelectedApplication(application)}
+            onDossier={() => navigate(`/vendor-applications/full/${application.id}`)}
+            onApprove={() => setApproveTarget(application)}
+            onReject={() => setRejectTarget(application)}
+          />
+        ),
+      },
+    ],
+    [navigate],
+  );
 
-      <UserSectionNav
-        sections={QUEUE_TABS.map((tab) => ({
-          id: tab.id,
-          label: `${tab.label} (${filterApplicationsByTab(applications, tab.id).length})`,
-        }))}
-        activeId={activeTab}
-        onSelect={(id) => setActiveTab(id as ApplicationQueueTab)}
-      />
-
-      <SectionCard
-        compact
-        title={`${activeTabLabel} applications`}
-        description="Search the queue, preview KYC inline, or open the full application dossier."
-        action={
-          <ListToolbar>
-            <ListToolbarField className="sm:min-w-[16rem]">
-              <SearchInput
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search applicant, business, store"
-                className={`${TOOLBAR_CONTROL_CLASS} py-0`}
-              />
-            </ListToolbarField>
-            <ListToolbarField className="sm:min-w-[11rem]">
-              <FilterSelect
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                options={statusOptions}
-                className={`${TOOLBAR_CONTROL_CLASS} outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/10`}
-              />
-            </ListToolbarField>
-          </ListToolbar>
-        }
-        bodyClassName="p-0"
-      >
-        <AdminInfiniteList
-          compact
-          listSummary={listSummary}
-          columns={[
-            {
-              key: "business",
-              header: "Business",
-              className: "min-w-[220px]",
-              render: (application) => (
-                <div className="flex items-center gap-3">
-                  <ApplicationMark
-                    name={application.businessName}
-                    logoUrl={application.logoImageUrl}
-                  />
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="truncate font-semibold text-textStrong">{application.businessName}</p>
-                    <p className="truncate text-xs text-textMuted">{application.storeName}</p>
-                    <p className="truncate text-[11px] text-textSubtle">{application.businessCategory}</p>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              key: "applicant",
-              header: "Applicant",
-              className: "min-w-[160px]",
-              render: (application) => (
-                <div className="space-y-0.5">
-                  <p className="truncate text-sm font-medium text-textStrong">{application.fullName}</p>
-                  <p className="truncate text-xs text-textMuted">{application.email}</p>
-                </div>
-              ),
-            },
-            {
-              key: "contact",
-              header: "Contact",
-              className: "min-w-[140px]",
-              render: (application) => (
-                <div className="space-y-0.5">
-                  <p className="text-sm text-textStrong">{application.phoneNumber}</p>
-                  <p className="text-xs text-textMuted">
-                    {application.city}, {application.region}
-                  </p>
-                </div>
-              ),
-            },
-            {
-              key: "status",
-              header: "Status",
-              className: "w-[7.5rem]",
-              render: (application) => <StatusBadge status={application.status} />,
-            },
-            {
-              key: "submitted",
-              header: "Submitted",
-              className: "min-w-[9rem] whitespace-nowrap",
-              render: (application) => (
-                <div className="space-y-0.5">
-                  <p className="text-sm text-textStrong">{formatDate(application.submittedAt)}</p>
-                  <p className="text-[11px] text-textSubtle">
-                    Updated {formatDate(application.updatedAt)}
-                  </p>
-                </div>
-              ),
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              className: TABLE_ACTIONS_COLUMN_CLASS_WIDE,
-              render: (application) => (
-                <ApplicationTableActions
-                  application={application}
-                  onPreview={() => setSelectedApplication(application)}
-                  onDossier={() => navigate(`/vendor-applications/full/${application.id}`)}
-                  onApprove={() => setApproveTarget(application)}
-                  onReject={() => setRejectTarget(application)}
-                />
-              ),
-            },
-          ]}
-          data={filteredApplications}
-          keyExtractor={(application) => application.id}
-          isLoading={isLoading}
-          page={page}
-          pageSize={pageSize}
-          isLoadingPage={isLoadingPage}
-          hasMore={hasMore}
-          error={error}
-          onPageChange={goToPage}
-          onRetry={() => void refresh()}
-          emptyTitle="No applications match this filter"
-          emptyDescription="Try another tab, status, or search term."
+  return (
+    <DirectoryPage
+      eyebrow="Vendor applications"
+      title="Complete application queue"
+      description="Approve or reject vendor sign-ups, with full KYC in each dossier."
+      backRoute="/vendor-applications"
+      onRefresh={() => void refresh()}
+      refreshing={isLoading}
+      metrics={[
+        {
+          label: "Needs review",
+          value: snapshot.needsReview.toLocaleString(),
+          icon: Clock3,
+          tone: "warning",
+          caption: `${snapshot.pending} pending · ${snapshot.underReview} under review`,
+        },
+        {
+          label: "Under review",
+          value: snapshot.underReview.toLocaleString(),
+          icon: ClipboardList,
+          caption: "Being assessed now",
+        },
+        {
+          label: "Approved",
+          value: snapshot.approved.toLocaleString(),
+          icon: CheckCircle2,
+          tone: "success",
+          caption: "Trading on ODOS",
+        },
+        {
+          label: "Rejected",
+          value: snapshot.rejected.toLocaleString(),
+          icon: XCircle,
+          tone: "danger",
+          caption: "Declined applications",
+        },
+      ]}
+      search={
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Applicant, business or store"
+          className="h-10 py-0"
         />
-      </SectionCard>
-
+      }
+      filters={
+        <FilterSelect
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          options={statusOptions}
+          className="h-10"
+        />
+      }
+      tabs={
+        <SegmentedTabs
+          ariaLabel="Filter applications"
+          tabs={QUEUE_TABS.map((tab) => ({
+            value: tab.id,
+            label: tab.label,
+            count: filterApplicationsByTab(applications, tab.id).length,
+          }))}
+          value={activeTab}
+          onChange={(value) => setActiveTab(value as ApplicationQueueTab)}
+        />
+      }
+      cardTitle={`${activeTabLabel} applications`}
+      count={filteredApplications.length}
+      listSummary={listSummary}
+      columns={columns}
+      data={filteredApplications}
+      keyExtractor={(application) => application.id}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => void refresh()}
+      emptyTitle="No applications match this filter"
+      emptyDescription="Try another tab, status, or search term."
+      pagination={{
+        page,
+        pageSize,
+        onPageChange: goToPage,
+        hasMore,
+        isLoadingPage,
+        loadedLabel: `per page · ${applications.length} loaded`,
+      }}
+    >
       <Modal
         open={Boolean(selectedApplication)}
         onClose={() => setSelectedApplication(null)}
@@ -461,6 +435,6 @@ export function FullVendorApplicationsPage() {
           onChange={(event) => setRejectionReason(event.target.value)}
         />
       </Modal>
-    </div>
+    </DirectoryPage>
   );
 }
