@@ -201,10 +201,6 @@ export function FullMarketsPage() {
     }
   }
 
-  if (isLoading && markets.length === 0) {
-    return <MarketsDirectorySkeleton />;
-  }
-
   const columns = useMemo<Array<DirectoryColumn<Market>>>(
     () => [
       {
@@ -244,6 +240,10 @@ export function FullMarketsPage() {
     ],
     [openEditModal],
   );
+
+  if (isLoading && markets.length === 0) {
+    return <MarketsDirectorySkeleton />;
+  }
 
   return (
     <DirectoryPage

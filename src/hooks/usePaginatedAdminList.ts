@@ -141,7 +141,7 @@ export function usePaginatedAdminList<T>({
     setPage(1);
     void loadPageNumber(1, { initial: true });
     // resetKey intentionally retriggers first-page fetch
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPageNumber is stable enough via refs inside fetch
+     
   }, [enabled, resetKey, token]);
 
   return {

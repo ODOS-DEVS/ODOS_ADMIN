@@ -143,10 +143,6 @@ export function FullCategoriesPage() {
     }
   }
 
-  if (isLoading && categories.length === 0) {
-    return <CategoriesDirectorySkeleton />;
-  }
-
   const columns = useMemo<Array<DirectoryColumn<Category>>>(
     () => [
       {
@@ -202,6 +198,10 @@ export function FullCategoriesPage() {
     ],
     [navigate, statusTargetId],
   );
+
+  if (isLoading && categories.length === 0) {
+    return <CategoriesDirectorySkeleton />;
+  }
 
   return (
     <DirectoryPage

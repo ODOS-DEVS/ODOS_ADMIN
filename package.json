@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.node.json --noEmit",
-    "build": "npm run typecheck && vite build",
-    "preview": "vite preview"
+    "build": "npm run typecheck && npm run lint:hooks && vite build",
+    "preview": "vite preview",
+    "lint:hooks": "eslint --config eslint.hooks.config.mjs \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@emotion/react": "^11.11.4",
@@ -28,9 +29,12 @@
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.5.2",
     "autoprefixer": "^10.4.21",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.68.0",
     "vite": "^6.3.5"
   }
 }

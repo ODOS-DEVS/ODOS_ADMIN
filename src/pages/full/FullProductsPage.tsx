@@ -407,8 +407,6 @@ export function FullProductsPage() {
         ),
       },
     ],
-    // openProductDetail is a stable function declaration on this component.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [navigate],
   );
 

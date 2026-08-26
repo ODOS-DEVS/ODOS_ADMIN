@@ -332,10 +332,6 @@ export function FullStoresPage() {
     }
   }
 
-  if (isLoading && stores.length === 0) {
-    return <StoresDirectorySkeleton />;
-  }
-
   const columns = useMemo<Array<DirectoryColumn<Store>>>(
     () => [
       {
@@ -400,6 +396,10 @@ export function FullStoresPage() {
     ],
     [handleViewStore, markets, navigate],
   );
+
+  if (isLoading && stores.length === 0) {
+    return <StoresDirectorySkeleton />;
+  }
 
   return (
     <DirectoryPage

@@ -31,7 +31,7 @@ export function useQueueSearchParams(options?: {
     setStatusFilter(resolveStatus());
     setStockFilter(searchParams.get("stock") ?? "all");
     setQueueFilter(searchParams.get("queue") ?? "all");
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync from URL only
+     
   }, [searchParams]);
 
   return {
