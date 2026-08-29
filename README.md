@@ -103,8 +103,9 @@ npm run preview    # Serve dist/ locally
 
 ## Deployment
 
-Any static host with SPA fallback for React Router works; `render.yaml` and `vercel.json` are
-both present.
+Deployed with **Coolify** on the same self-hosted VPS as the API: built from Git and served
+as static files behind automatic TLS. Any static host with SPA fallback for React Router works
+too — `vercel.json` carries that fallback plus security headers.
 
 | Setting | Value |
 |---------|--------|
