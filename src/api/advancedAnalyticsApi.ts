@@ -1,4 +1,4 @@
-import apiClient from '@/utils/apiClient';
+import { requestJson } from "@/api/client";
 
 export interface CustomerMetrics {
   total_customers: number;
@@ -65,49 +65,48 @@ export interface SegmentMetrics {
   engagement_score: number;
 }
 
-// Fetch customer metrics
-export async function getCustomerMetrics() {
-  return apiClient.get<CustomerMetrics>('/admin/analytics/customers');
+// These previously used a Create-React-App era axios client that read
+// process.env.REACT_APP_API_URL -- undefined under Vite -- and so fell back to
+// http://localhost:8000/api in production, with the token under the wrong
+// localStorage key. They now go through requestJson like every other module,
+// which returns the parsed payload directly rather than an axios envelope.
+
+export async function getCustomerMetrics(token: string) {
+  return requestJson<CustomerMetrics>("/admin/analytics/customers", { token });
 }
 
-// Fetch revenue metrics
-export async function getRevenueMetrics(days: number = 30) {
-  return apiClient.get<RevenueMetrics>(`/admin/analytics/revenue?days=${days}`);
+export async function getRevenueMetrics(token: string, days: number = 30) {
+  return requestJson<RevenueMetrics>(`/admin/analytics/revenue?days=${days}`, { token });
 }
 
-// Fetch product metrics
-export async function getProductMetrics() {
-  return apiClient.get<ProductMetrics>('/admin/analytics/products');
+export async function getProductMetrics(token: string) {
+  return requestJson<ProductMetrics>("/admin/analytics/products", { token });
 }
 
-// Fetch inventory metrics
-export async function getInventoryMetrics() {
-  return apiClient.get<InventoryMetrics>('/admin/analytics/inventory');
+export async function getInventoryMetrics(token: string) {
+  return requestJson<InventoryMetrics>("/admin/analytics/inventory", { token });
 }
 
-// Fetch category performance
-export async function getCategoryPerformance(limit: number = 10) {
-  return apiClient.get<CategoryPerformance[]>(
-    `/admin/analytics/categories?limit=${limit}`
+export async function getCategoryPerformance(token: string, limit: number = 10) {
+  return requestJson<CategoryPerformance[]>(
+    `/admin/analytics/categories?limit=${limit}`,
+    { token },
   );
 }
 
-// Fetch vendor metrics
-export async function getVendorMetrics() {
-  return apiClient.get<VendorMetrics>('/admin/analytics/vendors');
+export async function getVendorMetrics(token: string) {
+  return requestJson<VendorMetrics>("/admin/analytics/vendors", { token });
 }
 
-// Fetch customer segments overview
-export async function getSegmentsOverview() {
-  return apiClient.get<{
-    segments: SegmentMetrics[];
-    total_users: number;
-  }>('/customer-segmentation/overview');
+export async function getSegmentsOverview(token: string) {
+  return requestJson<{ segments: SegmentMetrics[]; total_users: number }>(
+    "/customer-segmentation/overview",
+    { token },
+  );
 }
 
-// Fetch churn risk users
-export async function getChurnRiskUsers(threshold: number = 0.7) {
-  return apiClient.get<{
+export async function getChurnRiskUsers(token: string, threshold: number = 0.7) {
+  return requestJson<{
     users: Array<{
       user_id: string;
       email: string;
@@ -115,15 +114,14 @@ export async function getChurnRiskUsers(threshold: number = 0.7) {
       churn_risk_score: number;
     }>;
     count: number;
-  }>(`/customer-segmentation/churn-risk?threshold=${threshold}&limit=50`);
+  }>(`/customer-segmentation/churn-risk?threshold=${threshold}&limit=50`, { token });
 }
 
-// Export segment for campaign
-export async function exportSegmentForCampaign(segment: string) {
-  return apiClient.get<{
+export async function exportSegmentForCampaign(token: string, segment: string) {
+  return requestJson<{
     segment: string;
     count: number;
     emails: string[];
     csv: string;
-  }>(`/customer-segmentation/segment/${segment}/export`);
+  }>(`/customer-segmentation/segment/${encodeURIComponent(segment)}/export`, { token });
 }

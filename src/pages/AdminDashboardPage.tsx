@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import adminApi from '../api/adminApi';
+import { requestJson } from "@/api/client";
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 interface SalesData {
   date: string;
@@ -58,26 +59,31 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartDays, setChartDays] = useState(7);
+  const { token } = useAdminAuth();
 
   useEffect(() => {
     fetchDashboardData();
-  }, [chartDays]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartDays, token]);
 
   const fetchDashboardData = async () => {
+    if (!token) return;
     try {
       setLoading(true);
       setError(null);
 
       // Fetch all data in parallel
+      // The routes live under /admin/dashboard, not /dashboard -- the old
+      // axios client pointed at localhost and never got far enough to 404.
       const [salesRes, vendorsRes, kpiRes] = await Promise.all([
-        adminApi.get(`/dashboard/sales-chart?days=${chartDays}`),
-        adminApi.get(`/dashboard/top-vendors?limit=10&days=30`),
-        adminApi.get('/dashboard/kpi-metrics'),
+        requestJson<any>(`/admin/dashboard/sales-chart?days=${chartDays}`, { token }),
+        requestJson<any>(`/admin/dashboard/top-vendors?limit=10&days=30`, { token }),
+        requestJson<any>("/admin/dashboard/kpi-metrics", { token }),
       ]);
 
-      setSalesData(salesRes.data);
-      setTopVendors(vendorsRes.data);
-      setKpiMetrics(kpiRes.data);
+      setSalesData(salesRes);
+      setTopVendors(vendorsRes);
+      setKpiMetrics(kpiRes);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
     } finally {

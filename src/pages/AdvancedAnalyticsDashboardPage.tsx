@@ -49,6 +49,7 @@ import {
   getChurnRiskUsers,
   exportSegmentForCampaign,
 } from '@/api/advancedAnalyticsApi';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -68,6 +69,7 @@ function TabPanel(props: any) {
 }
 
 export function AdvancedAnalyticsDashboardPage() {
+  const { token } = useAdminAuth();
   const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,10 +104,14 @@ export function AdvancedAnalyticsDashboardPage() {
   const [exportData, setExportData] = useState<any>(null);
 
   useEffect(() => {
+    // token arrives from useAdminAuth after mount, so the fetch has to wait for
+    // it -- with an empty dep list the guard below would skip the only run.
     loadAnalyticsData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const loadAnalyticsData = async () => {
+    if (!token) return;
     try {
       setLoading(true);
       setError(null);
@@ -120,24 +126,24 @@ export function AdvancedAnalyticsDashboardPage() {
         segmentsData,
         churnRisk,
       ] = await Promise.all([
-        getCustomerMetrics(),
-        getRevenueMetrics(),
-        getProductMetrics(),
-        getInventoryMetrics(),
-        getCategoryPerformance(),
-        getVendorMetrics(),
-        getSegmentsOverview(),
-        getChurnRiskUsers(),
+        getCustomerMetrics(token),
+        getRevenueMetrics(token),
+        getProductMetrics(token),
+        getInventoryMetrics(token),
+        getCategoryPerformance(token),
+        getVendorMetrics(token),
+        getSegmentsOverview(token),
+        getChurnRiskUsers(token),
       ]);
 
-      setCustomerMetrics(customers.data);
-      setRevenueMetrics(revenue.data);
-      setProductMetrics(products.data);
-      setInventoryMetrics(inventory.data);
-      setCategoryData(categories.data);
-      setVendorMetrics(vendors.data);
-      setSegments(segmentsData.data?.segments || []);
-      setChurnRiskUsers(churnRisk.data?.users || []);
+      setCustomerMetrics(customers);
+      setRevenueMetrics(revenue);
+      setProductMetrics(products);
+      setInventoryMetrics(inventory);
+      setCategoryData(categories);
+      setVendorMetrics(vendors);
+      setSegments(segmentsData?.segments || []);
+      setChurnRiskUsers(churnRisk?.users || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
     } finally {
@@ -146,8 +152,9 @@ export function AdvancedAnalyticsDashboardPage() {
   };
 
   const handleExportSegment = async (segment: string) => {
+    if (!token) return;
     try {
-      const data = await exportSegmentForCampaign(segment);
+      const data = await exportSegmentForCampaign(token, segment);
       setExportSegment(segment);
       setExportData(data);
     } catch (err) {
