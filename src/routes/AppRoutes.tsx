@@ -41,6 +41,9 @@ const DashboardPage = lazy(() =>
 const DeliverySettingsPage = lazy(() =>
   import("@/pages/DeliverySettingsPage").then((module) => ({ default: module.DeliverySettingsPage })),
 );
+const GuideVideosPage = lazy(() =>
+  import("@/pages/GuideVideosPage").then((module) => ({ default: module.GuideVideosPage })),
+);
 const FinancePage = lazy(() =>
   import("@/pages/FinancePage").then((module) => ({ default: module.FinancePage })),
 );
@@ -148,6 +151,7 @@ export function AppRoutes() {
         <Route path="/flash-sale-events" element={<FlashSaleEventsPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/delivery-settings" element={<DeliverySettingsPage />} />
+        <Route path="/guide-videos" element={<GuideVideosPage />} />
         <Route path="/support-chats" element={<SupportChatsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
