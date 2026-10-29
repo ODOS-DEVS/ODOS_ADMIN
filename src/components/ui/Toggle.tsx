@@ -20,7 +20,7 @@ export function Toggle({ checked, onChange, disabled = false, label }: TogglePro
       }`}
     >
       <span
-        className={`absolute top-1 size-5 rounded-full shadow-sm transition ${
+        className={`absolute top-1 size-5 rounded-full transition ${
           checked ? "left-6 bg-accent" : "left-1 bg-surface"
         }`}
       />

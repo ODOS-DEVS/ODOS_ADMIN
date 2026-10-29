@@ -72,7 +72,7 @@ export function ImageCropModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
-      <div className="w-full max-w-6xl rounded-panel border border-line bg-panel p-6 shadow-2xl">
+      <div className="w-full max-w-6xl rounded-panel border border-line bg-panel p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs tracking-[0.28em] text-textMuted">{eyebrow}</p>

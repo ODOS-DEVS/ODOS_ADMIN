@@ -602,7 +602,7 @@ export function FullSupportChatsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-full border border-line bg-surface px-3.5 py-2 shadow-sm">
+          <div className="rounded-full border border-line bg-surface px-3.5 py-2">
             <LiveIndicator
               label={connectionMeta.label}
               tone={connectionMeta.tone}
@@ -697,7 +697,7 @@ export function FullSupportChatsPage() {
                       }}
                       className={`relative block w-full overflow-hidden rounded-2xl border pl-4 text-left transition ${
                         isSelected
-                          ? "border-accent/40 bg-accent/[0.06] shadow-sm"
+                          ? "border-accent/40 bg-accent/[0.06]"
                           : "border-transparent hover:bg-surfaceMuted"
                       }`}
                     >
@@ -848,7 +848,7 @@ export function FullSupportChatsPage() {
                         ) : null}
                         <div className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                           <div
-                            className={`max-w-[72%] rounded-[20px] px-3.5 py-2.5 shadow-sm ${
+                            className={`max-w-[72%] rounded-[20px] px-3.5 py-2.5 ${
                               isAdmin
                                 ? "rounded-br-md bg-accent text-accentForeground"
                                 : "rounded-bl-md border border-line bg-surfaceMuted text-textStrong"

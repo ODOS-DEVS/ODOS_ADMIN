@@ -179,7 +179,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         }`}
       >
         <div className="flex items-center gap-3 px-2">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-sm font-bold text-accentForeground shadow-sm">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-sm font-bold text-accentForeground">
             O
           </div>
           <div className="min-w-0">

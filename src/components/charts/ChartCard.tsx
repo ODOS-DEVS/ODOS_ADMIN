@@ -107,7 +107,7 @@ export function RangeControl<T extends string | number>({
             "rounded-lg px-2.5 py-1 text-xs font-medium transition",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
             option.value === value
-              ? "bg-surface text-textStrong shadow-sm"
+              ? "bg-surface text-textStrong"
               : "text-textMuted hover:text-textStrong",
           )}
         >

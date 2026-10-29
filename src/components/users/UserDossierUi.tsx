@@ -32,7 +32,7 @@ export function UserMark({
       <img
         src={avatarUrl}
         alt={name}
-        className={clsx("shrink-0 rounded-2xl border border-line object-cover shadow-sm ring-2 ring-accent/10", sizeClass)}
+        className={clsx("shrink-0 rounded-2xl border border-line object-cover ring-2 ring-accent/10", sizeClass)}
       />
     );
   }

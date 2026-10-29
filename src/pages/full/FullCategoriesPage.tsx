@@ -25,7 +25,7 @@ import { formatDate } from "@/utils/format";
 import { formatPaginationRange } from "@/utils/paginationUi";
 
 const TOOLBAR_CONTROL_CLASS =
-  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
+  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm";
 
 type CategoryDeleteIntent = {
   category: Category;

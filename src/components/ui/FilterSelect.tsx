@@ -7,7 +7,7 @@ type FilterSelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
 export function FilterSelect({ options, className = "", ...rest }: FilterSelectProps) {
   return (
     <select
-      className={`rounded-xl border border-line bg-surface px-3 py-2 text-sm text-textStrong shadow-sm outline-none transition focus:border-accent/40 focus:ring-2 focus:ring-accent/10 ${className}`}
+      className={`rounded-xl border border-line bg-surface px-3 py-2 text-sm text-textStrong outline-none transition focus:border-accent/40 focus:ring-2 focus:ring-accent/10 ${className}`}
       {...rest}
     >
       {options.map((option) => (

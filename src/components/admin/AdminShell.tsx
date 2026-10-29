@@ -201,7 +201,7 @@ export function AdminTabNav({
             className={clsx(
               "rounded-lg px-3 py-2 text-xs font-medium transition",
               activeId === section.id
-                ? "bg-accent text-accentForeground shadow-sm"
+                ? "bg-accent text-accentForeground"
                 : "text-textMuted hover:bg-surface hover:text-textStrong",
             )}
           >

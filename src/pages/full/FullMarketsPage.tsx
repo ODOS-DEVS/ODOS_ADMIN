@@ -51,7 +51,7 @@ const MARKET_TABS = [
 ] as const;
 
 const TOOLBAR_CONTROL_CLASS =
-  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
+  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm";
 
 export function FullMarketsPage() {
   const { token } = useAdminAuth();
@@ -397,7 +397,7 @@ export function FullMarketsPage() {
               <ImagePlus className="size-4 text-accent" />
               <p className="text-sm font-semibold text-textStrong">Market preview</p>
             </div>
-            <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+            <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
               <div className="h-28 w-36 overflow-hidden rounded-xl bg-surfaceMuted">
                 {previewUrl ? (
                   <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />

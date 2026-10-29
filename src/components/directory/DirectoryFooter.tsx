@@ -90,7 +90,7 @@ export function DirectoryFooter({
               className={clsx(
                 "inline-flex min-w-8 items-center justify-center rounded-lg border px-2 py-1.5 text-[13px] font-medium tabular-nums transition",
                 slot === page
-                  ? "border-accent bg-accent text-accentForeground shadow-sm"
+                  ? "border-accent bg-accent text-accentForeground"
                   : "border-line bg-surface text-textMuted hover:border-accent/30 hover:text-textStrong",
                 isLoading && "pointer-events-none opacity-60",
               )}

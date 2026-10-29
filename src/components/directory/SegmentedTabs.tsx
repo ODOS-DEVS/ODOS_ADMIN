@@ -46,7 +46,7 @@ export function SegmentedTabs<T extends string>({
               "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium transition",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30",
               isActive
-                ? "bg-surface text-textStrong shadow-sm"
+                ? "bg-surface text-textStrong"
                 : "text-textMuted hover:text-textStrong",
             )}
           >

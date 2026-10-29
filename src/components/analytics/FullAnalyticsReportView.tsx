@@ -630,7 +630,7 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-xl border border-line bg-surface px-4 py-3 shadow-sm"
+                className="rounded-xl border border-line bg-surface px-4 py-3"
               >
                 <p className="text-[10px] font-semibold text-textSubtle">
                   {item.label}

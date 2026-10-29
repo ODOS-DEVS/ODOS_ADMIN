@@ -221,7 +221,7 @@ export function FootprintTiles({
       {tiles.map((tile) => (
         <div
           key={tile.label}
-          className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-sm"
+          className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5"
         >
           <span className={clsx("rounded-xl p-2.5", tile.tone)}>
             <tile.icon className="size-4" aria-hidden />
@@ -321,7 +321,7 @@ export function KpiStripItem({
   delta?: string;
 }) {
   return (
-    <div className="flex min-w-[140px] flex-1 flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+    <div className="flex min-w-[140px] flex-1 flex-col gap-2 rounded-2xl border border-line bg-surface p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="rounded-lg bg-accentSoft p-2 text-accent">
           <Icon className="size-4" aria-hidden />

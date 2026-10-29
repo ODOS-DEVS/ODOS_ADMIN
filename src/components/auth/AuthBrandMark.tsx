@@ -7,7 +7,7 @@ type AuthBrandMarkProps = {
 export function AuthBrandMark({ to = "/login" }: AuthBrandMarkProps) {
   const content = (
     <>
-      <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-sm font-bold text-accentForeground shadow-sm ring-4 ring-accent/10">
+      <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-sm font-bold text-accentForeground ring-4 ring-accent/10">
         O
       </div>
       <div className="min-w-0">

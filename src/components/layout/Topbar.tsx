@@ -107,7 +107,7 @@ export function Topbar({ onMenu }: TopbarProps) {
                 </span>
               ) : null}
             </Button>
-            <div className="flex items-center gap-2 rounded-xl border border-line bg-surface px-2 py-1.5 shadow-sm">
+            <div className="flex items-center gap-2 rounded-xl border border-line bg-surface px-2 py-1.5">
               {adminUser?.avatarUrl ? (
                 <img
                   src={adminUser.avatarUrl}

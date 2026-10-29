@@ -65,7 +65,7 @@ export function UserSectionNav({
 }) {
   return (
     <div className="overflow-x-auto pb-1">
-      <div className="flex min-w-max gap-1 rounded-2xl border border-line/80 bg-surfaceMuted/80 p-1.5 shadow-sm">
+      <div className="flex min-w-max gap-1 rounded-2xl border border-line/80 bg-surfaceMuted/80 p-1.5">
         {sections.map((section) => (
           <button
             key={section.id}
@@ -74,7 +74,7 @@ export function UserSectionNav({
             className={clsx(
               "shrink-0 rounded-xl px-3.5 py-2 text-xs font-medium transition",
               activeId === section.id
-                ? "bg-accent text-accentForeground shadow-sm"
+                ? "bg-accent text-accentForeground"
                 : "text-textMuted hover:bg-surface hover:text-textStrong",
             )}
           >

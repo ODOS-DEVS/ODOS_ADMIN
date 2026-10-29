@@ -5,51 +5,80 @@ type StatusBadgeProps = {
   className?: string;
 };
 
-const toneMap: Record<string, string> = {
-  active: "bg-success-soft text-success",
-  approved: "bg-success-soft text-success",
-  delivered: "bg-success-soft text-success",
-  paid: "bg-success-soft text-success",
-  exchanged: "bg-success-soft text-success",
-  visible: "bg-success-soft text-success",
-  credit: "bg-success-soft text-success",
-  settled: "bg-success-soft text-success",
-  eligible: "bg-info-soft text-info",
-  not_eligible: "bg-neutralBadge-soft text-neutralBadge",
-  not_dispatched: "bg-neutralBadge-soft text-neutralBadge",
-  rescheduled: "bg-warning-soft text-warning",
-  held: "bg-danger-soft text-danger",
-  customer_problem: "bg-danger-soft text-danger",
-  customer: "bg-neutralBadge-soft text-neutralBadge",
-  vendor: "bg-info-soft text-info",
-  admin: "bg-accentSoft text-accent",
-  super_admin: "bg-accentSoft text-accent",
-  pending: "bg-warning-soft text-warning",
-  pending_payment: "bg-warning-soft text-warning",
-  requested: "bg-warning-soft text-warning",
-  limit_reached: "bg-warning-soft text-warning",
-  partially_refunded: "bg-warning-soft text-warning",
-  under_review: "bg-info-soft text-info",
-  processing: "bg-info-soft text-info",
-  ready: "bg-info-soft text-info",
-  out_for_delivery: "bg-info-soft text-info",
-  unread: "bg-info-soft text-info",
-  scheduled: "bg-info-soft text-info",
-  confirmed: "bg-info-soft text-info",
-  blocked: "bg-danger-soft text-danger",
-  rejected: "bg-danger-soft text-danger",
-  suspended: "bg-danger-soft text-danger",
-  cancelled: "bg-danger-soft text-danger",
-  expired: "bg-danger-soft text-danger",
-  failed: "bg-danger-soft text-danger",
-  refunded: "bg-danger-soft text-danger",
-  debit: "bg-danger-soft text-danger",
-  hidden: "bg-neutralBadge-soft text-neutralBadge",
-  disabled: "bg-neutralBadge-soft text-neutralBadge",
-  inactive: "bg-neutralBadge-soft text-neutralBadge",
-  draft: "bg-neutralBadge-soft text-neutralBadge",
-  none: "bg-neutralBadge-soft text-neutralBadge",
+/**
+ * Status as a dot and a word, not a coloured pill.
+ *
+ * BRIEF.md section 4: "7px dot + word. Text stays ink except Failed/Blocked
+ * (danger text) and Deleted (muted)."
+ *
+ * A table of pills reads as a wall of colour where every row competes for
+ * attention equally — which is the opposite of what status is for. A dot
+ * carries the same information in a tenth of the ink and lets the row's text
+ * stay the thing you read, so the eye lands on the few rows that are actually
+ * in trouble.
+ *
+ * The keys below are unchanged, so all 16 call sites keep working: only what
+ * a key resolves to has moved, from a pill class to a dot tone.
+ */
+type Tone = "success" | "danger" | "warning" | "accent" | "neutral";
+
+const toneMap: Record<string, Tone> = {
+  active: "success",
+  approved: "success",
+  delivered: "success",
+  paid: "success",
+  exchanged: "success",
+  visible: "success",
+  credit: "success",
+  settled: "success",
+  eligible: "accent",
+  not_eligible: "neutral",
+  not_dispatched: "neutral",
+  rescheduled: "warning",
+  held: "danger",
+  customer_problem: "danger",
+  customer: "neutral",
+  vendor: "accent",
+  admin: "accent",
+  super_admin: "accent",
+  pending: "warning",
+  pending_payment: "warning",
+  requested: "warning",
+  limit_reached: "warning",
+  partially_refunded: "warning",
+  under_review: "accent",
+  processing: "accent",
+  ready: "accent",
+  out_for_delivery: "accent",
+  unread: "accent",
+  scheduled: "accent",
+  confirmed: "accent",
+  blocked: "danger",
+  rejected: "danger",
+  suspended: "danger",
+  cancelled: "danger",
+  expired: "danger",
+  failed: "danger",
+  refunded: "danger",
+  debit: "danger",
+  hidden: "neutral",
+  disabled: "neutral",
+  inactive: "neutral",
+  draft: "neutral",
+  none: "neutral",
 };
+
+const dotClasses: Record<Tone, string> = {
+  success: "bg-success",
+  danger: "bg-danger",
+  warning: "bg-warning",
+  accent: "bg-accent",
+  neutral: "bg-neutral",
+};
+
+/** Only genuine failure states earn coloured text; everything else stays ink. */
+const DANGER_TEXT = new Set(["failed", "blocked", "rejected", "suspended"]);
+const MUTED_TEXT = new Set(["deleted", "inactive", "disabled", "none", "draft", "hidden"]);
 
 function toLabel(status: string) {
   return status
@@ -58,16 +87,24 @@ function toLabel(status: string) {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const tone = toneMap[status] ?? "bg-neutralBadge-soft text-neutralBadge";
+  const tone = toneMap[status] ?? "neutral";
 
   return (
     <span
       className={clsx(
-        "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium",
-        tone,
+        "inline-flex items-center gap-2 text-[13.5px]",
+        DANGER_TEXT.has(status)
+          ? "text-danger-text"
+          : MUTED_TEXT.has(status)
+            ? "text-textMuted"
+            : "text-textStrong",
         className,
       )}
     >
+      <span
+        aria-hidden
+        className={clsx("size-[7px] shrink-0 rounded-full", dotClasses[tone])}
+      />
       {toLabel(status)}
     </span>
   );

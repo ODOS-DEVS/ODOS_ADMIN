@@ -9,11 +9,18 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   leftIcon?: ReactNode;
 };
 
+/**
+ * BRIEF.md section 4: 36px controls, 6px radius, 1px borders, no shadows.
+ *
+ * `` is dropped here rather than left to the token layer, because it
+ * is a Tailwind built-in rather than one of this project's named shadows — the
+ * token override that silenced shadow-card does not reach it.
+ */
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "border border-accent bg-accent text-accentForeground hover:bg-accent/90 focus-visible:ring-accent/30 shadow-sm",
+    "border border-accent bg-accent text-accentForeground hover:bg-accent/90 focus-visible:ring-accent/30",
   secondary:
-    "border border-line bg-surface text-textStrong hover:bg-surfaceMuted focus-visible:ring-accent/20 shadow-sm",
+    "border border-line bg-surface text-textStrong hover:bg-surfaceMuted focus-visible:ring-accent/20",
   ghost:
     "border border-transparent bg-transparent text-textMuted hover:bg-surfaceMuted hover:text-textStrong focus-visible:ring-accent/15",
   danger:
@@ -34,7 +41,7 @@ export function Button({
     <button
       type={type}
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex h-9 items-center justify-center gap-2 rounded-control px-3.5 text-sm font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60",
         variantClasses[variant],
         className,
       )}

@@ -205,7 +205,7 @@ export function ReportSectionNav({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="sticky top-0 z-20 overflow-hidden rounded-2xl border border-line/80 bg-surface/95 shadow-sm backdrop-blur-sm">
+    <div className="sticky top-0 z-20 overflow-hidden rounded-2xl border border-line/80 bg-surface/95 backdrop-blur-sm">
       <div className="overflow-x-auto">
         <div className="flex min-w-max items-center gap-1 p-2">
           {groups.map((group, groupIndex) => (
@@ -229,7 +229,7 @@ export function ReportSectionNav({
                   className={clsx(
                     "shrink-0 rounded-xl px-3.5 py-2 text-xs font-medium transition",
                     activeId === section.id
-                      ? "bg-accent text-accentForeground shadow-sm"
+                      ? "bg-accent text-accentForeground"
                       : "text-textMuted hover:bg-surfaceMuted hover:text-textStrong",
                   )}
                 >

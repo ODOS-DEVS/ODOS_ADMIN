@@ -65,7 +65,7 @@ const STORE_TABS = [
 ] as const;
 
 const TOOLBAR_CONTROL_CLASS =
-  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm shadow-sm";
+  "h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm";
 
 type StoreFormState = {
   name: string;
@@ -684,7 +684,7 @@ export function FullStoresPage() {
 
           <div className="md:col-span-2 rounded-panel border border-line bg-surfaceMuted p-5">
             <p className="text-sm font-semibold text-textStrong">Storefront preview</p>
-            <div className="mt-4 overflow-hidden rounded-3xl border border-line bg-surface shadow-sm">
+            <div className="mt-4 overflow-hidden rounded-3xl border border-line bg-surface">
               <div className="h-40 w-full bg-surfaceMuted">
                 {bannerPreview ? (
                   <img src={bannerPreview} alt="Banner preview" className="h-full w-full object-cover" />

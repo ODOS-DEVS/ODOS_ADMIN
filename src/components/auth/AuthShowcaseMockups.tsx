@@ -9,7 +9,7 @@ const MINI_CHART_PATH = "M0,18 C8,18 8,10 16,10 C24,10 24,15 32,12 C40,9 40,2 48
 export function AuthShowcaseMockups() {
   return (
     <div className="relative px-2 pb-10 pt-2">
-      <div className="rounded-3xl bg-white p-5 shadow-2xl shadow-black/20">
+      <div className="rounded-3xl bg-white p-5 shadow-black/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex size-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-accentForeground">
@@ -56,7 +56,7 @@ export function AuthShowcaseMockups() {
       </div>
 
       <div
-        className="absolute -bottom-2 left-1 w-[168px] rounded-2xl bg-white p-3.5 shadow-xl shadow-black/20"
+        className="absolute -bottom-2 left-1 w-[168px] rounded-2xl bg-white p-3.5 shadow-black/20"
         style={{ "--tw-rotate": "-4deg", transform: "rotate(var(--tw-rotate))" } as CSSProperties}
       >
         <div className="flex items-center gap-2">
