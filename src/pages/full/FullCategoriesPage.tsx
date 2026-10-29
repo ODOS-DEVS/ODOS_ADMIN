@@ -6,6 +6,7 @@ import { deleteCategory, getCategoriesPage, updateCategory } from "@/api/categor
 import { HeaderActionButton } from "@/components/admin/AdminShell";
 import { DirectoryPage } from "@/components/directory/DirectoryPage";
 import { SelectionAction, SelectionBar } from "@/components/directory/SelectionBar";
+import { useBulkAction } from "@/hooks/useBulkAction";
 import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
 import { StatePill } from "@/components/directory/StatePill";
 import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
@@ -60,9 +61,7 @@ export function FullCategoriesPage() {
   const [statusTargetId, setStatusTargetId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkIntent, setBulkIntent] = useState<"disable" | "permanent" | null>(null);
-  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(
-    null,
-  );
+  const bulk = useBulkAction();
 
   const toggleRow = useCallback((id: string) => {
     setSelectedIds((previous) => {
@@ -106,71 +105,28 @@ export function FullCategoriesPage() {
     hasMore ? " · more pages available" : ""
   }`;
 
-  /**
-   * Apply one delete to every selected category.
-   *
-   * Issued one request per row because the API exposes no bulk endpoint —
-   * `deleteCategory` takes a single id. Sequential rather than parallel so a
-   * partial failure leaves a comprehensible result: the rows before the
-   * failure are gone, the rest are untouched, and the count reported is the
-   * count that actually changed.
-   *
-   * Each success updates the list immediately, so a run that dies halfway
-   * leaves the table agreeing with the server rather than needing a refresh
-   * to tell the truth.
-   */
+  /** Apply one delete to every selected category, via the shared runner. */
   async function handleBulkDelete() {
-    if (!token || !bulkIntent || selectedIds.size === 0) return;
-
+    if (!token || !bulkIntent) return;
     const permanent = bulkIntent === "permanent";
     const targets = filteredCategories.filter((category) => selectedIds.has(category.id));
 
-    setActionLoading(true);
-    setBulkProgress({ done: 0, total: targets.length });
-
-    let done = 0;
-    let failed = 0;
-    let firstError: string | null = null;
-
-    for (const category of targets) {
-      try {
+    await bulk.run({
+      items: targets,
+      noun: "category",
+      verb: permanent ? "deleted" : "disabled",
+      perform: async (category) => {
         await deleteCategory(token, category.id, { permanent });
         if (permanent) {
           removeItem(category.id);
         } else {
           replaceItem({ ...category, status: "disabled" });
         }
-        done += 1;
-        setBulkProgress({ done, total: targets.length });
-      } catch (bulkError) {
-        failed += 1;
-        if (!firstError) {
-          firstError =
-            bulkError instanceof Error ? bulkError.message : "Please try again.";
-        }
-      }
-    }
+      },
+    });
 
-    setActionLoading(false);
-    setBulkProgress(null);
     setBulkIntent(null);
     setSelectedIds(new Set());
-
-    if (failed === 0) {
-      showToast({
-        title: permanent
-          ? `${done} ${done === 1 ? "category" : "categories"} deleted`
-          : `${done} ${done === 1 ? "category" : "categories"} disabled`,
-        tone: "success",
-      });
-      return;
-    }
-
-    showToast({
-      title: `${done} of ${targets.length} updated`,
-      description: `${failed} failed. ${firstError ?? ""}`.trim(),
-      tone: "error",
-    });
   }
 
   async function handleDelete() {
@@ -408,15 +364,11 @@ export function FullCategoriesPage() {
             ? "Products keep their data, but you would need to recreate each category to use it again. This cannot be undone."
             : "They stop appearing to shoppers. You can turn each one back on later."
         }
-        confirmLabel={
-          bulkProgress
-            ? `${bulkProgress.done} of ${bulkProgress.total}…`
-            : bulkIntent === "permanent"
-              ? "Delete permanently"
-              : "Disable"
-        }
+        confirmLabel={bulk.label(
+          bulkIntent === "permanent" ? "Delete permanently" : "Disable",
+        )}
         confirmVariant="danger"
-        isLoading={actionLoading}
+        isLoading={bulk.isRunning}
       />
     </DirectoryPage>
   );

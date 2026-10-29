@@ -16,6 +16,8 @@ import { useNavigate } from "react-router-dom";
 
 import { getCategories } from "@/api/categoriesApi";
 import { getProduct, getProductsPage, updateProductStatus } from "@/api/productsApi";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useBulkAction } from "@/hooks/useBulkAction";
 import { DirectoryFooter } from "@/components/directory/DirectoryFooter";
 import { DirectoryTable, type DirectoryColumn, type SortState } from "@/components/directory/DirectoryTable";
 import { DirectoryToolbar } from "@/components/directory/DirectoryToolbar";
@@ -177,6 +179,36 @@ export function FullProductsPage() {
       { value: "suspended", label: "Suspended", count: countFor("suspended") },
     ];
   }, [products]);
+
+  const [bulkStatus, setBulkStatus] = useState<ProductStatus | null>(null);
+  const bulk = useBulkAction();
+
+  /**
+   * Apply one status to every selected product.
+   *
+   * Export was the only bulk action here, which meant the most common batch
+   * job on this page — approving a run of pending listings, or pulling a
+   * batch off the storefront — was still done a row at a time.
+   */
+  async function runBulkStatus() {
+    if (!token || !bulkStatus) return;
+    const targets = visibleProducts.filter((product) => selectedIds.has(product.id));
+    await bulk.run({
+      items: targets,
+      noun: "product",
+      verb:
+        bulkStatus === "active"
+          ? "approved"
+          : bulkStatus === "hidden"
+            ? "hidden"
+            : "suspended",
+      perform: async (product) => {
+        replaceItem(await updateProductStatus(token, product.id, bulkStatus));
+      },
+    });
+    setBulkStatus(null);
+    setSelectedIds(new Set());
+  }
 
   const visibleProducts = useMemo(() => {
     if (!sort) return filteredProducts;
@@ -570,7 +602,38 @@ export function FullProductsPage() {
         >
           Export
         </SelectionAction>
+        <SelectionAction
+          icon={<CheckCircle2 className="size-4" />}
+          onClick={() => setBulkStatus("active")}
+        >
+          Approve
+        </SelectionAction>
+        <SelectionAction
+          icon={<PackageX className="size-4" />}
+          onClick={() => setBulkStatus("hidden")}
+        >
+          Hide
+        </SelectionAction>
       </SelectionBar>
+
+      <ConfirmDialog
+        open={Boolean(bulkStatus)}
+        onClose={() => setBulkStatus(null)}
+        onConfirm={() => void runBulkStatus()}
+        title={
+          bulkStatus === "active"
+            ? `Approve ${selectedIds.size} ${selectedIds.size === 1 ? "product" : "products"}?`
+            : `Hide ${selectedIds.size} ${selectedIds.size === 1 ? "product" : "products"}?`
+        }
+        description={
+          bulkStatus === "active"
+            ? "They go live on their storefronts and become orderable."
+            : "They come off the storefronts. Stock and order history are kept, and you can put them back at any time."
+        }
+        confirmLabel={bulk.label(bulkStatus === "active" ? "Approve" : "Hide")}
+        confirmVariant={bulkStatus === "active" ? "primary" : "danger"}
+        isLoading={bulk.isRunning}
+      />
 
 
       <Modal

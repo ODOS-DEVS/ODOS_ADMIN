@@ -10,6 +10,8 @@ import {
   Warehouse,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+
+import { useBulkAction } from "@/hooks/useBulkAction";
 import { useNavigate } from "react-router-dom";
 
 import { getCategories } from "@/api/categoriesApi";
@@ -23,6 +25,7 @@ import {
 } from "@/api/storesApi";
 import { AdminHeaderActions, HeaderActionButton } from "@/components/admin/AdminShell";
 import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import { SelectionAction, SelectionBar } from "@/components/directory/SelectionBar";
 import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
 import { SegmentedTabs } from "@/components/directory/SegmentedTabs";
 import { StatePill } from "@/components/directory/StatePill";
@@ -188,6 +191,47 @@ export function FullStoresPage() {
   }, [bannerPreview, logoPreview]);
 
   const snapshot = useMemo(() => buildStoreDirectorySnapshot(stores), [stores]);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<StoreStatus | null>(null);
+  const bulk = useBulkAction();
+
+  const toggleRow = useCallback((id: string) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback((ids: string[]) => {
+    setSelectedIds((previous) => {
+      const allSelected = ids.length > 0 && ids.every((id) => previous.has(id));
+      if (allSelected) {
+        const next = new Set(previous);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      }
+      return new Set([...previous, ...ids]);
+    });
+  }, []);
+
+  /** Apply one status to every selected store, one request at a time. */
+  async function runBulkStatus() {
+    if (!token || !bulkStatus) return;
+    const targets = filteredStores.filter((store) => selectedIds.has(store.id));
+    await bulk.run({
+      items: targets,
+      noun: "store",
+      verb: bulkStatus === "suspended" ? "suspended" : "activated",
+      perform: async (store) => {
+        replaceItem(await updateStoreStatus(token, store.id, bulkStatus));
+      },
+    });
+    setBulkStatus(null);
+    setSelectedIds(new Set());
+  }
 
   const filteredStores = useMemo(() => {
     const tabbed = filterStoresByTab(stores, activeTab);
@@ -481,6 +525,9 @@ export function FullStoresPage() {
       columns={columns}
       data={filteredStores}
       keyExtractor={(store) => store.id}
+      selectedIds={selectedIds}
+      onToggleRow={toggleRow}
+      onToggleAll={toggleAll}
       isLoading={isLoading}
       error={error}
       onRetry={() => void refresh()}
@@ -929,6 +976,46 @@ export function FullStoresPage() {
         confirmLabel={statusTarget?.status === "suspended" ? "Activate store" : "Suspend store"}
         confirmVariant={statusTarget?.status === "suspended" ? "primary" : "danger"}
         isLoading={actionLoading}
+      />
+
+      {/* Activate leads: reinstating is the safe direction, and suspending a
+          batch of shops is the one that takes them off the marketplace. */}
+      <SelectionBar
+        count={selectedIds.size}
+        noun="store"
+        onClear={() => setSelectedIds(new Set())}
+      >
+        <SelectionAction
+          icon={<PlayCircle className="size-4" />}
+          onClick={() => setBulkStatus("active")}
+        >
+          Activate
+        </SelectionAction>
+        <SelectionAction
+          icon={<PauseCircle className="size-4" />}
+          onClick={() => setBulkStatus("suspended")}
+        >
+          Suspend
+        </SelectionAction>
+      </SelectionBar>
+
+      <ConfirmDialog
+        open={Boolean(bulkStatus)}
+        onClose={() => setBulkStatus(null)}
+        onConfirm={() => void runBulkStatus()}
+        title={
+          bulkStatus === "suspended"
+            ? `Suspend ${selectedIds.size} ${selectedIds.size === 1 ? "store" : "stores"}?`
+            : `Activate ${selectedIds.size} ${selectedIds.size === 1 ? "store" : "stores"}?`
+        }
+        description={
+          bulkStatus === "suspended"
+            ? "Their storefronts stop appearing to shoppers and no new orders can be placed. Existing orders are unaffected."
+            : "They return to the marketplace and can take orders again."
+        }
+        confirmLabel={bulk.label(bulkStatus === "suspended" ? "Suspend" : "Activate")}
+        confirmVariant={bulkStatus === "suspended" ? "danger" : "primary"}
+        isLoading={bulk.isRunning}
       />
     </DirectoryPage>
   );
