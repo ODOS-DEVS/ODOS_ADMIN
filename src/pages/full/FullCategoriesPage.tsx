@@ -1,10 +1,11 @@
-import { CheckCircle2, PauseCircle, Plus, Tags } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CheckCircle2, PauseCircle, Plus, Tags, Trash2 } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { deleteCategory, getCategoriesPage, updateCategory } from "@/api/categoriesApi";
 import { HeaderActionButton } from "@/components/admin/AdminShell";
 import { DirectoryPage } from "@/components/directory/DirectoryPage";
+import { SelectionAction, SelectionBar } from "@/components/directory/SelectionBar";
 import type { DirectoryColumn } from "@/components/directory/DirectoryTable";
 import { StatePill } from "@/components/directory/StatePill";
 import { labelForStatus, toneForStatus } from "@/components/directory/statusTone";
@@ -57,6 +58,32 @@ export function FullCategoriesPage() {
   const [deleteIntent, setDeleteIntent] = useState<CategoryDeleteIntent | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [statusTargetId, setStatusTargetId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkIntent, setBulkIntent] = useState<"disable" | "permanent" | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
+
+  const toggleRow = useCallback((id: string) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback((ids: string[]) => {
+    setSelectedIds((previous) => {
+      const allSelected = ids.length > 0 && ids.every((id) => previous.has(id));
+      if (allSelected) {
+        const next = new Set(previous);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      }
+      return new Set([...previous, ...ids]);
+    });
+  }, []);
 
   const filteredCategories = useMemo(() => {
     return categories.filter((category) => {
@@ -78,6 +105,73 @@ export function FullCategoriesPage() {
   const listSummary = `${formatPaginationRange({ page, pageSize, itemCount: filteredCategories.length })}${
     hasMore ? " · more pages available" : ""
   }`;
+
+  /**
+   * Apply one delete to every selected category.
+   *
+   * Issued one request per row because the API exposes no bulk endpoint —
+   * `deleteCategory` takes a single id. Sequential rather than parallel so a
+   * partial failure leaves a comprehensible result: the rows before the
+   * failure are gone, the rest are untouched, and the count reported is the
+   * count that actually changed.
+   *
+   * Each success updates the list immediately, so a run that dies halfway
+   * leaves the table agreeing with the server rather than needing a refresh
+   * to tell the truth.
+   */
+  async function handleBulkDelete() {
+    if (!token || !bulkIntent || selectedIds.size === 0) return;
+
+    const permanent = bulkIntent === "permanent";
+    const targets = filteredCategories.filter((category) => selectedIds.has(category.id));
+
+    setActionLoading(true);
+    setBulkProgress({ done: 0, total: targets.length });
+
+    let done = 0;
+    let failed = 0;
+    let firstError: string | null = null;
+
+    for (const category of targets) {
+      try {
+        await deleteCategory(token, category.id, { permanent });
+        if (permanent) {
+          removeItem(category.id);
+        } else {
+          replaceItem({ ...category, status: "disabled" });
+        }
+        done += 1;
+        setBulkProgress({ done, total: targets.length });
+      } catch (bulkError) {
+        failed += 1;
+        if (!firstError) {
+          firstError =
+            bulkError instanceof Error ? bulkError.message : "Please try again.";
+        }
+      }
+    }
+
+    setActionLoading(false);
+    setBulkProgress(null);
+    setBulkIntent(null);
+    setSelectedIds(new Set());
+
+    if (failed === 0) {
+      showToast({
+        title: permanent
+          ? `${done} ${done === 1 ? "category" : "categories"} deleted`
+          : `${done} ${done === 1 ? "category" : "categories"} disabled`,
+        tone: "success",
+      });
+      return;
+    }
+
+    showToast({
+      title: `${done} of ${targets.length} updated`,
+      description: `${failed} failed. ${firstError ?? ""}`.trim(),
+      tone: "error",
+    });
+  }
 
   async function handleDelete() {
     if (!token || !deleteIntent) return;
@@ -255,6 +349,9 @@ export function FullCategoriesPage() {
       onRetry={() => void refresh()}
       emptyTitle="No categories found"
       emptyDescription="Clear the filters or add a category."
+      selectedIds={selectedIds}
+      onToggleRow={toggleRow}
+      onToggleAll={toggleAll}
       pagination={{ page, pageSize, onPageChange: goToPage, hasMore, isLoadingPage, loadedLabel: `per page · ${categories.length} loaded` }}
     >
       <ConfirmDialog
@@ -270,6 +367,54 @@ export function FullCategoriesPage() {
             : ""
         }
         confirmLabel={deleteIntent?.mode === "permanent" ? "Delete permanently" : "Disable"}
+        confirmVariant="danger"
+        isLoading={actionLoading}
+      />
+
+      {/* Disable leads and delete follows.
+          Disabling is reversible and is what a bulk tidy-up usually wants;
+          putting the irreversible action second, in danger tone, keeps a
+          mis-click from clearing the taxonomy. */}
+      <SelectionBar
+        count={selectedIds.size}
+        noun="category"
+        onClear={() => setSelectedIds(new Set())}
+      >
+        <SelectionAction
+          icon={<PauseCircle className="size-4" />}
+          onClick={() => setBulkIntent("disable")}
+        >
+          Disable
+        </SelectionAction>
+        <SelectionAction
+          icon={<Trash2 className="size-4" />}
+          onClick={() => setBulkIntent("permanent")}
+        >
+          Delete
+        </SelectionAction>
+      </SelectionBar>
+
+      <ConfirmDialog
+        open={Boolean(bulkIntent)}
+        onClose={() => setBulkIntent(null)}
+        onConfirm={() => void handleBulkDelete()}
+        title={
+          bulkIntent === "permanent"
+            ? `Delete ${selectedIds.size} ${selectedIds.size === 1 ? "category" : "categories"} permanently?`
+            : `Disable ${selectedIds.size} ${selectedIds.size === 1 ? "category" : "categories"}?`
+        }
+        description={
+          bulkIntent === "permanent"
+            ? "Products keep their data, but you would need to recreate each category to use it again. This cannot be undone."
+            : "They stop appearing to shoppers. You can turn each one back on later."
+        }
+        confirmLabel={
+          bulkProgress
+            ? `${bulkProgress.done} of ${bulkProgress.total}…`
+            : bulkIntent === "permanent"
+              ? "Delete permanently"
+              : "Disable"
+        }
         confirmVariant="danger"
         isLoading={actionLoading}
       />
