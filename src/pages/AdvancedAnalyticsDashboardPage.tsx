@@ -526,7 +526,7 @@ export function AdvancedAnalyticsDashboardPage() {
                       {segments.map((segment) => (
                         <Grid item xs={12} sm={6} md={4} key={segment.segment}>
                           <Paper sx={{ p: 2 }}>
-                            <Box sx={{ textTransform: 'uppercase', fontSize: '0.875rem', fontWeight: 'bold', mb: 1 }}>
+                            <Box sx={{ textTransform: '', fontSize: '0.875rem', fontWeight: 'bold', mb: 1 }}>
                               {segment.segment}
                             </Box>
                             <Box sx={{ fontSize: '1.75rem', fontWeight: 'bold', mb: 2 }}>

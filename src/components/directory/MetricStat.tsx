@@ -57,7 +57,7 @@ export function MetricStat({
         <span className={clsx("rounded-lg p-1.5", iconTone[tone])}>
           <Icon className="size-3.5" aria-hidden />
         </span>
-        <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-textSubtle">
+        <p className="truncate text-[11px] font-semibold tracking-[0.08em] text-textSubtle">
           {label}
         </p>
       </div>

@@ -195,7 +195,7 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
             />
             <div className="space-y-4">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">
+                <p className="mb-2 text-xs font-semibold tracking-[0.14em] text-textMuted">
                   Order status distribution
                 </p>
                 <DistributionList
@@ -205,7 +205,7 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
                 />
               </div>
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">
+                <p className="mb-2 text-xs font-semibold tracking-[0.14em] text-textMuted">
                   Payment status distribution
                 </p>
                 <DistributionList
@@ -218,7 +218,7 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
           </div>
 
           <div className="mt-5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">
+            <p className="mb-2 text-xs font-semibold tracking-[0.14em] text-textMuted">
               Recent orders
             </p>
             <DataTable<Order>
@@ -374,7 +374,7 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
             />
             <div className="space-y-4">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">
+                <p className="mb-2 text-xs font-semibold tracking-[0.14em] text-textMuted">
                   Transaction status
                 </p>
                 <DistributionList
@@ -384,7 +384,7 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
                 />
               </div>
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">
+                <p className="mb-2 text-xs font-semibold tracking-[0.14em] text-textMuted">
                   Paid provider mix
                 </p>
                 <DistributionList
@@ -632,7 +632,7 @@ export function FullAnalyticsReportView({ report }: FullAnalyticsReportViewProps
                 key={item.label}
                 className="rounded-xl border border-line bg-surface px-4 py-3 shadow-sm"
               >
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-textSubtle">
+                <p className="text-[10px] font-semibold text-textSubtle">
                   {item.label}
                 </p>
                 <p className="mt-1 text-2xl font-bold tabular-nums text-textStrong">{item.value}</p>
@@ -901,7 +901,7 @@ function DistributionBlock({
 }) {
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-textMuted">{title}</p>
+      <p className="mb-2 text-xs font-semibold tracking-[0.14em] text-textMuted">{title}</p>
       <DistributionList items={items} emptyLabel={`No ${title.toLowerCase()} data.`} tone={tone} />
     </div>
   );

@@ -195,7 +195,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="mt-5 flex-1 space-y-5 overflow-y-auto px-1 pr-0.5">
           {visibleNavGroups.map((group) => (
             <div key={group.label}>
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-textSubtle">
+              <p className="mb-2 px-3 text-[10px] font-semibold tracking-[0.2em] text-textSubtle">
                 {group.label}
               </p>
               <div className="space-y-0.5">

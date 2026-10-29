@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ODOS Admin – Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F4F1}
+a{color:#1E5B47;text-decoration:none}a:hover{color:#123B2E;text-decoration:underline}
+.app{font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.45;color:#15171A;-webkit-font-smoothing:antialiased}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:#61666F}
+.grp{font-size:12px;color:#61666F;padding:0 10px;margin:18px 0 4px}
+.nav a{display:flex;justify-content:space-between;align-items:center;height:32px;padding:0 10px;border-radius:6px;color:#3B4047;font-size:13.5px}
+.nav a:hover{background:#EAE9E4;color:#15171A;text-decoration:none}
+.nav a.on{background:#E4E3DD;color:#15171A;font-weight:500}
+.nav .ct{font-size:12px;color:#61666F;font-variant-numeric:tabular-nums;font-weight:400}
+.nav .ct.hot{color:#8A4B08;font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:6px;border:1px solid #D3D2CC;background:#FFFFFF;color:#15171A;font:500 13px/1 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer;white-space:nowrap;box-sizing:border-box}
+.btn:hover{background:#F7F7F5;color:#15171A;text-decoration:none}
+.btn.pri{background:#15171A;border-color:#15171A;color:#FFFFFF}
+.ib{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;border-radius:6px;color:#4A4F57;cursor:pointer;position:relative;flex:none}
+.ib:hover{background:#EAE9E4;color:#15171A}
+.card{background:#FFFFFF;border:1px solid #E3E2DD;border-radius:8px}
+.kbd{font:500 11px/1 'IBM Plex Mono',monospace;color:#61666F;border:1px solid #D9D8D2;border-radius:4px;padding:3px 5px;background:#FAFAF8}
+.search{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border:1px solid #D9D8D2;border-radius:6px;background:#FFFFFF;color:#61666F;box-sizing:border-box}
+.search input{border:0;outline:0;background:transparent;font:400 13.5px 'IBM Plex Sans',system-ui,sans-serif;color:#15171A;flex:1;min-width:0}
+.search input::placeholder{color:#61666F}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;font-weight:500;font-size:12px;color:#61666F;height:38px;padding:0 16px;border-bottom:1px solid #E3E2DD;white-space:nowrap}
+.tbl td{height:52px;padding:0 16px;border-bottom:1px solid #EEEDE8;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:#FAFAF8}
+.r{text-align:right}
+.sub{display:block;font-size:12.5px;color:#61666F}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:1px}
+.seg{display:inline-flex;padding:2px;border:1px solid #E3E2DD;border-radius:7px;background:#F4F4F1}
+.seg button{height:28px;padding:0 10px;border:0;border-radius:5px;background:transparent;font:500 12.5px 'IBM Plex Sans',sans-serif;color:#4A4F57;cursor:pointer}
+.seg button[aria-pressed=true]{background:#FFFFFF;color:#15171A;box-shadow:0 0 0 1px #E3E2DD}
+.av{width:28px;height:28px;border-radius:50%;background:#E4E3DD;color:#3B4047;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex:none}
+.q{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #EEEDE8;flex-wrap:wrap}
+.kpi{background:#FFFFFF;padding:18px 20px 20px}
+.kl{font-size:13px;color:#61666F}
+.kv{font-size:28px;font-weight:500;letter-spacing:-0.02em;margin-top:6px;font-variant-numeric:tabular-nums;line-height:1.15}
+.kv small{font-size:15px;color:#61666F;font-weight:400;margin-right:4px;letter-spacing:0}
+.kf{font-size:12.5px;color:#61666F;margin-top:6px}
+</style>
+<div class="app" style="display:flex;flex-wrap:wrap;min-height:100vh;background:#F4F4F1">
+
+<aside style="flex:1 1 220px;box-sizing:border-box;padding:14px 10px 12px;border-right:1px solid #E3E2DD;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:9px;padding:6px 10px 8px">
+<span aria-hidden="true" style="width:24px;height:24px;border-radius:6px;background:#15171A;color:#F4F4F1;display:inline-flex;align-items:center;justify-content:center;font:600 14px/1 'IBM Plex Mono',monospace">o</span>
+<span style="font-weight:600;font-size:15px;letter-spacing:-0.01em">odos</span>
+<span class="muted" style="font-size:13px">admin</span>
+</div>
+<nav class="nav" aria-label="Primary">
+<div class="grp">Overview</div>
+<a href="dashboard.html" class="on" aria-current="page">Dashboard</a>
+<a href="analytics.html">Analytics</a>
+<a href="#">Audit log</a>
+<div class="grp">Commerce</div>
+<a href="orders.html">Orders <span class="ct hot">78</span></a>
+<a href="#">Payouts <span class="ct hot">2</span></a>
+<a href="#">Deliveries</a>
+<div class="grp">Catalog</div>
+<a href="products.html">Products <span class="ct">12</span></a>
+<a href="#">Stores <span class="ct">6</span></a>
+<a href="#">Markets</a>
+<a href="#">Categories</a>
+<div class="grp">People</div>
+<a href="users.html">Users <span class="ct">29</span></a>
+<a href="#">Vendors <span class="ct">5</span></a>
+<a href="#">Applications</a>
+</nav>
+<div style="margin-top:auto;padding:20px 0 0 10px;display:flex;align-items:center;gap:10px">
+<span class="av">PA</span>
+<span style="flex:1;min-width:0;line-height:1.25"><span style="display:block;font-size:13px;font-weight:500">Paulson</span><span class="sub" style="font-size:12px">Admin</span></span>
+<button class="ib" aria-label="Sign out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg></button>
+</div>
+</aside>
+
+<div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column">
+<header style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:56px;padding:10px 32px;box-sizing:border-box;border-bottom:1px solid #E3E2DD">
+<div style="font-size:13.5px"><span class="muted">Overview</span><span class="muted" style="margin:0 8px">/</span><span style="font-weight:500">Dashboard</span></div>
+<label class="search" style="margin-left:auto;flex:0 1 340px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span class="sr">Search</span><input type="search" placeholder="Search orders, people, products"><span class="kbd">⌘K</span></label>
+<button class="ib" aria-label="Notifications, 80 unread"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span style="position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:#C2410C;box-shadow:0 0 0 2px #F4F4F1"></span></button>
+</header>
+
+<main style="padding:28px 32px 56px;max-width:1240px;width:100%;box-sizing:border-box">
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+<div>
+<p class="muted" style="margin:0 0 6px;font-size:13px">Thursday, 22 October · Synced 02:20</p>
+<h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.015em">Operations</h1>
+</div>
+<div style="display:flex;gap:8px">
+<button class="btn" aria-label="Refresh data"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>Refresh</button>
+<a class="btn" href="analytics.html">Open analytics</a>
+</div>
+</div>
+
+<section aria-labelledby="h-act" style="margin-top:28px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+<h2 id="h-act" style="margin:0;font-size:15px;font-weight:600">Needs action</h2>
+<span class="muted" style="font-size:13px">2 of 3 queues open</span>
+</div>
+<div class="card" style="overflow:hidden">
+<div class="q">
+<span class="dot" style="background:#C27C0E;margin:0" aria-hidden="true"></span>
+<div style="flex:1 1 260px;min-width:0"><div style="font-weight:500">Orders waiting for a vendor</div><div class="sub">Placed and not yet confirmed. Customers see these as “Pending”.</div></div>
+<div class="num" style="font-size:20px;font-weight:500;color:#8A4B08;min-width:56px;text-align:right">78</div>
+<a href="orders.html" style="min-width:120px;text-align:right;font-weight:500;font-size:13.5px">Review orders →</a>
+</div>
+<div class="q">
+<span class="dot" style="background:#C27C0E;margin:0" aria-hidden="true"></span>
+<div style="flex:1 1 260px;min-width:0"><div style="font-weight:500">Payout requests</div><div class="sub">Vendors waiting to be paid. Blocks vendor cash-out.</div></div>
+<div class="num" style="font-size:20px;font-weight:500;color:#8A4B08;min-width:56px;text-align:right">2</div>
+<a href="#" style="min-width:120px;text-align:right;font-weight:500;font-size:13.5px">Review payouts →</a>
+</div>
+<div class="q" style="border-bottom:0">
+<span class="dot" style="background:#2F8F5B;margin:0" aria-hidden="true"></span>
+<div style="flex:1 1 260px;min-width:0"><div style="font-weight:500;color:#3B4047">Vendor applications</div><div class="sub">Nothing waiting for approval.</div></div>
+<div class="num muted" style="font-size:20px;min-width:56px;text-align:right">0</div>
+<span class="muted" style="min-width:120px;text-align:right;font-size:13.5px">Clear</span>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="h-glance" style="margin-top:32px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+<h2 id="h-glance" style="margin:0;font-size:15px;font-weight:600">At a glance</h2>
+<span class="muted" style="font-size:13px">Today since 00:00 GMT</span>
+</div>
+<div class="card" style="overflow:hidden;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:#E3E2DD">
+<div class="kpi"><div class="kl">Revenue today</div><div class="kv"><small>GH₵</small>1</div><div class="kf">From 1 order</div></div>
+<div class="kpi"><div class="kl">Orders today</div><div class="kv">1</div><div class="kf">Placed since midnight</div></div>
+<div class="kpi"><div class="kl">Open orders</div><div class="kv">78</div><div class="kf">Not yet fulfilled</div></div>
+<div class="kpi"><div class="kl">Lifetime GMV</div><div class="kv"><small>GH₵</small>54,014</div><div class="kf">All paid orders, all time</div></div>
+</div>
+</section>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px">
+<section class="card" aria-labelledby="h-rev" style="flex:2 1 520px;min-width:0">
+<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px 0">
+<div><h2 id="h-rev" style="margin:0;font-size:15px;font-weight:600">Delivered revenue</h2><div class="sub">Per day, GH₵</div></div>
+<div class="seg" role="group" aria-label="Period"><button aria-pressed="false">7d</button><button aria-pressed="true">30d</button><button aria-pressed="false">90d</button></div>
+</div>
+<div style="position:relative;padding:12px 20px 16px">
+<svg viewBox="0 0 720 220" width="100%" height="220" preserveAspectRatio="none" role="img" aria-label="Delivered revenue chart, last 30 days, all values zero">
+<g stroke="#EEEDE8" stroke-width="1"><line x1="40" y1="20" x2="720" y2="20"></line><line x1="40" y1="70" x2="720" y2="70"></line><line x1="40" y1="120" x2="720" y2="120"></line></g>
+<line x1="40" y1="170" x2="720" y2="170" stroke="#D3D2CC" stroke-width="1"></line>
+<line x1="40" y1="169" x2="720" y2="169" stroke="#1E5B47" stroke-width="2"></line>
+<g font-family="IBM Plex Mono, monospace" font-size="11" fill="#61666F"><text x="32" y="174" text-anchor="end">0</text><text x="40" y="196">23 Sep</text><text x="200" y="196">30 Sep</text><text x="360" y="196">7 Oct</text><text x="520" y="196">14 Oct</text><text x="720" y="196" text-anchor="end">22 Oct</text></g>
+</svg>
+<div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);background:#FFFFFF;padding:12px 16px;max-width:340px;text-align:center;border-radius:6px">
+<div style="font-weight:500">No delivered orders in the last 30 days</div>
+<div class="sub" style="margin-top:4px">This chart counts an order once it reaches Delivered. 106 paid orders haven’t got there yet.</div>
+<a href="orders.html" style="display:inline-block;margin-top:8px;font-size:13px;font-weight:500">See paid orders →</a>
+</div>
+</div>
+</section>
+<section class="card" aria-labelledby="h-top" style="flex:1 1 280px;min-width:0;display:flex;flex-direction:column">
+<div style="padding:16px 20px 12px;border-bottom:1px solid #EEEDE8"><h2 id="h-top" style="margin:0;font-size:15px;font-weight:600">Top stores</h2><div class="sub">By delivered GMV, last 30 days</div></div>
+<div style="padding:20px;flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px">
+<div style="font-weight:500">No ranking yet</div>
+<div class="sub">Stores appear here after their first delivered order. 6 stores are live.</div>
+<a href="#" style="font-size:13px;font-weight:500;margin-top:4px">View stores →</a>
+</div>
+</section>
+</div>
+
+<section class="card" aria-labelledby="h-recent" style="margin-top:16px;overflow:hidden">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px">
+<h2 id="h-recent" style="margin:0;font-size:15px;font-weight:600">Latest orders</h2>
+<a href="orders.html" style="font-size:13px;font-weight:500">All orders →</a>
+</div>
+<div style="overflow-x:auto">
+<table class="tbl">
+<thead><tr><th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Store</th><th scope="col">Placed</th><th scope="col">Fulfilment</th><th scope="col">Payment</th><th scope="col" class="r">Amount</th></tr></thead>
+<tbody>
+<tr><td class="mono" style="font-size:13px">ORD-747519</td><td>Paulson</td><td class="muted">Avantex</td><td class="num muted">22 Oct, 00:33</td><td><span class="dot" style="background:#C27C0E"></span>Pending</td><td style="color:#A12A21"><span class="dot" style="background:#D1453B"></span>Failed</td><td class="r num">GH₵ 1.00</td></tr>
+<tr><td class="mono" style="font-size:13px">ORD-440244</td><td>Emmanuel</td><td class="muted">Avantex</td><td class="num muted">21 Oct, 16:18</td><td><span class="dot" style="background:#C27C0E"></span>Pending</td><td style="color:#A12A21"><span class="dot" style="background:#D1453B"></span>Failed</td><td class="r num">GH₵ 1.00</td></tr>
+<tr><td class="mono" style="font-size:13px">ORD-617059</td><td>Emmanuel</td><td class="muted">Avantex</td><td class="num muted">21 Oct, 13:07</td><td><span class="dot" style="background:#C27C0E"></span>Pending</td><td><span class="dot" style="background:#A3A6AC"></span>Awaiting</td><td class="r num">GH₵ 1.00</td></tr>
+<tr><td class="mono" style="font-size:13px">ORD-879619</td><td>Emmanuel</td><td class="muted">Avantex</td><td class="num muted">21 Oct, 13:06</td><td><span class="dot" style="background:#C27C0E"></span>Pending</td><td><span class="dot" style="background:#2F8F5B"></span>Paid</td><td class="r num">GH₵ 1.00</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<p class="muted" style="margin:20px 0 0;font-size:13px">Marketplace: <a href="users.html">29 users</a> · <a href="#">5 vendors</a> · <a href="#">6 stores</a> · <a href="products.html">12 products</a></p>
+</main>
+</div>
+</div>
+</body>
+</html>

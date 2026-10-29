@@ -94,7 +94,7 @@ export function DirectoryTable<T>({
                         : undefined
                   }
                   className={clsx(
-                    "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-textMuted",
+                    "px-4 py-3 text-left text-[11px] font-semibold tracking-[0.06em] text-textMuted",
                     column.className,
                   )}
                 >

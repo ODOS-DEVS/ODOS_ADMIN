@@ -32,7 +32,7 @@ export function DataTable<T>({
               <th
                 key={column.key}
                 className={clsx(
-                  "text-left text-xs font-semibold uppercase tracking-wide text-textMuted",
+                  "text-left text-xs font-semibold text-textMuted",
                   compact ? "px-4 py-3" : "px-5 py-3.5",
                   column.className,
                 )}

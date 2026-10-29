@@ -98,7 +98,7 @@ export function ProductShopperPreview({
                 </button>
               </div>
               <div className="p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#0f766e]">
+                <p className="text-[10px] font-semibold tracking-[0.14em] text-[#0f766e]">
                   {categoryLabel}
                 </p>
                 <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5">{displayName}</p>
@@ -133,7 +133,7 @@ export function ProductShopperPreview({
 
               {colors.length > 0 ? (
                 <div className="mt-3">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#6b7280]">
+                  <p className="text-[9px] font-semibold tracking-[0.14em] text-[#6b7280]">
                     Colors
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -155,7 +155,7 @@ export function ProductShopperPreview({
 
               {sizes.length > 0 ? (
                 <div className="mt-3">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#6b7280]">
+                  <p className="text-[9px] font-semibold tracking-[0.14em] text-[#6b7280]">
                     Sizes
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">

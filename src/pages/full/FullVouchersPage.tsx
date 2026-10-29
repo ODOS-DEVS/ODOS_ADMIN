@@ -1533,7 +1533,7 @@ export function FullVouchersPage() {
               <div className="rounded-panel border border-line bg-surfaceMuted p-5">
                 <div className="flex flex-col gap-4">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-textMuted">
+                    <p className="text-xs font-semibold tracking-[0.22em] text-textMuted">
                       Reward preview
                     </p>
                     <p className="mt-3 text-2xl font-semibold text-textStrong">{rewardPreview}</p>
@@ -1588,7 +1588,7 @@ export function FullVouchersPage() {
               helper="Letters and numbers only. Each code appends a 4-digit sequence."
             >
               <input
-                className="app-input uppercase"
+                className="app-input"
                 value={bulkPrefix}
                 onChange={(event) => setBulkPrefix(event.target.value.toUpperCase())}
                 placeholder="SUMMER"

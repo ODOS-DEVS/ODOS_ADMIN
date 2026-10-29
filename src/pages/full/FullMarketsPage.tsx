@@ -412,7 +412,7 @@ export function FullMarketsPage() {
                   {marketForm.name.trim() || "Market name"}
                 </p>
                 <p className="mt-2 text-sm text-textMuted">Live artwork on the ODOS browse experience.</p>
-                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+                <p className="mt-3 text-xs font-semibold tracking-[0.16em] text-accent">
                   Status: {marketForm.status}
                 </p>
               </div>

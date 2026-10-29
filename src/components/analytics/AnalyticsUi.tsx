@@ -218,7 +218,7 @@ export function ReportSectionNav({
                   <span className="h-8 w-px bg-line" />
                 </div>
               ) : null}
-              <span className="hidden shrink-0 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-textSubtle sm:inline">
+              <span className="hidden shrink-0 px-2 text-[10px] font-semibold tracking-[0.18em] text-textSubtle sm:inline">
                 {group.label}
               </span>
               {group.sections.map((section) => (

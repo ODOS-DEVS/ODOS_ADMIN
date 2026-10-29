@@ -86,7 +86,7 @@ export function AuthShowcasePanel({ title, description, tagline }: AuthShowcaseP
       <div className="relative z-10 flex flex-1 flex-col justify-center">
         <div className="animate-fade-up opacity-0">
           {tagline ? (
-            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-white/70">{tagline}</p>
+            <p className="font-mono text-[11px] font-medium tracking-[0.22em] text-white/70">{tagline}</p>
           ) : null}
           <h2 className="mt-3 max-w-md font-display text-[1.9rem] font-semibold leading-snug tracking-tight text-white xl:text-[2.1rem]">
             {title}

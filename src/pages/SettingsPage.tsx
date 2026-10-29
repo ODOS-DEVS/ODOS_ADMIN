@@ -193,7 +193,7 @@ export function SettingsPage() {
                 {adminUser?.fullName ?? "ODOS Admin"}
               </p>
               <p className="mt-1 truncate text-xs text-textMuted">{adminUser?.email}</p>
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-line bg-surfaceMuted px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-textMuted">
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-line bg-surfaceMuted px-3 py-1 font-mono text-[10px] tracking-[0.12em] text-textMuted">
                 <ShieldCheck className="size-3" />
                 {labelForAdminPermission(adminUser?.adminPermission)}
               </div>

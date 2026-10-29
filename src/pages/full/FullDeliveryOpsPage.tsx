@@ -173,7 +173,7 @@ export function FullDeliveryOpsPage() {
         {snapshot && snapshot.orders.length > 0 ? (
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-line text-xs uppercase tracking-wide text-textMuted">
+              <tr className="border-b border-line text-xs text-textMuted">
                 <th className="px-4 py-3 font-medium">Order</th>
                 <th className="px-4 py-3 font-medium">Store</th>
                 <th className="px-4 py-3 font-medium">Stage</th>

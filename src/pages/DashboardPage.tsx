@@ -543,7 +543,7 @@ export function DashboardPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-textMuted">
+                    <p className="text-xs font-medium tracking-[0.14em] text-textMuted">
                       Awaiting action
                     </p>
                     <p className="mt-1 text-xl font-semibold tabular-nums text-textStrong">

@@ -99,13 +99,13 @@ export function BreakdownDonut({
         <table className="min-w-full">
           <thead>
             <tr className="border-b border-line">
-              <th className="pb-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-textMuted">
+              <th className="pb-1.5 text-left text-[11px] font-semibold tracking-[0.06em] text-textMuted">
                 Source
               </th>
-              <th className="whitespace-nowrap pb-1.5 pl-3 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-textMuted">
+              <th className="whitespace-nowrap pb-1.5 pl-3 text-right text-[11px] font-semibold tracking-[0.06em] text-textMuted">
                 Value
               </th>
-              <th className="whitespace-nowrap pb-1.5 pl-3 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-textMuted">
+              <th className="whitespace-nowrap pb-1.5 pl-3 text-right text-[11px] font-semibold tracking-[0.06em] text-textMuted">
                 Share
               </th>
             </tr>

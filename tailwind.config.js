@@ -4,43 +4,50 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: "#F4F5F7",
+        // Values come from BRIEF.md section 2. The NAMES are deliberately
+        // unchanged: 236 usages of `accent`, 66 of `shadow-*` and 37 of
+        // `rounded-card` already exist across 29 pages, and redefining the
+        // token moves all of them at once. Renaming would have meant touching
+        // every page to achieve the same result, and would have left the
+        // undesigned pages behind — which is exactly the unevenness this is
+        // meant to remove.
+        canvas: "#F4F4F1",
         surface: "#FFFFFF",
-        surfaceMuted: "#F9FAFB",
-        line: "#E5E7EB",
+        surfaceMuted: "#FAFAF8",
+        line: "#E3E2DD",
+        lineSoft: "#EEEDE8",
         panel: "#FFFFFF",
-        panelMuted: "#F9FAFB",
-        borderSubtle: "#E5E7EB",
-        textStrong: "#1A1C1E",
-        textMuted: "#6B7280",
-        textSubtle: "#9CA3AF",
-        accent: "#7C5CFC",
-        accentSoft: "#EDE9FE",
+        panelMuted: "#FAFAF8",
+        borderSubtle: "#E3E2DD",
+
+        ink: "#15171A",
+        ink2: "#3B4047",
+        // textStrong/textMuted/textSubtle keep their names so existing pages
+        // inherit the new ink scale untouched.
+        textStrong: "#15171A",
+        textMuted: "#61666F",
+        textSubtle: "#61666F",
+
+        navSelected: "#E4E3DD",
+        navHover: "#EAE9E4",
+
+        // Was #7C5CFC. The purple is the single most template-looking thing
+        // in the UI, and it appears on every primary button and active nav
+        // item; one value change retires it everywhere.
+        accent: "#1E5B47",
+        accentSoft: "#E6EDE9",
         accentForeground: "#FFFFFF",
-        success: {
-          DEFAULT: "#2E7D32",
-          soft: "#E8F5E9",
-        },
-        warning: {
-          DEFAULT: "#F57C00",
-          soft: "#FFF8E1",
-        },
-        danger: {
-          DEFAULT: "#D32F2F",
-          soft: "#FFEBEE",
-        },
-        info: {
-          DEFAULT: "#7B1FA2",
-          soft: "#F3E5F5",
-        },
-        neutralBadge: {
-          DEFAULT: "#4B5563",
-          soft: "#F3F4F6",
-        },
+
+        success: { DEFAULT: "#2F8F5B", soft: "#E8F1EC", text: "#1E6B3F" },
+        warning: { DEFAULT: "#C27C0E", soft: "#F7EFE0", text: "#8A4B08" },
+        danger: { DEFAULT: "#D1453B", soft: "#F7E7E6", text: "#A12A21" },
+        info: { DEFAULT: "#1E5B47", soft: "#E6EDE9" },
+        neutral: "#A3A6AC",
+        neutralBadge: { DEFAULT: "#61666F", soft: "#F1F0EC" },
       },
       fontFamily: {
         sans: [
-          "Inter",
+          "IBM Plex Sans",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
@@ -53,14 +60,21 @@ export default {
         mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       borderRadius: {
-        // Match the app's two most common bespoke card radii so they're named, not magic numbers.
-        card: "22px",
-        panel: "28px",
+        // The brief specifies 6px controls / 8px containers. These two names
+        // are used 37 times; repointing them is what makes the soft, rounded
+        // look give way to the squarer tool aesthetic everywhere at once.
+        control: "6px",
+        card: "8px",
+        panel: "8px",
       },
       boxShadow: {
-        card: "0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1)",
-        "nav-active": "0 1px 3px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.05)",
-        soft: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
+        // "No box-shadows anywhere. 1px borders only." Rather than edit 66
+        // call sites across pages this redesign does not otherwise touch,
+        // the tokens resolve to nothing — so every existing `shadow-card`
+        // silently stops painting and no page is left with a stray shadow.
+        card: "none",
+        "nav-active": "none",
+        soft: "none",
       },
       keyframes: {
         fadeUp: {

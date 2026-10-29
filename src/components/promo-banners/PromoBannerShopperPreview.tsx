@@ -33,7 +33,7 @@ export function PromoBannerShopperPreview({
 }: PromoBannerPreviewProps) {
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-textMuted">
+      <div className="flex flex-wrap gap-2 text-[11px] tracking-[0.18em] text-textMuted">
         <span className="rounded-full border border-line px-3 py-1">{placementLabel}</span>
         <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-accent">
           Tap opens · {destinationLabel}
@@ -45,7 +45,7 @@ export function PromoBannerShopperPreview({
       >
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200/90">
+            <p className="text-[11px] font-semibold tracking-[0.22em] text-amber-200/90">
               Today&apos;s deals
             </p>
             <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white">
@@ -64,7 +64,7 @@ export function PromoBannerShopperPreview({
             {imageUrl ? (
               <img src={imageUrl} alt="" className="size-full object-cover" />
             ) : (
-              <span className="px-2 text-center text-[10px] uppercase tracking-[0.16em] text-white/50">
+              <span className="px-2 text-center text-[10px] tracking-[0.16em] text-white/50">
                 Artwork
               </span>
             )}

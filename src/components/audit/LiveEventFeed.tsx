@@ -90,7 +90,7 @@ export function LiveEventFeed({ compact = false }: LiveEventFeedProps) {
 
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
-      <p className="text-[11px] uppercase tracking-[0.18em] text-textMuted">
+      <p className="text-[11px] tracking-[0.18em] text-textMuted">
         Live stream · {connectionState === "connected" ? "connected" : "offline"}
       </p>
       <div className={compact ? "max-h-[240px] space-y-2 overflow-y-auto pr-1" : "space-y-2"}>
@@ -108,7 +108,7 @@ export function LiveEventFeed({ compact = false }: LiveEventFeedProps) {
                   {summarizeEvent(event)}
                 </p>
               </div>
-              <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-textMuted">
+              <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] text-textMuted">
                 {humanizeActorLabel(event.actorType)}
               </span>
             </div>

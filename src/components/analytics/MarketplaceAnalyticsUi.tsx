@@ -126,7 +126,7 @@ export function DonutMixChart({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
             <p className="text-lg font-bold tabular-nums text-textStrong">{centerValue}</p>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-textSubtle">{centerLabel}</p>
+            <p className="text-[10px] font-medium text-textSubtle">{centerLabel}</p>
           </div>
         </div>
         <ul className="w-full min-w-0 space-y-2 sm:max-w-[11rem]">

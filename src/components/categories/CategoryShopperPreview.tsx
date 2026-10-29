@@ -60,7 +60,7 @@ export function CategoryShopperPreview({
                   <p className="mt-1 line-clamp-3 text-[11px] leading-4 text-[#6b7280]">
                     {displayDescription}
                   </p>
-                  <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#0f766e]">
+                  <p className="mt-2 text-[10px] font-semibold tracking-[0.16em] text-[#0f766e]">
                     Browse · {previewSubcategories.length} subcategories
                   </p>
                   <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#0f172a] px-2.5 py-1 text-[10px] font-semibold text-white">
@@ -138,7 +138,7 @@ export function CategoryShopperPreview({
         </div>
 
         <div className="rounded-[18px] border border-line bg-surfaceMuted px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-textSubtle">Catalog slug</p>
+          <p className="text-[10px] tracking-[0.18em] text-textSubtle">Catalog slug</p>
           <p className="mt-1 font-mono text-xs text-textStrong">/{slug || "category-slug"}</p>
         </div>
       </div>

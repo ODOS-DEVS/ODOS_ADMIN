@@ -621,7 +621,7 @@ export function CategoryStudioPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-card border border-line bg-surfaceMuted p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-textSubtle">
+                  <p className="text-xs tracking-[0.18em] text-textSubtle">
                     Summary
                   </p>
                   <p className="mt-2 text-lg font-semibold text-textStrong">
@@ -639,7 +639,7 @@ export function CategoryStudioPage() {
                 </div>
 
                 <div className="rounded-card border border-line bg-surfaceMuted p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-textSubtle">
+                  <p className="text-xs tracking-[0.18em] text-textSubtle">
                     Before you publish
                   </p>
                   <ul className="mt-3 space-y-2 text-sm text-textMuted">

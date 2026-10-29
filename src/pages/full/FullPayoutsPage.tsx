@@ -509,7 +509,7 @@ export function FullPayoutsPage() {
 
             <div className="grid gap-4 md:grid-cols-[220px,1fr]">
               <div>
-                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-textMuted">
+                <label className="mb-2 block text-xs tracking-[0.2em] text-textMuted">
                   Update status
                 </label>
                 <FilterSelect
@@ -526,7 +526,7 @@ export function FullPayoutsPage() {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-textMuted">
+                <label className="mb-2 block text-xs tracking-[0.2em] text-textMuted">
                   Admin note
                 </label>
                 <textarea

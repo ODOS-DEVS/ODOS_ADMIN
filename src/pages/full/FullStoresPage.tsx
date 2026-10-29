@@ -711,7 +711,7 @@ export function FullStoresPage() {
                   <p className="mt-1 text-sm text-textMuted">
                     {form.category || "Category"} {form.city.trim() ? `· ${form.city.trim()}` : ""}
                   </p>
-                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-textSubtle">
+                  <p className="mt-2 text-xs tracking-[0.18em] text-textSubtle">
                     {(form.audienceSlugs.length ? form.audienceSlugs.join(", ") : "all shoppers").toUpperCase()}
                   </p>
                 </div>

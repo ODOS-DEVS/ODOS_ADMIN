@@ -25,7 +25,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   if (!canAccessRoute(location.pathname)) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-textSubtle">
+        <p className="text-xs font-semibold tracking-[0.24em] text-textSubtle">
           Access restricted
         </p>
         <h1 className="text-2xl font-semibold text-textStrong">

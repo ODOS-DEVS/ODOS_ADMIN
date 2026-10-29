@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ODOS Admin – Interface notes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1E5B47}a:hover{color:#123B2E}
+.sw{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.sw b{display:block;height:56px;border-radius:6px;border:1px solid #E3E2DD}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:#61666F}
+.h{margin:0 0 16px;font-size:13px;font-weight:600;color:#15171A}
+.row{display:flex;align-items:baseline;gap:16px;padding:10px 0;border-bottom:1px solid #EEEDE8}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:6px;border:1px solid #D3D2CC;background:#FFFFFF;color:#15171A;font:500 13px/1 'IBM Plex Sans',system-ui,sans-serif}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:1px}
+</style>
+<div style="width:1200px;height:1760px;box-sizing:border-box;padding:72px 80px;background:#FFFFFF;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#15171A;font-size:14px;line-height:1.5;display:flex;flex-direction:column;gap:56px">
+
+<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #15171A;padding-bottom:20px">
+<div>
+<div class="mono" style="margin-bottom:8px">ODOS ADMIN · v2 · 22 Oct 2026</div>
+<h1 style="margin:0;font-size:36px;font-weight:600;letter-spacing:-0.02em">Interface notes</h1>
+</div>
+<p style="margin:0;max-width:420px;color:#3B4047">The rules behind the redesign, written so they can be implemented as tokens and shared components rather than page-by-page fixes.</p>
+</div>
+
+<section>
+<h2 class="h">Principles</h2>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 40px">
+<div><div style="font-weight:600">One title per page</div><div style="color:#3B4047;margin-top:4px">The top bar carries breadcrumbs only. The H1 lives in the content. Never repeat the page name.</div></div>
+<div><div style="font-weight:600">Group, don’t box</div><div style="color:#3B4047;margin-top:4px">One container per task. Related numbers share a single strip split by hairlines, not four floating cards.</div></div>
+<div><div style="font-weight:600">Color means state</div><div style="color:#3B4047;margin-top:4px">No tinted icon tiles. Only warnings, failures and live/active states carry color. Everything else is ink and grey.</div></div>
+<div><div style="font-weight:600">Tabs are the summary</div><div style="color:#3B4047;margin-top:4px">If a status has a count, show it once — in the tab. Remove stat cards that repeat tab counts.</div></div>
+<div><div style="font-weight:600">Counts from the server</div><div style="color:#3B4047;margin-top:4px">Never “on this page”. Tab and nav counts are totals for the whole dataset.</div></div>
+<div><div style="font-weight:600">Empty states explain</div><div style="color:#3B4047;margin-top:4px">Say why it’s empty and link to the next action. “No data” alone is a bug.</div></div>
+</div>
+</section>
+
+<section>
+<h2 class="h">Color</h2>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:20px">
+<div class="sw"><b style="background:#F4F4F1"></b>Canvas<span class="mono">#F4F4F1</span></div>
+<div class="sw"><b style="background:#FFFFFF"></b>Surface<span class="mono">#FFFFFF</span></div>
+<div class="sw"><b style="background:#15171A"></b>Ink · primary<span class="mono">#15171A</span></div>
+<div class="sw"><b style="background:#3B4047"></b>Ink 2<span class="mono">#3B4047</span></div>
+<div class="sw"><b style="background:#61666F"></b>Muted text<span class="mono">#61666F</span></div>
+<div class="sw"><b style="background:#E3E2DD"></b>Line<span class="mono">#E3E2DD / #EEEDE8</span></div>
+<div class="sw"><b style="background:#1E5B47"></b>Accent · links<span class="mono">#1E5B47</span></div>
+<div class="sw"><b style="background:#2F8F5B"></b>Success dot<span class="mono">#2F8F5B · text #1E6B3F</span></div>
+<div class="sw"><b style="background:#C27C0E"></b>Warning dot<span class="mono">#C27C0E · text #8A4B08</span></div>
+<div class="sw"><b style="background:#D1453B"></b>Danger dot<span class="mono">#D1453B · text #A12A21</span></div>
+<div class="sw"><b style="background:#A3A6AC"></b>Neutral dot<span class="mono">#A3A6AC</span></div>
+<div class="sw"><b style="background:#E4E3DD"></b>Selected nav<span class="mono">#E4E3DD</span></div>
+</div>
+</section>
+
+<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:64px">
+<section>
+<h2 class="h">Type · IBM Plex Sans + Plex Mono</h2>
+<div class="row"><span class="mono" style="width:110px">24 / 600</span><span style="font-size:24px;font-weight:600;letter-spacing:-0.015em">Page title</span></div>
+<div class="row"><span class="mono" style="width:110px">28 / 500 tnum</span><span style="font-size:28px;font-weight:500;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">54,014</span></div>
+<div class="row"><span class="mono" style="width:110px">15 / 600</span><span style="font-size:15px;font-weight:600">Section heading</span></div>
+<div class="row"><span class="mono" style="width:110px">14 / 400</span><span>Body and controls</span></div>
+<div class="row"><span class="mono" style="width:110px">13.5 / 400</span><span style="font-size:13.5px">Table cells, nav items</span></div>
+<div class="row"><span class="mono" style="width:110px">12.5 / 400</span><span style="font-size:12.5px;color:#61666F">Secondary line, captions</span></div>
+<div class="row"><span class="mono" style="width:110px">12 / 500</span><span style="font-size:12px;font-weight:500;color:#61666F">Column header — sentence case, no tracking</span></div>
+<div class="row" style="border-bottom:0"><span class="mono" style="width:110px">Mono 13</span><span style="font-family:'IBM Plex Mono',monospace;font-size:13px">ORD-747519 · 1edcab77…2096</span></div>
+</section>
+<section>
+<h2 class="h">Spacing &amp; shape</h2>
+<div class="row"><span class="mono" style="width:150px">Scale</span><span>4 · 8 · 12 · 16 · 20 · 24 · 32</span></div>
+<div class="row"><span class="mono" style="width:150px">Page padding</span><span>28 top · 32 sides · max-width 1240</span></div>
+<div class="row"><span class="mono" style="width:150px">Top bar</span><span>56 high, hairline below, no shadow</span></div>
+<div class="row"><span class="mono" style="width:150px">Sidebar</span><span>220 wide, no card, counts right-aligned</span></div>
+<div class="row"><span class="mono" style="width:150px">Controls</span><span>36 high · radius 6</span></div>
+<div class="row"><span class="mono" style="width:150px">Containers</span><span>radius 8 · 1px line · no shadow</span></div>
+<div class="row" style="border-bottom:0"><span class="mono" style="width:150px">Table rows</span><span>52 (60 with avatar or thumbnail)</span></div>
+</section>
+</div>
+
+<section>
+<h2 class="h">Components</h2>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px">
+<div>
+<div class="mono" style="margin-bottom:12px">Buttons — one primary per page, max</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<span class="btn" style="background:#15171A;border-color:#15171A;color:#FFFFFF">Add product</span>
+<span class="btn">Export CSV</span>
+<span style="display:inline-flex;align-items:center;height:32px;padding:0 10px;border:1px dashed #C4C3BC;border-radius:6px;font-size:13px;color:#3B4047">+ Store</span>
+</div>
+<p style="margin:12px 0 0;font-size:12.5px;color:#61666F">Dashed chip = add a filter. Solid once applied, with the value inline: “Store: Avantex ×”.</p>
+</div>
+<div>
+<div class="mono" style="margin-bottom:12px">Status — dot + word, no pill</div>
+<div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px">
+<span><span class="dot" style="background:#2F8F5B"></span>Live · Active · Paid · Approved</span>
+<span><span class="dot" style="background:#C27C0E"></span>Pending · Awaiting review</span>
+<span style="color:#A12A21"><span class="dot" style="background:#D1453B"></span>Failed · Blocked</span>
+<span style="color:#61666F"><span class="dot" style="background:#A3A6AC"></span>Deleted · Awaiting payment</span>
+<span style="color:#8A4B08;font-weight:500">6 <span style="font-weight:400">Low stock (number + word, no bar)</span></span>
+</div>
+</div>
+<div>
+<div class="mono" style="margin-bottom:12px">Tabs — underline, count inline</div>
+<div style="display:flex;gap:20px;border-bottom:1px solid #E3E2DD;font-size:13.5px">
+<span style="padding:8px 0;border-bottom:2px solid #15171A;margin-bottom:-1px;font-weight:500">All <span style="color:#61666F;font-weight:400;font-size:12px">12</span></span>
+<span style="padding:8px 0;color:#4A4F57">Live <span style="color:#61666F;font-size:12px">9</span></span>
+<span style="padding:8px 0;color:#4A4F57">Out of stock <span style="color:#8A4B08;font-weight:500;font-size:12px">3</span></span>
+</div>
+<p style="margin:12px 0 0;font-size:12.5px;color:#61666F">A count turns amber only when it’s work someone needs to do.</p>
+</div>
+</div>
+</section>
+
+<section style="background:#F4F4F1;border-radius:8px;padding:24px 28px">
+<h2 class="h" style="margin-bottom:12px">Data issues spotted in the current build</h2>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 40px;font-size:13.5px;color:#3B4047">
+<div>• Revenue charts say “no paid orders” while 106 paid orders exist — the query requires paid <i>and</i> delivered. Label it as delivered revenue, or plot paid.</div>
+<div>• Orders page deltas (↑193.8%, ↑198.0%) are identical to Analytics deltas on different base numbers — check they aren’t reused.</div>
+<div>• Average order GH₵438 ≠ 41,534 ÷ 106 (≈ GH₵392). Confirm what the average is taken over.</div>
+<div>• Status counts are page-scoped (“Pending 15 on this page”) while the dashboard says 78. Use server totals everywhere.</div>
+<div>• Every user is counted as a Customer (29 of 29), so the role filter can’t isolate shoppers. Filter by primary role.</div>
+<div>• Deleted accounts show as “Blocked”. Give them their own state and hide them from the default list.</div>
+</div>
+</section>
+</div>
+</body>
+</html>

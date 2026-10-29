@@ -25,7 +25,7 @@ export function LiveIndicator({
   pulse?: boolean;
 }) {
   return (
-    <div className={clsx("inline-flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.14em]", toneClasses[tone])}>
+    <div className={clsx("inline-flex items-center gap-2 font-mono text-[11px] font-medium tracking-[0.14em]", toneClasses[tone])}>
       <span className="relative flex size-2">
         {pulse ? (
           <span className={clsx("absolute inline-flex size-full animate-ping rounded-full opacity-60", dotClasses[tone])} />

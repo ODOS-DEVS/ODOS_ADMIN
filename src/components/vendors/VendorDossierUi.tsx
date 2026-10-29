@@ -87,7 +87,7 @@ function QuickLinkTile({
 function IdentifierRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-line bg-surface px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-textSubtle">{label}</p>
+      <p className="text-[11px] font-semibold tracking-[0.16em] text-textSubtle">{label}</p>
       <p className="mt-1.5 break-all font-mono text-xs leading-relaxed text-textStrong" title={value}>
         {value}
       </p>

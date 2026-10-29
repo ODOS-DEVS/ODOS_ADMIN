@@ -150,17 +150,17 @@ export function FullFinancePage() {
       >
         <div className="grid gap-4 xl:grid-cols-3">
           <div className="rounded-2xl border border-line bg-surfaceMuted p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Paid orders</p>
+            <p className="text-xs tracking-[0.2em] text-textMuted">Paid orders</p>
             <p className="mt-3 text-2xl font-semibold text-textStrong">{overview.paidOrderCount}</p>
           </div>
           <div className="rounded-2xl border border-line bg-surfaceMuted p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Paid order volume</p>
+            <p className="text-xs tracking-[0.2em] text-textMuted">Paid order volume</p>
             <p className="mt-3 text-2xl font-semibold text-textStrong">
               {formatCurrency(overview.paidOrderVolume, overview.currency)}
             </p>
           </div>
           <div className="rounded-2xl border border-line bg-surfaceMuted p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-textMuted">Vendor payouts sent</p>
+            <p className="text-xs tracking-[0.2em] text-textMuted">Vendor payouts sent</p>
             <p className="mt-3 flex items-center gap-2 text-2xl font-semibold text-textStrong">
               <Wallet className="size-5 text-accent" />
               {formatCurrency(overview.totalPayoutsSent, overview.currency)}

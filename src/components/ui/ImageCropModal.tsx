@@ -75,7 +75,7 @@ export function ImageCropModal({
       <div className="w-full max-w-6xl rounded-panel border border-line bg-panel p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-textMuted">{eyebrow}</p>
+            <p className="text-xs tracking-[0.28em] text-textMuted">{eyebrow}</p>
             <h3 className="mt-2 text-2xl font-semibold text-textStrong">{title}</h3>
             <p className="mt-2 max-w-2xl text-sm text-textMuted">{description}</p>
           </div>
@@ -117,7 +117,7 @@ export function ImageCropModal({
             <p className="mt-2 text-xs text-textMuted">Use the slider to tighten or relax the crop.</p>
 
             <div className="mt-8 rounded-2xl border border-line bg-slate-950/50 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-textMuted">Output</p>
+              <p className="text-xs tracking-[0.22em] text-textMuted">Output</p>
               <p className="mt-3 text-sm text-textStrong">{outputLabel}</p>
               <p className="mt-2 text-sm text-textMuted">
                 {outputDescription}

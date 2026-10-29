@@ -98,10 +98,12 @@
 }
 
 .tableHeader {
-  font-weight: 600;
+  /* Sentence case, per BRIEF.md section 1. `opacity: 0.6` also replaced with
+     the muted token: fading ink to 60% lands below 4.5:1 on this surface,
+     while --muted is chosen to pass it. */
+  font-weight: 500;
   font-size: 12px;
-  text-transform: uppercase;
-  opacity: 0.6;
+  color: var(--muted);
   padding: 12px 0;
 }
 

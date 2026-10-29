@@ -634,7 +634,7 @@ export function FullSupportChatsPage() {
             <span className={`font-display text-2xl font-semibold tabular-nums ${stat.className}`}>
               {stat.value}
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-textSubtle">
+            <span className="font-mono text-[10px] tracking-[0.16em] text-textSubtle">
               {stat.label}
             </span>
           </div>
@@ -658,7 +658,7 @@ export function FullSupportChatsPage() {
                     key={filter}
                     type="button"
                     onClick={() => setStatusFilter(filter)}
-                    className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.06em] transition ${
+                    className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.06em] transition ${
                       isActive
                         ? "border-accent/40 bg-accent/15 text-accent"
                         : "border-line bg-surfaceMuted text-textMuted hover:bg-line/60"
@@ -720,7 +720,7 @@ export function FullSupportChatsPage() {
                               {formatThreadTime(thread.lastMessageAt ?? thread.updatedAt)}
                             </span>
                           </div>
-                          <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.1em] text-textSubtle">
+                          <p className="mt-0.5 truncate font-mono text-[10px] tracking-[0.1em] text-textSubtle">
                             {roleCopy[thread.counterpart.role]} · {thread.store.title}
                           </p>
                           <div className="mt-1 flex items-center justify-between gap-2">
@@ -756,7 +756,7 @@ export function FullSupportChatsPage() {
               <div className="border-b border-line px-5 py-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-textSubtle">
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-textSubtle">
                       {roleCopy[selectedThread.counterpart.role]} · {selectedThread.store.title}
                     </p>
                     <h2 className="mt-1 truncate font-display text-xl font-semibold text-textStrong">
@@ -840,7 +840,7 @@ export function FullSupportChatsPage() {
                         {showDay ? (
                           <div className="flex items-center gap-3 py-2">
                             <div className="h-px flex-1 bg-line" />
-                            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-textSubtle">
+                            <span className="font-mono text-[10px] tracking-[0.1em] text-textSubtle">
                               {formatMessageDayLabel(message.time)}
                             </span>
                             <div className="h-px flex-1 bg-line" />
