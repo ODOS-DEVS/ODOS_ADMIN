@@ -45,40 +45,32 @@ type NavGroup = {
   items: NavItem[];
 };
 
+/**
+ * Nav order follows BRIEF.md section 4.
+ *
+ * Commerce moves to second, directly under Overview: Orders, Payouts and
+ * Deliveries are where work waits, and they sat below the fold behind People,
+ * Catalog and Marketing — so the queues needing attention were the ones you
+ * had to scroll to find.
+ *
+ * Payouts moves out of Finance for the same reason. It is a queue with
+ * requests pending, not a report, and belongs beside the other queues rather
+ * than next to the ledger.
+ *
+ * "Command" becomes "Overview" — it describes what the pages are rather than
+ * striking a pose.
+ *
+ * Groups past People are this product's own surface, which the brief's
+ * four-group sketch does not cover; they keep their relative order below the
+ * named ones so no route is lost.
+ */
 const navGroups: NavGroup[] = [
   {
-    label: "Command",
+    label: "Overview",
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/analytics", label: "Analytics", icon: BarChart3 },
       { to: "/audit", label: "Audit log", icon: Shield },
-    ],
-  },
-  {
-    label: "People",
-    items: [
-      { to: "/users/full", label: "Users", icon: Users },
-      { to: "/vendors/full", label: "Vendors", icon: UserCog },
-      {
-        to: "/vendor-applications/full",
-        label: "Vendor applications",
-        icon: FolderKanban,
-        badgeKey: "pendingVendorApplications",
-      },
-    ],
-  },
-  {
-    label: "Catalog",
-    items: [
-      { to: "/stores/full", label: "Stores", icon: Store },
-      { to: "/markets/full", label: "Markets", icon: Warehouse },
-      { to: "/categories/full", label: "Categories", icon: Tags },
-      {
-        to: "/products/full",
-        label: "Products",
-        icon: Package,
-        badgeKey: "pendingProducts",
-      },
     ],
   },
   {
@@ -96,7 +88,40 @@ const navGroups: NavGroup[] = [
         icon: RefreshCcw,
         badgeKey: "openReturnRequests",
       },
+      {
+        to: "/payouts",
+        label: "Payouts",
+        icon: Wallet,
+        badgeKey: "pendingWithdrawals",
+      },
       { to: "/delivery-settings", label: "Delivery", icon: Truck },
+    ],
+  },
+  {
+    label: "Catalog",
+    items: [
+      { to: "/stores/full", label: "Stores", icon: Store },
+      { to: "/markets/full", label: "Markets", icon: Warehouse },
+      { to: "/categories/full", label: "Categories", icon: Tags },
+      {
+        to: "/products/full",
+        label: "Products",
+        icon: Package,
+        badgeKey: "pendingProducts",
+      },
+    ],
+  },
+  {
+    label: "People",
+    items: [
+      { to: "/users/full", label: "Users", icon: Users },
+      { to: "/vendors/full", label: "Vendors", icon: UserCog },
+      {
+        to: "/vendor-applications/full",
+        label: "Vendor applications",
+        icon: FolderKanban,
+        badgeKey: "pendingVendorApplications",
+      },
     ],
   },
   {
@@ -114,12 +139,6 @@ const navGroups: NavGroup[] = [
     label: "Finance",
     items: [
       { to: "/finance/full", label: "Finance", icon: Landmark },
-      {
-        to: "/payouts",
-        label: "Payouts",
-        icon: Wallet,
-        badgeKey: "pendingWithdrawals",
-      },
     ],
   },
   {
@@ -174,16 +193,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         onClick={onClose}
       />
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-screen w-[280px] flex-col border-r border-line bg-surface px-4 py-5 transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-screen w-[220px] flex-col border-r border-line bg-canvas px-3 py-4 transition-transform duration-300 lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center gap-3 px-2">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-sm font-bold text-accentForeground">
+        <div className="flex items-center gap-2.5 px-2">
+          <div className="flex size-7 items-center justify-center rounded-control bg-accent text-[11px] font-semibold text-accentForeground">
             O
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-textStrong">ODOS Admin</p>
+            <p className="truncate text-sm font-semibold text-textStrong">odos admin</p>
             <p className="truncate text-xs text-textMuted">Business operations</p>
           </div>
         </div>
@@ -195,7 +214,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="mt-5 flex-1 space-y-5 overflow-y-auto px-1 pr-0.5">
           {visibleNavGroups.map((group) => (
             <div key={group.label}>
-              <p className="mb-2 px-3 text-[10px] font-semibold tracking-[0.2em] text-textSubtle">
+              <p className="mb-1 px-2.5 text-[12px] font-medium text-textMuted">
                 {group.label}
               </p>
               <div className="space-y-0.5">
@@ -208,17 +227,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       to={item.to}
                       onClick={onClose}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                        `flex h-9 items-center gap-2.5 rounded-control px-2.5 text-[13.5px] transition ${
                           isActive
-                            ? "border border-line bg-surface text-textStrong shadow-nav-active"
-                            : "text-textMuted hover:bg-surfaceMuted hover:text-textStrong"
+                            ? "bg-navSelected font-medium text-textStrong"
+                            : "text-ink2 hover:bg-navHover hover:text-textStrong"
                         }`
                       }
                     >
                       <Icon className="size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{item.label}</span>
                       {badge > 0 ? (
-                        <span className="rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-semibold tabular-nums text-warning">
+                        <span className="ml-auto text-[12px] font-medium tabular-nums text-warning-text">
                           {badge > 99 ? "99+" : badge}
                         </span>
                       ) : null}
@@ -231,15 +250,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="mt-4 border-t border-line px-1 pt-4">
-          <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+          <div className="flex items-center gap-2.5 rounded-control px-2 py-1.5">
             {adminUser?.avatarUrl ? (
               <img
                 src={adminUser.avatarUrl}
                 alt={adminUser.fullName}
-                className="size-10 rounded-full object-cover"
+                className="size-8 rounded-full object-cover"
               />
             ) : (
-              <div className="flex size-10 items-center justify-center rounded-full bg-accentSoft text-sm font-semibold text-accent">
+              <div className="flex size-8 items-center justify-center rounded-full bg-navSelected text-[12px] font-medium text-ink2">
                 {initials ?? "OA"}
               </div>
             )}

@@ -10,9 +10,9 @@ export function DashboardLayout() {
   return (
     <div className="min-h-screen bg-canvas text-textStrong">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <div className="lg:pl-[280px]">
+      <div className="lg:pl-[220px]">
         <Topbar onMenu={() => setIsSidebarOpen(true)} />
-        <main className="px-4 py-6 xl:px-8">
+        <main className="px-4 py-6 xl:px-6">
           {/* One boundary for every routed page. The pages behind sign-in are
               code-split, so this catches all of them while they load rather
               than each route declaring its own Suspense. */}

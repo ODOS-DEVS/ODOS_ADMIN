@@ -53,7 +53,7 @@ export function Topbar({ onMenu }: TopbarProps) {
     .toUpperCase();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-surface/90 px-4 py-4 backdrop-blur xl:px-8">
+    <header className="sticky top-0 z-20 border-b border-line bg-canvas/95 px-4 py-2.5 backdrop-blur xl:px-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <Button
@@ -65,8 +65,11 @@ export function Topbar({ onMenu }: TopbarProps) {
             <Menu className="size-5" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-textStrong">{pageTitle}</h1>
-            <p className="mt-0.5 text-sm text-textMuted">ODOS marketplace operations</p>
+            <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13.5px]">
+              <span className="text-textMuted">Admin</span>
+              <span aria-hidden className="text-line">/</span>
+              <span className="font-medium text-textStrong">{pageTitle}</span>
+            </nav>
           </div>
         </div>
 
