@@ -31,6 +31,9 @@ const ProductStudioPage = lazy(() =>
 const FullFinancePage = lazy(() =>
   import("@/pages/full/FullFinancePage").then((module) => ({ default: module.FullFinancePage })),
 );
+const FullServicesPage = lazy(() =>
+  import("@/pages/full/FullServicesPage").then((module) => ({ default: module.FullServicesPage })),
+);
 const FullFlashSaleEventsPage = lazy(() =>
   import("@/pages/full/FullFlashSaleEventsPage").then((module) => ({ default: module.FullFlashSaleEventsPage })),
 );
@@ -133,6 +136,7 @@ export function AdminFullRoutes() {
       <Route path="/promo-banners/full" element={<FullPromoBannersPage />} />
       <Route path="/promo-banners/full/new" element={<PromoBannerStudioPage />} />
       <Route path="/promo-banners/full/:bannerId/studio" element={<PromoBannerStudioPage />} />
+      <Route path="/services/full" element={<FullServicesPage />} />
       <Route path="/flash-sale-events/full" element={<FullFlashSaleEventsPage />} />
       <Route path="/merchandising-campaigns/full" element={<FullMerchandisingCampaignsPage />} />
       <Route path="/promo-analytics/full" element={<FullPromoAnalyticsPage />} />

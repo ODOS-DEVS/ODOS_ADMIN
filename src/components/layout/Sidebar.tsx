@@ -23,6 +23,7 @@ import {
   Video,
   Wallet,
   Warehouse,
+  Wrench,
   Zap,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -123,6 +124,10 @@ const navGroups: NavGroup[] = [
         badgeKey: "pendingVendorApplications",
       },
     ],
+  },
+  {
+    label: "Services",
+    items: [{ to: "/services/full", label: "Service marketplace", icon: Wrench }],
   },
   {
     label: "Marketing",

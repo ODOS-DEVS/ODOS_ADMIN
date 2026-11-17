@@ -140,6 +140,17 @@ export const ADMIN_BRIEF_SECTIONS = {
     calloutDescription: "Creative assets, schedules, CTAs, and placement for all promo banners.",
     calloutCta: "Open full banner studio",
   },
+  services: {
+    eyebrow: "Marketplace",
+    title: "Services overview",
+    description: "Service listings, providers and bookings across the marketplace.",
+    fullRoute: "/services/full",
+    fullLabel: "Open full services desk",
+    calloutTitle: "Run the services marketplace",
+    calloutDescription:
+      "Moderate listings, manage the service taxonomy, verify providers and watch bookings and escrow.",
+    calloutCta: "Open full services desk",
+  },
   flashSaleEvents: {
     eyebrow: "Flash sale events",
     title: "Flash events overview",
