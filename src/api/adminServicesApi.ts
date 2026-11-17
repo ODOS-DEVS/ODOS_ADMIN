@@ -321,16 +321,28 @@ export async function setStoreOfferings(token: string, storeId: string, offering
   });
 }
 
+/** What settling a dispute does to the held money. */
+export const DISPUTE_OUTCOMES = ["completed", "cancelled"] as const;
+export type DisputeOutcome = (typeof DISPUTE_OUTCOMES)[number];
+
+/**
+ * Settle a disputed booking. Requires finance admin.
+ *
+ * `outcome` and `note` are **query parameters**, not a body, and the note is mandatory: it is
+ * the audit trail for a decision that moves money. `completed` releases the hold to the provider
+ * through the ordinary escrow path; `cancelled` leaves the funds in treasury for the existing
+ * refund process rather than releasing them anywhere.
+ */
 export async function resolveBookingDispute(
   token: string,
   bookingId: string,
-  payload: { resolution: string; note?: string | null },
+  payload: { outcome: DisputeOutcome; note: string },
 ) {
+  const query = new URLSearchParams({ outcome: payload.outcome, note: payload.note });
   return mapBooking(
-    await requestJson<BackendBooking>(`/admin/services/bookings/${bookingId}/resolve-dispute`, {
-      method: "POST",
-      token,
-      body: JSON.stringify({ resolution: payload.resolution, note: payload.note ?? null }),
-    }),
+    await requestJson<BackendBooking>(
+      `/admin/services/bookings/${bookingId}/resolve-dispute?${query}`,
+      { method: "POST", token },
+    ),
   );
 }

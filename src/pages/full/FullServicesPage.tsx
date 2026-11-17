@@ -11,8 +11,10 @@ import {
   getServiceListingsPage,
   getServicesOverview,
   setProviderVerification,
+  resolveBookingDispute,
   setServiceListingStatus,
   updateServiceCategory,
+  type DisputeOutcome,
   type ProviderVerification,
   type ServiceBooking,
   type ServiceCategory,
@@ -69,6 +71,11 @@ export function FullServicesPage() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
   const [deactivating, setDeactivating] = useState<ServiceCategory | null>(null);
+
+  const [resolving, setResolving] = useState<ServiceBooking | null>(null);
+  const [outcome, setOutcome] = useState<DisputeOutcome>("completed");
+  const [disputeNote, setDisputeNote] = useState("");
+  const [savingDispute, setSavingDispute] = useState(false);
 
   const [moderating, setModerating] = useState<ServiceListing | null>(null);
   const [moderationStatus, setModerationStatus] = useState<ServiceListingStatus>("active");
@@ -161,6 +168,46 @@ export function FullServicesPage() {
       });
     } finally {
       setSavingModeration(false);
+    }
+  }
+
+  async function handleResolveDispute() {
+    if (!token || !resolving) return;
+    if (!disputeNote.trim()) {
+      showToast({
+        title: "Record why",
+        description: "The note is the audit trail for a decision that moves money.",
+        tone: "error",
+      });
+      return;
+    }
+
+    setSavingDispute(true);
+    try {
+      const updated = await resolveBookingDispute(token, resolving.id, {
+        outcome,
+        note: disputeNote.trim(),
+      });
+      bookings.replaceItem(updated);
+      showToast({
+        title: outcome === "completed" ? "Released to the provider" : "Held for refund",
+        description:
+          outcome === "completed"
+            ? "The escrow hold has been paid out through the normal path."
+            : "The funds stay in treasury for the existing refund process.",
+        tone: "success",
+      });
+      setResolving(null);
+      setDisputeNote("");
+      void loadOverview();
+    } catch (error) {
+      showToast({
+        title: "Couldn't settle the dispute",
+        description: error instanceof Error ? error.message : undefined,
+        tone: "error",
+      });
+    } finally {
+      setSavingDispute(false);
     }
   }
 
@@ -524,6 +571,25 @@ export function FullServicesPage() {
               header: "Status",
               render: (row) => <StatePill tone={toneForStatus(row.status)} label={labelForStatus(row.status)} />,
             },
+            {
+              key: "actions",
+              header: "",
+              className: "text-right",
+              render: (row) =>
+                row.status === "disputed" ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setResolving(row);
+                      setOutcome("completed");
+                      setDisputeNote("");
+                    }}
+                  >
+                    <ShieldAlert className="size-4" />
+                    Settle
+                  </Button>
+                ) : null,
+            },
           ]}
           pagination={{
             page: bookings.page,
@@ -656,6 +722,86 @@ export function FullServicesPage() {
               inputMode="numeric"
               className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[13.5px] focus:border-accent focus:outline-none"
             />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        open={resolving !== null}
+        onClose={() => setResolving(null)}
+        title={resolving ? `Settle dispute on ${resolving.bookingNumber}` : "Settle dispute"}
+        description="Two outcomes, and they mean different things to the money."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setResolving(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleResolveDispute()} disabled={savingDispute}>
+              {savingDispute ? "Settling…" : "Settle"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {resolving && (
+            <p className="rounded-xl border border-line bg-surfaceMuted/60 p-3 text-[13px] text-textMuted">
+              {formatCurrency(resolving.amountPaid)} is held on this booking.
+            </p>
+          )}
+
+          <fieldset className="space-y-2">
+            <legend className="mb-1 text-[13px] font-medium text-textStrong">Outcome</legend>
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-line p-3">
+              <input
+                type="radio"
+                name="outcome"
+                checked={outcome === "completed"}
+                onChange={() => setOutcome("completed")}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="block text-[13.5px] font-medium text-textStrong">
+                  The work stands — release to the provider
+                </span>
+                <span className="block text-[12.5px] text-textMuted">
+                  Pays out through the ordinary escrow path; the ledger entry is identical to a customer
+                  confirmation, only the recorded reason differs.
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-line p-3">
+              <input
+                type="radio"
+                name="outcome"
+                checked={outcome === "cancelled"}
+                onChange={() => setOutcome("cancelled")}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="block text-[13.5px] font-medium text-textStrong">
+                  The work does not stand — hold for refund
+                </span>
+                <span className="block text-[12.5px] text-textMuted">
+                  The hold is <strong>not</strong> released. Funds stay in treasury for the existing refund
+                  process.
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
+          <label className="block">
+            <span className="mb-1.5 block text-[13px] font-medium text-textStrong">Why (required)</span>
+            <textarea
+              value={disputeNote}
+              onChange={(event) => setDisputeNote(event.target.value)}
+              maxLength={500}
+              rows={3}
+              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[13.5px] focus:border-accent focus:outline-none"
+              placeholder="What was decided, and on what evidence."
+            />
+            <span className="mt-1 block text-[12px] text-textMuted">
+              Kept as the audit trail. A resolution nobody can explain later is worse than none.
+            </span>
           </label>
         </div>
       </Modal>
