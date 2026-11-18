@@ -203,3 +203,27 @@ export async function archiveMerchandisingCampaign(token: string, campaignId: st
     token,
   });
 }
+
+/**
+ * Upload campaign artwork.
+ *
+ * Separate from the JSON upsert because FastAPI cannot mix a JSON body with file parts — which
+ * is why the dashboard previously offered only URL text fields for images an admin had sitting
+ * on their disk. Only the files actually passed are written, so replacing a banner leaves an
+ * existing thumbnail alone.
+ */
+export async function uploadCampaignArtwork(
+  token: string,
+  campaignId: string,
+  files: { banner?: File | null; thumbnail?: File | null },
+) {
+  const formData = new FormData();
+  if (files.banner) formData.append("banner_image", files.banner);
+  if (files.thumbnail) formData.append("thumbnail_image", files.thumbnail);
+
+  const row = await requestJson<BackendCampaign>(
+    `/admin/merchandising-campaigns/${campaignId}/artwork`,
+    { method: "POST", token, body: formData },
+  );
+  return mapCampaign(row);
+}

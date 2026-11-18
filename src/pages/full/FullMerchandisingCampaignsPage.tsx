@@ -1,4 +1,17 @@
-import { CalendarClock, CheckCircle2, Copy, Edit3, Inbox, Megaphone, Plus, Radio, Trash2, XCircle } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  Copy,
+  Edit3,
+  ImagePlus,
+  Inbox,
+  Megaphone,
+  Plus,
+  Radio,
+  Trash2,
+  Upload,
+  XCircle,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -7,6 +20,7 @@ import {
   duplicateMerchandisingCampaign,
   getMerchandisingCampaignsPage,
   updateMerchandisingCampaign,
+  uploadCampaignArtwork,
   type MerchandisingCampaign,
   type MerchandisingCampaignUpsert,
 } from "@/api/merchandisingCampaignsApi";
@@ -84,6 +98,77 @@ function slugify(value: string) {
 
 type PageView = "campaigns" | "opt-ins";
 
+
+/**
+ * One piece of campaign artwork: upload a file, or paste a URL if the image already lives
+ * somewhere. Upload wins when both are present, because a file the admin just chose is a
+ * clearer intent than a URL left over in the form.
+ */
+function ArtworkField({
+  label,
+  hint,
+  currentUrl,
+  file,
+  onUrlChange,
+  onFileChange,
+}: {
+  label: string;
+  hint: string;
+  currentUrl: string;
+  file: File | null;
+  onUrlChange: (value: string) => void;
+  onFileChange: (file: File | null) => void;
+}) {
+  const preview = file ? URL.createObjectURL(file) : currentUrl || null;
+
+  return (
+    <div className="space-y-2">
+      <span className="text-sm text-textMuted">{label}</span>
+
+      <div className="flex items-start gap-3">
+        <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-surfaceMuted">
+          {preview ? (
+            <img src={preview} alt="" className="size-full object-cover" />
+          ) : (
+            <ImagePlus className="size-5 text-textSubtle" aria-hidden />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-2">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-[13px] font-medium hover:border-accent/40">
+            <Upload className="size-4" aria-hidden />
+            {file ? "Choose another" : "Upload image"}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+            />
+          </label>
+
+          {file && (
+            <p className="flex items-center gap-2 text-[12px] text-textMuted">
+              <span className="truncate">{file.name}</span>
+              <button type="button" onClick={() => onFileChange(null)} className="text-danger-text">
+                Remove
+              </button>
+            </p>
+          )}
+
+          <input
+            className="w-full rounded-xl border border-line bg-surfaceMuted px-3 py-2 text-[13px] text-textStrong outline-none"
+            placeholder="…or paste an image URL"
+            value={currentUrl}
+            onChange={(event) => onUrlChange(event.target.value)}
+          />
+        </div>
+      </div>
+
+      <p className="text-[12px] text-textSubtle">{hint}</p>
+    </div>
+  );
+}
+
 export function FullMerchandisingCampaignsPage() {
   const { token } = useAdminAuth();
   const { showToast } = useToast();
@@ -132,6 +217,10 @@ export function FullMerchandisingCampaignsPage() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<MerchandisingCampaign | null>(null);
   const [form, setForm] = useState<CampaignFormValues>(initialForm);
+  // Artwork is uploaded after the campaign exists, because the upsert takes JSON and the upload
+  // takes multipart — they cannot be one request.
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MerchandisingCampaign | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [startsAtLocal, setStartsAtLocal] = useState("");
@@ -305,7 +394,13 @@ export function FullMerchandisingCampaignsPage() {
     setActionLoading(true);
     try {
       if (editingCampaign) {
-        const updated = await updateMerchandisingCampaign(token, editingCampaign.id, payload);
+        let updated = await updateMerchandisingCampaign(token, editingCampaign.id, payload);
+        if (bannerFile || thumbnailFile) {
+          updated = await uploadCampaignArtwork(token, updated.id, {
+            banner: bannerFile,
+            thumbnail: thumbnailFile,
+          });
+        }
         replaceItem(updated);
         showToast({
           title: "Campaign updated",
@@ -313,7 +408,13 @@ export function FullMerchandisingCampaignsPage() {
           tone: "success",
         });
       } else {
-        const created = await createMerchandisingCampaign(token, payload);
+        let created = await createMerchandisingCampaign(token, payload);
+        if (bannerFile || thumbnailFile) {
+          created = await uploadCampaignArtwork(token, created.id, {
+            banner: bannerFile,
+            thumbnail: thumbnailFile,
+          });
+        }
         setItems((current) => [created, ...current]);
         showToast({
           title: "Campaign created",
@@ -701,26 +802,22 @@ export function FullMerchandisingCampaignsPage() {
           </label>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="block space-y-2">
-              <span className="text-sm text-textMuted">Banner image URL</span>
-              <input
-                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
-                value={form.bannerImageUrl ?? ""}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, bannerImageUrl: event.target.value }))
-                }
-              />
-            </label>
-            <label className="block space-y-2">
-              <span className="text-sm text-textMuted">Thumbnail image URL</span>
-              <input
-                className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
-                value={form.thumbnailImageUrl ?? ""}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, thumbnailImageUrl: event.target.value }))
-                }
-              />
-            </label>
+            <ArtworkField
+              label="Banner"
+              hint="Wide artwork, shown on the campaign card and its landing page."
+              currentUrl={form.bannerImageUrl ?? ""}
+              file={bannerFile}
+              onUrlChange={(value) => setForm((current) => ({ ...current, bannerImageUrl: value }))}
+              onFileChange={setBannerFile}
+            />
+            <ArtworkField
+              label="Thumbnail"
+              hint="Square fallback, used where the banner would be cropped badly."
+              currentUrl={form.thumbnailImageUrl ?? ""}
+              file={thumbnailFile}
+              onUrlChange={(value) => setForm((current) => ({ ...current, thumbnailImageUrl: value }))}
+              onFileChange={setThumbnailFile}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
