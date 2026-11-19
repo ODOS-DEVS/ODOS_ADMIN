@@ -10,6 +10,13 @@ export type CampaignOptIn = {
   productTitle: string;
   vendorUserId: string;
   vendorName?: string | null;
+  /** What the vendor asked the product to cost during the campaign, and the shelf price at
+   *  the moment they asked. Never written back onto the product itself. */
+  proposedPrice?: number | null;
+  proposedOldPrice?: number | null;
+  currentPrice?: number | null;
+  discountPercent?: number | null;
+  vendorNote?: string | null;
   status: string;
   reviewNotes?: string | null;
   unitsSoldSinceApproval?: number | null;
@@ -26,6 +33,11 @@ type BackendOptIn = {
   product_title: string;
   vendor_user_id: string;
   vendor_name?: string | null;
+  proposed_price?: number | null;
+  proposed_old_price?: number | null;
+  current_price?: number | null;
+  discount_percent?: number | null;
+  vendor_note?: string | null;
   status: string;
   review_notes?: string | null;
   units_sold_since_approval?: number | null;
@@ -43,6 +55,11 @@ function mapOptIn(row: BackendOptIn): CampaignOptIn {
     productTitle: row.product_title,
     vendorUserId: row.vendor_user_id,
     vendorName: row.vendor_name,
+    proposedPrice: row.proposed_price ?? null,
+    proposedOldPrice: row.proposed_old_price ?? null,
+    currentPrice: row.current_price ?? null,
+    discountPercent: row.discount_percent ?? null,
+    vendorNote: row.vendor_note ?? null,
     status: row.status,
     reviewNotes: row.review_notes,
     unitsSoldSinceApproval: row.units_sold_since_approval,
@@ -61,11 +78,19 @@ export const getCampaignOptInsPage = optInsListApi.getPage;
 export async function reviewCampaignOptIn(
   token: string,
   optInId: string,
-  payload: { status: "approved" | "rejected"; reviewNotes?: string | null },
+  payload: {
+    status: "approved" | "rejected";
+    reviewNotes?: string | null;
+    /** Settle on a different campaign price than the vendor proposed. Never the shelf price. */
+    campaignPrice?: number | null;
+  },
 ) {
   const params = new URLSearchParams({ status: payload.status });
   if (payload.reviewNotes) {
     params.set("review_notes", payload.reviewNotes);
+  }
+  if (payload.campaignPrice != null) {
+    params.set("campaign_price", String(payload.campaignPrice));
   }
   const row = await requestJson<BackendOptIn>(
     `/admin/merchandising-campaign-opt-ins/${optInId}/review?${params.toString()}`,

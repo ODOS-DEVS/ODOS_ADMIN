@@ -10,6 +10,7 @@ import {
   Radio,
   Trash2,
   Upload,
+  Users,
   XCircle,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -18,9 +19,12 @@ import {
   archiveMerchandisingCampaign,
   createMerchandisingCampaign,
   duplicateMerchandisingCampaign,
+  getCampaignParticipation,
   getMerchandisingCampaignsPage,
+  notifyCampaignVendors,
   updateMerchandisingCampaign,
   uploadCampaignArtwork,
+  type CampaignParticipation,
   type MerchandisingCampaign,
   type MerchandisingCampaignUpsert,
 } from "@/api/merchandisingCampaignsApi";
@@ -68,6 +72,10 @@ const initialForm: CampaignFormValues = {
   hideOutOfStock: true,
   includeEntireMarketplace: false,
   allowVendorOptIn: false,
+  submissionDeadline: null,
+  requiresProposedPrice: false,
+  minDiscountPercent: null,
+  notifyVendors: false,
   productIds: [],
   pinnedProductIds: [],
   categorySlugs: [],
@@ -225,6 +233,7 @@ export function FullMerchandisingCampaignsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [startsAtLocal, setStartsAtLocal] = useState("");
   const [endsAtLocal, setEndsAtLocal] = useState("");
+  const [deadlineLocal, setDeadlineLocal] = useState("");
   const [categorySlugsText, setCategorySlugsText] = useState("");
   const [storeIdsText, setStoreIdsText] = useState("");
 
@@ -258,6 +267,8 @@ export function FullMerchandisingCampaignsPage() {
     if (!token) return;
 
     let reviewNotes: string | null = null;
+    let campaignPrice: number | null = null;
+
     if (status === "rejected") {
       const entered = window.prompt(
         `Optional rejection note for ${optIn.productTitle}`,
@@ -265,11 +276,34 @@ export function FullMerchandisingCampaignsPage() {
       );
       if (entered === null) return;
       reviewNotes = entered.trim() || null;
+    } else if (optIn.proposedPrice != null) {
+      // Approving a priced nomination is the moment to settle on the number, so the admin is
+      // shown what was proposed and can change it. The shelf price is never touched either way.
+      const entered = window.prompt(
+        `Campaign price for ${optIn.productTitle} (currently ${optIn.currentPrice ?? "?"}). ` +
+          `The vendor proposed ${optIn.proposedPrice}.`,
+        String(optIn.proposedPrice),
+      );
+      if (entered === null) return;
+      const parsed = Number(entered.trim());
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        showToast({
+          title: "Invalid campaign price",
+          description: "Enter a whole number of cedis above zero.",
+          tone: "error",
+        });
+        return;
+      }
+      campaignPrice = parsed;
     }
 
     setOptInActionLoading(true);
     try {
-      const updated = await reviewCampaignOptIn(token, optIn.id, { status, reviewNotes });
+      const updated = await reviewCampaignOptIn(token, optIn.id, {
+        status,
+        reviewNotes,
+        campaignPrice,
+      });
       replaceOptIn(updated);
       showToast({
         title: status === "approved" ? "Opt-in approved" : "Opt-in rejected",
@@ -287,6 +321,53 @@ export function FullMerchandisingCampaignsPage() {
       });
     } finally {
       setOptInActionLoading(false);
+    }
+  }
+
+  const [participation, setParticipation] = useState<CampaignParticipation | null>(null);
+  const [participationCampaign, setParticipationCampaign] = useState<MerchandisingCampaign | null>(null);
+  const [participationLoading, setParticipationLoading] = useState(false);
+
+  async function openParticipation(campaign: MerchandisingCampaign) {
+    if (!token) return;
+    setParticipationCampaign(campaign);
+    setParticipation(null);
+    setParticipationLoading(true);
+    try {
+      setParticipation(await getCampaignParticipation(token, campaign.id));
+    } catch (participationError) {
+      showToast({
+        title: "Unable to load participation",
+        description:
+          participationError instanceof Error ? participationError.message : "Please try again.",
+        tone: "error",
+      });
+      setParticipationCampaign(null);
+    } finally {
+      setParticipationLoading(false);
+    }
+  }
+
+  async function handleNotifyVendors(campaign: MerchandisingCampaign, force: boolean) {
+    if (!token) return;
+    setParticipationLoading(true);
+    try {
+      const next = await notifyCampaignVendors(token, campaign.id, force);
+      setParticipation(next);
+      showToast({
+        title: "Vendors invited",
+        description: `${next.vendorsNotified} vendors were invited to ${campaign.title}.`,
+        tone: "success",
+      });
+      refresh();
+    } catch (notifyError) {
+      showToast({
+        title: "Unable to invite vendors",
+        description: notifyError instanceof Error ? notifyError.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setParticipationLoading(false);
     }
   }
 
@@ -318,6 +399,7 @@ export function FullMerchandisingCampaignsPage() {
     setForm(initialForm);
     setStartsAtLocal("");
     setEndsAtLocal("");
+    setDeadlineLocal("");
     setCategorySlugsText("");
     setStoreIdsText("");
     setProductQuery("");
@@ -353,6 +435,12 @@ export function FullMerchandisingCampaignsPage() {
       hideOutOfStock: campaign.hideOutOfStock,
       includeEntireMarketplace: campaign.includeEntireMarketplace,
       allowVendorOptIn: campaign.allowVendorOptIn,
+      submissionDeadline: campaign.submissionDeadline ?? null,
+      requiresProposedPrice: campaign.requiresProposedPrice,
+      minDiscountPercent: campaign.minDiscountPercent ?? null,
+      // Never pre-checked on edit: a vendor invite is an action an admin takes on purpose,
+      // not something that rides along with an unrelated save.
+      notifyVendors: false,
       productIds: campaign.productIds,
       pinnedProductIds: campaign.pinnedProductIds,
       categorySlugs: campaign.categorySlugs,
@@ -360,6 +448,7 @@ export function FullMerchandisingCampaignsPage() {
     });
     setStartsAtLocal(toDateTimeLocal(campaign.startsAt));
     setEndsAtLocal(toDateTimeLocal(campaign.endsAt));
+    setDeadlineLocal(toDateTimeLocal(campaign.submissionDeadline));
     setCategorySlugsText(campaign.categorySlugs.join(", "));
     setStoreIdsText(campaign.storeIds.join(", "));
     setIsEditorOpen(true);
@@ -381,6 +470,7 @@ export function FullMerchandisingCampaignsPage() {
       slug: slugify(form.slug),
       startsAt: toIsoString(startsAtLocal),
       endsAt: toIsoString(endsAtLocal),
+      submissionDeadline: toIsoString(deadlineLocal),
       categorySlugs: categorySlugsText
         .split(",")
         .map((value) => value.trim().toLowerCase())
@@ -554,6 +644,31 @@ export function FullMerchandisingCampaignsPage() {
                 render: (optIn) => optIn.campaignTitle,
               },
               {
+                key: "pricing",
+                header: "Campaign price",
+                render: (optIn) =>
+                  optIn.proposedPrice != null ? (
+                    <div>
+                      <p className="font-medium">
+                        GHS {optIn.proposedPrice}
+                        {optIn.proposedOldPrice != null && (
+                          <span className="ml-2 text-xs text-textMuted line-through">
+                            GHS {optIn.proposedOldPrice}
+                          </span>
+                        )}
+                      </p>
+                      {optIn.discountPercent != null && (
+                        <p className="mt-1 text-xs text-textMuted">{optIn.discountPercent}% off</p>
+                      )}
+                      {optIn.vendorNote && (
+                        <p className="mt-1 text-xs text-textMuted">“{optIn.vendorNote}”</p>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-textMuted">Shelf price</span>
+                  ),
+              },
+              {
                 key: "performance",
                 header: "Units sold since approval",
                 render: (optIn) =>
@@ -698,6 +813,15 @@ export function FullMerchandisingCampaignsPage() {
                   >
                     Duplicate
                   </Button>
+                  {campaign.allowVendorOptIn && (
+                    <Button
+                      variant="secondary"
+                      leftIcon={<Users className="size-4" />}
+                      onClick={() => void openParticipation(campaign)}
+                    >
+                      Participation
+                    </Button>
+                  )}
                   <Button
                     variant="danger"
                     leftIcon={<Trash2 className="size-4" />}
@@ -899,6 +1023,7 @@ export function FullMerchandisingCampaignsPage() {
                 ["hideOutOfStock", "Hide out of stock"],
                 ["allowVendorOptIn", "Allow vendor opt-in"],
                 ["includeEntireMarketplace", "Include entire marketplace"],
+                ["requiresProposedPrice", "Require a campaign price"],
               ] as const
             ).map(([key, label]) => (
               <label key={key} className="flex items-center gap-3 text-sm text-textMuted">
@@ -913,6 +1038,63 @@ export function FullMerchandisingCampaignsPage() {
               </label>
             ))}
           </div>
+
+          {/* Vendor participation. Only meaningful once opt-in is on, so the whole block is
+              hidden otherwise rather than offering settings that would do nothing. */}
+          {form.allowVendorOptIn && (
+            <div className="space-y-3 rounded-2xl border border-line bg-surfaceMuted/50 p-4">
+              <p className="text-sm font-semibold text-textStrong">Vendor participation</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block space-y-2">
+                  <span className="text-sm text-textMuted">
+                    Submission deadline
+                    <span className="ml-1 text-xs">(blank = until the campaign ends)</span>
+                  </span>
+                  <input
+                    type="datetime-local"
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
+                    value={deadlineLocal}
+                    onChange={(event) => setDeadlineLocal(event.target.value)}
+                  />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm text-textMuted">Minimum discount %</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    className="w-full rounded-2xl border border-line bg-surfaceMuted px-4 py-3 text-textStrong outline-none"
+                    value={form.minDiscountPercent ?? ""}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        minDiscountPercent: event.target.value ? Number(event.target.value) : null,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+
+              {editingCampaign?.vendorsNotifiedAt ? (
+                <p className="text-xs text-textMuted">
+                  {editingCampaign.vendorsNotifiedCount} vendors invited on{" "}
+                  {formatDate(editingCampaign.vendorsNotifiedAt)}. Use the campaign row menu to
+                  re-send.
+                </p>
+              ) : (
+                <label className="flex items-center gap-3 text-sm text-textMuted">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.notifyVendors)}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, notifyVendors: event.target.checked }))
+                    }
+                  />
+                  Invite every approved vendor when this campaign is published
+                </label>
+              )}
+            </div>
+          )}
 
           <label className="block space-y-2">
             <span className="text-sm text-textMuted">Category slugs (comma-separated)</span>
@@ -989,6 +1171,64 @@ export function FullMerchandisingCampaignsPage() {
             </div>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(participationCampaign)}
+        onClose={() => setParticipationCampaign(null)}
+        title={`Participation — ${participationCampaign?.title ?? ""}`}
+      >
+        {participationLoading && !participation ? (
+          <p className="text-sm text-textMuted">Loading…</p>
+        ) : participation ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {(
+                [
+                  ["Vendors invited", participation.vendorsNotified],
+                  ["Of eligible", participation.eligibleVendors],
+                  ["Vendors submitted", participation.vendorsSubmitted],
+                  ["Products nominated", participation.productsNominated],
+                  ["Approved", participation.productsApproved],
+                  ["Rejected", participation.productsRejected],
+                  ["Awaiting review", participation.productsPending],
+                  [
+                    "Yet to respond",
+                    // Invited but silent: the number an admin actually chases.
+                    Math.max(0, participation.vendorsNotified - participation.vendorsSubmitted),
+                  ],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className="rounded-2xl border border-line bg-surfaceMuted/50 p-3">
+                  <p className="text-xs text-textMuted">{label}</p>
+                  <p className="mt-1 text-xl font-semibold text-textStrong">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-textMuted">
+              {participation.vendorsNotifiedAt
+                ? `Invitations sent ${formatDate(participation.vendorsNotifiedAt)}.`
+                : "No invitations have been sent for this campaign yet."}
+            </p>
+
+            {participationCampaign && (
+              <Button
+                variant="secondary"
+                leftIcon={<Users className="size-4" />}
+                isLoading={participationLoading}
+                onClick={() =>
+                  void handleNotifyVendors(
+                    participationCampaign,
+                    Boolean(participation.vendorsNotifiedAt),
+                  )
+                }
+              >
+                {participation.vendorsNotifiedAt ? "Re-send invitations" : "Invite all vendors"}
+              </Button>
+            )}
+          </div>
+        ) : null}
       </Modal>
 
       <ConfirmDialog
